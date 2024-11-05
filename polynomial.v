@@ -1381,3 +1381,71 @@ Section DifferentialRing.
     apply poly_product_rule.
   Defined.
 End DifferentialRing.
+
+Section DifferentialAlgebra.
+
+  Context {K V : Type } {V_setoid : Setoid V} {K_setoid : Setoid K} {V_comSemiRing : @comSemiRing V V_setoid} {K_comSemiRing : @comSemiRing K K_setoid} {K_comRing : @comRing K K_setoid K_comSemiRing} {K_field : (@Field _ K_setoid K_comSemiRing K_comRing) } {V_DR : (@differentialRing V V_setoid V_comSemiRing)} {KV_DA : @differentialAlgebra K V _ _ _ _ _ _ _ V_DR}.  
+
+  Add Ring RRing: (@ComSemiRingTheory _ V_setoid V_comSemiRing).
+
+  Lemma PolyDifferentialAlgebra : @differentialAlgebra K (@poly V) K_setoid (@setoid_poly V V_setoid) (poly_comSemiRing) _ _ _ _ (@differentialRingPoly V _ V_comSemiRing).
+  Proof.
+  exists (fun x (v : (@poly V)) => map (fun y =>  x [*] y) v).
+  - intros.
+    apply (nth_ext_A _ _ 0 0).
+    rewrite map_length;auto.
+    intros.
+    rewrite nth_proper;[|symmetry;apply smult1].
+    rewrite map_nth.
+    rewrite !smult1;reflexivity.
+ - intros a b H c d H0.
+   apply (nth_ext_A _ _ 0 0).
+   rewrite !map_length.
+   apply (@eqlistA_length V SetoidClass.equiv).
+   apply H0.
+   intros.
+   rewrite (nth_indep _ 0 (a [*] 0));auto.
+   rewrite (nth_indep _ 0 (b [*] 0));[|rewrite !map_length in *].
+   rewrite !map_nth.
+   rewrite H.
+   rewrite nth_proper_list; try apply H0.
+   reflexivity.
+   replace (length d) with (length c); auto.
+   apply (@eqlistA_length V SetoidClass.equiv).
+   apply H0.
+ - intros.
+    apply (nth_ext_A _ _ 0 0).
+    simpl;rewrite !length_sum_coefficients,!map_length,length_sum_coefficients;auto.
+    intros.
+    rewrite (nth_indep _ 0 (a [*] 0));auto.
+    simpl;rewrite !map_nth, !sum_coefficient_nth;simpl.
+    rewrite (nth_proper n (map _ u)); try (symmetry;apply (smult_zero a)).
+    rewrite (nth_proper n (map _ v)); try (symmetry;apply (smult_zero a)).
+    rewrite !map_nth.
+    rewrite smult_plus_distr.
+    ring.
+  - intros.
+    apply (nth_ext_A _ _ 0 0).
+    simpl;rewrite !length_sum_coefficients,!map_length;lia.
+    intros.
+    simpl;rewrite sum_coefficient_nth.
+    rewrite (nth_proper n); try (symmetry;apply (smult_zero (a+b))).
+    rewrite (nth_proper n (map (fun y => a [*] _) _)); try (symmetry;apply (smult_zero a)).
+    rewrite (nth_proper n (map (fun y => b [*] _) _)); try (symmetry;apply (smult_zero b)).
+    rewrite !map_nth.
+    apply splus_mult_dist.
+  - intros.
+    rewrite map_map.
+    apply (nth_ext_A _ _ 0 0).
+    rewrite !map_length;auto.
+    intros.
+    rewrite (nth_proper n (map (fun y => (a * b) [*] _) _)); try (symmetry;apply (smult_zero (a * b))).
+    rewrite !map_nth.
+    pose proof (map_nth (fun x => a [*] (b [*] x)) v 0 n).
+    simpl in H0.
+    rewrite (nth_indep _ _ ((fun x => a [*] (b [*] x)) 0));auto.
+    rewrite H0.
+    rewrite smult_mult_compat.
+    ring.
+ Defined.
+End DifferentialAlgebra.

@@ -34,8 +34,8 @@ Section AlgebraicStructures.
   }.
 
   Class Field `(R_Ring : comRing) := {
-      inv : forall {x}, x <> zero -> A;
-      mulI : forall x (p : x <> zero), mul (inv p) x = one
+      inv : forall {x}, (not (x == zero)) -> A;
+      mulI : forall x (p : (not (x == zero))), mul (inv p) x == one
     }.
 
   Class differentialRing {R_semiRing : comSemiRing} :=
@@ -61,10 +61,11 @@ Section DifferentialAlgebra.
 
   Class differentialAlgebra `(R_differentialRing : differentialRing) := {
       smult : K -> V -> V;
-      smult1 : forall v, smult one v = v;
-      smult_plus_distr : forall a u v, smult a (u+v) = smult a u + smult a v;
-      splus_mult_dist : forall a b v, smult (a+b) v = smult a v + smult b v;
-      smult_mult_compat : forall a b v, smult a (smult b v) = smult (a*b) v
+      smult1 : forall v, smult one v == v;
+      smult_proper :> Proper (equiv ==> equiv ==> equiv) smult;
+      smult_plus_distr : forall a u v, smult a (u+v) == smult a u + smult a v;
+      splus_mult_dist : forall a b v, smult (a+b) v == smult a v + smult b v;
+      smult_mult_compat : forall a b v, smult a (smult b v) == smult (a*b) v
     }. 
 
 End DifferentialAlgebra.
@@ -107,4 +108,25 @@ Section RingTheory.
 
 End RingTheory.
 
+Section DifferentialAlgebraTheory.
 
+  Context {K V : Type} {V_setoid : Setoid V} {K_setoid : Setoid K } {R_comSemiRing : @comSemiRing V V_setoid} {K_comSemiRing : @comSemiRing K K_setoid} {K_comRing : @comRing K K_setoid K_comSemiRing} {K_field : @Field K K_setoid K_comSemiRing K_comRing } {DR : @differentialRing V V_setoid R_comSemiRing} {DA : @differentialAlgebra K V _ _ _ _ _ _ _ DR}.
+
+  Add Ring RRing: (@ComSemiRingTheory _ V_setoid R_comSemiRing).
+  Add Ring RRing: (@ComRingTheory _ K_setoid K_comSemiRing K_comRing).
+
+  Lemma smult_zero  a : a [*] 0 == 0.
+  Proof.
+    enough (0 [*] 0 == 0).
+    rewrite <-H.
+    rewrite smult_mult_compat.
+    setoid_replace (a*0) with 0 by ring;auto.
+    reflexivity.
+    rewrite <- (smult1 0) at 2.
+    setoid_replace 1 with (0+1) by ring.
+    rewrite splus_mult_dist.
+    rewrite smult1.
+    rewrite add0;reflexivity.
+  Qed.
+
+End DifferentialAlgebraTheory.

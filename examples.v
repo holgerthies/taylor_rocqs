@@ -11,7 +11,7 @@ Require Import algebra polynomial.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 From mathcomp Require Import tuple.
-Section Z_pol.
+Section Z_poly.
 Instance Z_setoid : Setoid Z.
 Proof.
   exists (eq).
@@ -70,6 +70,90 @@ Proof.
   apply differentialRingPoly.
 Defined.
 
-
+Compute (p3^'^').
 
 End Z_poly.
+
+Require Import QArith.
+Require Import Ring.
+Section Q_poly.
+
+Open Scope Q_scope.
+Instance Q_setoid : Setoid Q.
+Proof.
+  exists Qeq.
+  apply Q_Setoid.
+Defined.
+
+Instance Q_semiRing : @comSemiRing Q Q_setoid.
+Proof.
+  exists 0%Q 1%Q (fun x y => (x + y)%Q) (fun x y => (x * y)%Q);try (intros; unfold SetoidClass.equiv, Q_setoid;ring).
+  apply Qplus_comp.
+  apply Qmult_comp.
+Defined.
+
+Instance Q_Ring :@comRing Q _ Q_semiRing.
+Proof.
+  exists (fun q => (- q)).
+  apply Qopp_comp.
+  intros.
+  simpl;ring.
+Defined.
+
+Instance Q_field :@Field Q _ _ Q_Ring.
+Proof.
+   exists (fun q p => (1 / q)).
+   intros.
+   simpl;field.
+   contradict p;auto.
+Defined.
+
+Instance Q_mpoly0ComRing : @comSemiRing (@mpoly Q 0) _.
+Proof.
+  apply Q_semiRing.
+Defined.
+
+Instance Q_mpoly1Setoid : Setoid (@mpoly Q 1).
+Proof. apply mpoly_setoid. Defined.
+
+Instance Q_mpoly2Setoid : Setoid (@mpoly Q 2).
+Proof. apply mpoly_setoid. Defined.
+
+Instance Q_mpoly1ComRing : @comSemiRing (@mpoly Q 1)_.
+Proof.
+  apply mpoly_comSemiRing.
+Defined.
+Instance Q_mpoly2ComRing : @comSemiRing (@mpoly Q 2) _.
+Proof.
+  apply mpoly_comSemiRing.
+Defined.
+
+Instance  qpoly1_dr : (@differentialRing (@mpoly Q 1) _ Q_mpoly1ComRing).
+Proof.
+  apply differentialRingPoly.
+Defined.
+
+Instance  qpoly2_dr : (@differentialRing (@mpoly Q 2) _ Q_mpoly2ComRing).
+Proof.
+  apply differentialRingPoly.
+Defined.
+
+Add Ring RRing : (@ComSemiRingTheory _ _ Q_mpoly0ComRing).
+
+Instance  qpoly0_dr : (@differentialRing (mpoly 0) _ Q_mpoly0ComRing).
+Proof.
+  exists (fun x => 0);intros;simpl;ring.
+Defined.
+
+Instance qp_da : (@differentialAlgebra Q (@mpoly Q 2) _ _ _  _ _ _ _ qpoly2_dr).
+Proof.
+  apply (@PolyDifferentialAlgebra Q (@mpoly Q 1) _ _ Q_mpoly1ComRing Q_semiRing _ qpoly1_dr).
+  apply (@PolyDifferentialAlgebra Q (@mpoly Q 0) _ _ Q_mpoly0ComRing Q_semiRing  _ qpoly0_dr).
+  exists (fun q x => (q * x));intros;simpl;try ring.
+  apply Qmult_comp.
+Defined.
+
+Definition q2 : (@mpoly Q 2).
+Proof.
+  apply [[1#2]; [1#2; 2#3]].
+Defined.
