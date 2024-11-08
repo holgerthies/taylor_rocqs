@@ -44,7 +44,14 @@ Section AlgebraicStructures.
     derivation_plus : forall r1 r2, derivation (add r1 r2) == add (derivation r1) (derivation r2);
     derivation_mult : forall r1 r2, derivation (mul r1 r2) == add (mul r2 (derivation r1)) (mul r1  (derivation r2))
     }.
-
+  Class TotalOrder := {
+      le : A -> A -> Prop;
+      le_refl : forall x, le x x;
+      le_anti_sym : forall x y, le x y -> le y x -> x == y;
+      le_trans : forall x y z, le x y -> le y z -> le x z;
+      le_total : forall x y, le x y \/ le y x
+    }.
+    
   Definition minus {R_semiRing : comSemiRing}  {R_comRing : comRing} (x y : A)  := add x (opp y).
 End AlgebraicStructures. 
 
@@ -52,9 +59,11 @@ Infix "+" := add.
 Infix "*" := mul.
 Notation "- x" := (opp  x). 
 Infix "-" := minus.
+Infix "<=" := le.
 Notation "0" := zero.
 Notation "1" := one.
 Notation "p ^'" := (derivation p) (at level 2, left associativity).
+
 Section DifferentialAlgebra.
 
   Context {K V : Type} {K_setoid : Setoid K} {V_setoid : Setoid V} {R_comRing : @comSemiRing V V_setoid} {K_comSemiRing : @comSemiRing K K_setoid} {K_comRing : @comRing K K_setoid K_comSemiRing} {K_field : @Field K _ K_comSemiRing K_comRing }.

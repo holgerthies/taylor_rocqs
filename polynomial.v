@@ -6,6 +6,24 @@ Require Import algebra.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
+ Definition tuple n {A} := {t : list A | length t = n}.
+ Definition destruct_tuple {n} {A}  (t : @tuple (S n) A)  : {h : A & {t0 : @tuple n A | proj1_sig t = h :: (proj1_sig t0)}}.   
+ Proof.
+   destruct t.
+   destruct x;[contradict e;simpl;lia|].
+   exists a.
+   assert (length x = n) by (simpl in e;lia).
+   exists (exist _ x H).
+   simpl;auto.
+Defined.
+  Definition tuple_cons {A} {n} (x :A ) (t : @tuple n A): @tuple (S n) A.  
+  Proof.
+   destruct t.
+   exists (x :: x0).
+   simpl.
+   rewrite e.
+   reflexivity.
+  Defined.
   Section Polynomial.
   Context {A : Type} `{setoidA : Setoid A}.
   Context {A_comRing : comSemiRing}.
@@ -775,6 +793,12 @@ Qed.
     apply mult_coefficients_cons.
   Qed.
 
+  Lemma mult_polyf_spec a b x: eval_poly (mult_polyf a b) x == (eval_poly a x) * (eval_poly b x). 
+  Proof.
+    destruct a; destruct b;try (simpl;ring).
+    unfold mult_polyf.
+    apply mult_coeff_spec.
+  Qed.
   Lemma mult_poly_sym a b:  mult_polyf a b== mult_polyf b a.
   Proof.
     destruct a;destruct b;unfold mult_polyf;simpl;auto.
@@ -1027,7 +1051,7 @@ Section MultiPoly.
     | (S n) => @poly (mpoly n)
     end.
 
-  Lemma mpoly_setoid : forall n, Setoid (mpoly n).
+  Instance mpoly_setoid n : Setoid (mpoly n).
   Proof.
     intros.
     induction n.
@@ -1035,7 +1059,7 @@ Section MultiPoly.
     apply list_A_setoid.
   Defined.
 
-  Lemma mpoly_comSemiRing : forall n, @comSemiRing (mpoly n) (mpoly_setoid n).
+  Instance mpoly_comSemiRing n:  @comSemiRing (mpoly n) (mpoly_setoid n).
   Proof.
     intros.
     induction n.
@@ -1052,19 +1076,163 @@ Section MultiPoly.
   Definition eval_mpoly {n} (p : mpoly (S n)) x :=  @eval_poly _ _ (mpoly_comSemiRing n) p (const_to_mpoly n x).
 
 End MultiPoly.
+Section Composition.
+
+  Context `{R : Type} `{R_setoid : Setoid R} `{R_semiRing : @comSemiRing R R_setoid}.
+
+  Definition to_poly_poly (p : @poly R) : (@poly (@poly R)).
+  Proof.
+    induction p.
+    apply [].
+    apply ([a] :: IHp).
+  Defined.
+  Instance poly_setoid : Setoid (@poly R).
+  Proof. apply list_A_setoid. Defined.
+  Instance ppoly_setoid : Setoid (@poly (@poly R)).
+  Proof. apply list_A_setoid. Defined.
+  Instance poly_semi : @comSemiRing (@poly R) poly_setoid.
+  Proof. apply poly_comSemiRing. Defined.
+
+  Definition composition (p1 p2 : @poly R) : @poly R.
+  Proof.
+    pose proof (to_poly_poly p1).
+    apply (eval_poly X p2).
+ Defined.
+
+End Composition.  
 
  Notation "p .{ x }" := (eval_mpoly  p x) (at level 2, left associativity).
-From mathcomp Require Import  tuple.
-Definition eval_tuple {R} {R_setoid : Setoid R} {R_semiRing : (@comSemiRing R R_setoid)} {n} (p : @mpoly R n) (t : n.-tuple R) : R. 
+Definition eval_tuple {R} {R_setoid : Setoid R} {R_semiRing : (@comSemiRing R R_setoid)} {n} (p : @mpoly R n) (t : @tuple n R) : R. 
 Proof.
    induction n.
    apply p.
-   pose proof (p.{thead t}) as p0.
-   apply (IHn p0 (behead_tuple t)).
+   destruct (destruct_tuple t) as [hd [tl P]].
+   pose proof (p.{hd}) as p0.
+   apply (IHn p0 tl).
 Defined.
 
  Notation "p .[ x ]" := (eval_tuple  p x) (at level 2, left associativity).
 
+Section MultiPolyComposition.
+  Context `{R : Type} `{R_setoid : Setoid R} `{R_semiRing : @comSemiRing R R_setoid}.
+  Definition to_mmpoly {n} m (p : @mpoly R n) : (@mpoly (@mpoly R m ) n).
+  Proof.
+    induction n.
+    apply (const_to_mpoly m p).
+    simpl in p.
+    induction p.
+    apply [].
+    apply ((IHn a) :: IHp).
+  Defined.
+
+  Definition mpoly_composition {n m} (p : @mpoly R n) (qs : @tuple n (@mpoly R m)) : (@mpoly R m).
+  Proof.
+    pose proof (to_mmpoly m p).
+    apply (@eval_tuple _ (mpoly_setoid m) (mpoly_comSemiRing _) n X qs).
+  Defined.
+
+
+  Definition eval_tuple_rec {n m} (ps : @tuple n (@mpoly R m)) (xs : @tuple m R) : @tuple n R.
+  Proof.
+    induction n.
+    exists [];simpl;reflexivity.
+    destruct (destruct_tuple ps) as [hd [tl P]].
+    specialize (IHn tl).
+    apply (tuple_cons (eval_tuple hd xs) IHn).
+  Defined.
+
+  Instance mpoly_setoid' n : Setoid (@mpoly R n).
+  Proof. apply mpoly_setoid. Defined.
+  Instance mpoly_comSemiRing' n : @comSemiRing (@mpoly R n) _.
+  Proof. apply mpoly_comSemiRing. Defined.
+  Add Ring RRing: (@ComSemiRingTheory _ _ R_semiRing).
+
+  Instance meval_proper n t : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun p => @eval_tuple _ (R_setoid) _ n p t)).
+  Proof.
+    intros a b H0.
+    induction n; simpl;auto.
+    destruct (destruct_tuple t) as [x0 [tl P]].
+    apply IHn.
+    apply eval_proper;auto.
+  Defined.
+  Lemma const_to_mpoly_spec n p x0 : (eval_poly p (const_to_mpoly n x0)) == p.{x0}.
+  Proof.
+    induction n;simpl;reflexivity.
+  Defined.
+
+  Lemma mpoly_add_spec {n} (p1 p2 : (@mpoly R n)) x : (p1 + p2).[x] == p1.[x]+p2.[x].
+  Proof.
+    revert x.
+    induction n;intros;simpl; try ring.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    unfold eval_mpoly at 1.
+    rewrite meval_proper; try apply sum_polyf_spec.
+    rewrite IHn.
+    simpl.
+    apply add_proper;rewrite meval_proper;try apply const_to_mpoly_spec;reflexivity.
+  Qed.
+
+  Lemma mpoly_mul_spec {n} (p1 p2 : (@mpoly R n)) x : (p1 * p2).[x] == p1.[x]*p2.[x].
+  Proof.
+    revert x.
+    induction n;intros;simpl; try ring.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    rewrite meval_proper; try apply mult_polyf_spec.
+    rewrite IHn.
+    simpl.
+    apply mul_proper;rewrite meval_proper;try apply const_to_mpoly_spec;reflexivity.
+  Qed.
+
+
+  Lemma zero_poly_eval {n} (x : @tuple n R)  : 0.[x] == 0.
+  Proof.
+    revert x.
+    induction n;intros;simpl; try ring.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    rewrite IHn;ring.
+  Qed.
+
+  Lemma const_to_mpoly_eval (n :nat) (a : R) x : (const_to_mpoly n a).[x] == a.
+  Proof.
+    revert a x.
+    induction n;intros;simpl;try ring.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    unfold eval_mpoly.
+    simpl.
+    rewrite mpoly_add_spec.
+    rewrite mpoly_mul_spec.
+    rewrite !IHn.
+    rewrite zero_poly_eval;ring.
+  Qed.
+
+  Lemma proj1_sig_tuple_cons {A n} (a : A) (x : @tuple n A): proj1_sig (tuple_cons a x) = a :: proj1_sig x.
+  Proof.
+    destruct x.
+    simpl;auto.
+  Qed.
+  Require Import ProofIrrelevance.
+  Require Import ProofIrrelevanceFacts.
+  Lemma destruct_tuple_cons {A n} (a : A) (x : @tuple n A): destruct_tuple (tuple_cons a x) = existT _ a (exist _ x (proj1_sig_tuple_cons a x)) .
+  Proof.
+  Admitted.
+
+  Lemma mpoly_composition_spec {n m} (p : @mpoly R n) (qs : @tuple n (@mpoly R m)) xs : eval_tuple (mpoly_composition p qs) xs == eval_tuple p (eval_tuple_rec qs xs). 
+  Proof.
+  induction n.
+  - simpl.
+    simpl in p.
+    unfold mpoly_composition, to_mmpoly.
+    simpl.
+    rewrite const_to_mpoly_eval;ring.
+  - 
+    + 
+      simpl.
+      destruct (destruct_tuple qs) as [q0 [qt P]] eqn:E.
+      rewrite destruct_tuple_cons.
+
+  Admitted.
+
+End MultiPolyComposition.
 Section DifferentialRing.
   Context {R : Type} {R_setoid : Setoid R} {R_comSemiRing : @comSemiRing R R_setoid}.
   Instance setoid_poly : Setoid (@poly R).

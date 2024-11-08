@@ -10,7 +10,7 @@ Require Import Coq.Reals.Reals.
 Require Import algebra polynomial.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
-From mathcomp Require Import tuple.
+Require Import polyapprox.
 Section Z_poly.
 Instance Z_setoid : Setoid Z.
 Proof.
@@ -157,3 +157,60 @@ Definition q2 : (@mpoly Q 2).
 Proof.
   apply [[1#2]; [1#2; 2#3]].
 Defined.
+
+Definition q11 : (@mpoly Q 1).
+Proof.
+  apply [0%Q; 0%Q;1%Q].
+Defined.
+Definition q12 : (@mpoly Q 1).
+Proof.
+  apply [0%Q; 0%Q;0%Q;1%Q].
+Defined.
+
+Instance R_setoid : Setoid R.
+Proof. 
+  exists eq.
+  apply Eqsth.
+Defined.
+Require Import ClassicalConstructiveReals.
+Require Import Coq.setoid_ring.Ring_theory.
+Require Import Coq.setoid_ring.Ring.
+Require Import Qreals.
+Open Scope R_scope.
+Instance R_comSemiRing : @comSemiRing R _.
+Proof.
+  exists 0%R 1%R Rplus Rmult; unfold SetoidClass.equiv;simpl;try (intros a b H0 c d H1;rewrite H0, H1);intros;try ring.
+Defined.
+
+Instance R_comRing : @comRing R _ _.
+Proof.
+  exists Ropp; unfold SetoidClass.equiv;simpl;try (intros a b H0 ;rewrite H0);intros;try ring.
+Defined.
+
+Instance R_totalOrder : @TotalOrder R _.
+Proof.
+  exists Rle;intros;unfold SetoidClass.equiv;simpl;try lra.
+Defined.
+
+Definition PM_Q2 : PolynomialModel Q R Q Q2R Q2R 2.
+Proof.
+   exists [[1%Q]] (fun x y => 0.5%R) 0.5%Q.
+   intros.
+   simpl.
+   destruct (destruct_tuple x0) as [x [tl P]].
+   destruct (destruct_tuple tl) as [y [tl' P']].
+   unfold eval_mpoly.
+   simpl.
+   rewrite Q2R_plus.
+   rewrite Q2R_mult.
+   lra.
+Defined.
+
+Definition q1tuple : @tuple 2 (@mpoly Q 1).
+Proof.
+  exists [q11;q12].
+  simpl;lia.
+Defined.
+Compute (mpoly_composition q2 q1tuple).
+
+End Q_poly.
