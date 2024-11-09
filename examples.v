@@ -195,10 +195,34 @@ Instance R_totalOrder : @TotalOrder R _.
 Proof.
   exists Rle;intros;unfold SetoidClass.equiv;simpl;try lra.
 Defined.
-
-Definition PM_Q2 : PolynomialModel Q R Q Q2R Q2R 2.
+Instance Rdist_metric : metric  Rdist.
 Proof.
-   exists [[1%Q]] (fun x y => 0.5%R) 0.5%Q.
+   split.
+   intros a b H c d H0.
+   rewrite H, H0; reflexivity.
+   apply Rdist_refl.
+   apply Rdist_sym.
+   apply Rdist_tri.
+Defined.
+
+Instance R_Field : Field R_comRing.
+Proof.
+   exists (fun q p => (1 / q)).
+   intros.
+   unfold SetoidClass.equiv in *.
+   simpl in *.
+   field;auto.
+   unfold SetoidClass.equiv;simpl;lra.
+Defined.
+
+Instance approx_RQ : ApproximationStructure Q R Q.
+Proof.
+  exists Q2R Q2R Rdist; try apply Rdist_metric;intros a b ->;reflexivity.
+Defined.
+
+Definition PM_Q2 : PolynomialModel approx_RQ 2.
+Proof.
+   exists [[1%Q]] (fun t => 0.5%R) 0.5%Q.
    intros.
    simpl.
    destruct (destruct_tuple x0) as [x [tl P]].
@@ -207,7 +231,9 @@ Proof.
    simpl.
    rewrite Q2R_plus.
    rewrite Q2R_mult.
-   lra.
+   unfold Rdist.
+   apply Rabs_le.
+   split;lra.
 Defined.
 
 Lemma ntimes_Q n q: ntimes n q == (inject_Z (Z.of_nat n) * q)%Q.
@@ -232,6 +258,26 @@ Proof.
   rewrite inject_Z_injective in H.
   lia.
 Qed. 
+Definition pmq_add : PolynomialModel approx_RQ 2 -> PolynomialModel approx_RQ 2 -> PolynomialModel approx_RQ 2. 
+Proof.
+  intros p1 p2.
+  destruct p1,p2.
+  exists (@add _ Q_mpoly2Setoid Q_mpoly2ComRing pm_p pm_p0) (fun t => pm_f t + pm_f0 t) (pm_err + pm_err0)%Q.
+  intros.
+  rewrite mpoly_add_spec.
+  setoid_replace (add pm_p.[x0] pm_p0.[x0]) with (pm_p.[x0] + pm_p0.[x0])%Q; [|simpl;ring].
+  unfold le, R_totalOrder.
+  rewrite !Q2R_plus.
+  rewrite Rdist_plus.
+  apply Rplus_le_compat;[apply pm_spec | apply pm_spec0].
+Defined.
 
-
+Instance pmq_add_addition : PolynomialModelAddition pmq_add.
+Proof.
+  split.
+  intros.
+  simpl.
+  destruct p4,p5;simpl.
+  ring.
+Qed.
 End Q_poly.
