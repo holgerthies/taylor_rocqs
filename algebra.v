@@ -35,7 +35,8 @@ Section AlgebraicStructures.
 
   Class Field `(R_Ring : comRing) := {
       inv : forall {x}, (not (x == zero)) -> A;
-      mulI : forall x (p : (not (x == zero))), mul (inv p) x == one
+      mulI : forall x (p : (not (x == zero))), mul (inv p) x == one;
+      distinct_0_1 : (not (zero == one))
     }.
 
   Class differentialRing {R_semiRing : comSemiRing} :=

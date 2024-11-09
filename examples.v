@@ -106,6 +106,10 @@ Proof.
    intros.
    simpl;field.
    contradict p;auto.
+   simpl.
+   intros H.
+   symmetry in H.
+   apply Q_apart_0_1;auto.
 Defined.
 
 Instance Q_mpoly0ComRing : @comSemiRing (@mpoly Q 0) _.
@@ -206,11 +210,28 @@ Proof.
    lra.
 Defined.
 
-Definition q1tuple : @tuple 2 (@mpoly Q 1).
+Lemma ntimes_Q n q: ntimes n q == (inject_Z (Z.of_nat n) * q)%Q.
 Proof.
-  exists [q11;q12].
-  simpl;lia.
-Defined.
-Compute (mpoly_composition q2 q1tuple).
+   induction n. 
+   simpl;unfold inject_Z;lra.
+   simpl.
+   rewrite IHn.
+   rewrite Zpos_P_of_succ_nat.
+   unfold Z.succ;simpl.
+   rewrite inject_Z_plus.
+   ring.
+Qed.
+
+Lemma q_char0 : forall n, (not (ntimes (S n) 1%Q == 0%Q)).
+Proof.
+  intros n.
+  rewrite ntimes_Q.
+  intros H.
+  ring_simplify in H.
+  replace 0%Q with (inject_Z 0) in H by auto.
+  rewrite inject_Z_injective in H.
+  lia.
+Qed. 
+
 
 End Q_poly.

@@ -269,7 +269,7 @@ Defined.
     }
     rewrite !nth_overflow;try ring;try lia;auto.
  Qed.
- Instance list_A_setoid : Setoid (list A).
+ #[global] Instance list_A_setoid : Setoid (list A).
  Proof.
    exists  (eqlistA SetoidClass.equiv).
    apply eqlistA_equiv.
@@ -320,7 +320,7 @@ Defined.
    split;auto.
  Qed.
 
- Instance nth_proper : forall n l, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun (d :A) => nth n l d)).
+ #[global] Instance nth_proper : forall n l, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun (d :A) => nth n l d)).
  Proof.
    intros.
    intros x y H.
@@ -362,7 +362,7 @@ Defined.
    apply eqlistA_altdef;auto.
  Qed.
 
- Instance eval_proper : forall x, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun l => eval_poly l x)).
+ #[global] Instance eval_proper : forall x, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun l => eval_poly l x)).
  Proof.
    intros.
    intros a b H.
@@ -503,7 +503,7 @@ Qed.
    apply convolution_coeff_sym.
   Qed.
 
- Instance nth_proper_list : forall n d, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun l => nth n l d)).
+ #[global] Instance nth_proper_list : forall n d, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun l => nth n l d)).
  Proof.
    intros.
    intros a b H.
@@ -891,7 +891,7 @@ Qed.
     simpl.
     lia.
   Qed.
- Instance convolution_coeff_proper : forall n, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun a b => convolution_coeff a b n)).
+ #[global] Instance convolution_coeff_proper : forall n, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun a b => convolution_coeff a b n)).
  Proof.
    intros n.
    induction n.
@@ -926,13 +926,13 @@ Qed.
      apply convolution_coeff_proper;auto.
  Qed.
 
- Instance mult_poly_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) mult_polyf).
+ #[global] Instance mult_poly_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) mult_polyf).
  Proof.
    intros a b H x y H0.
    destruct a;destruct b;destruct x; destruct y;unfold mult_polyf;try reflexivity; try (apply eqlistA_length in H;contradict H;simpl;lia); try (apply eqlistA_length in H0;contradict H0;simpl;lia).
    apply mult_coefficients_proper;auto.
  Qed.
- Instance sum_coefficients_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) sum_polyf).
+ #[global] Instance sum_coefficients_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) sum_polyf).
  Proof.
    intros a b H x y H0.
    apply (nth_ext_A _ _ 0 0).
@@ -1051,7 +1051,7 @@ Section MultiPoly.
     | (S n) => @poly (mpoly n)
     end.
 
-  Instance mpoly_setoid n : Setoid (mpoly n).
+  #[global] Instance mpoly_setoid n : Setoid (mpoly n).
   Proof.
     intros.
     induction n.
@@ -1059,7 +1059,7 @@ Section MultiPoly.
     apply list_A_setoid.
   Defined.
 
-  Instance mpoly_comSemiRing n:  @comSemiRing (mpoly n) (mpoly_setoid n).
+  #[global] Instance mpoly_comSemiRing n:  @comSemiRing (mpoly n) (mpoly_setoid n).
   Proof.
     intros.
     induction n.
@@ -1233,9 +1233,20 @@ Section MultiPolyComposition.
   Admitted.
 
 End MultiPolyComposition.
+
+Definition nil_tuple {A}: (@tuple 0 A).
+Proof.
+  exists [].
+  simpl; reflexivity.
+Defined.
+
+
+Infix "\o" := mpoly_composition (at level 2).
+Notation "t[ x ; y ; .. ; z ]" := (tuple_cons x (tuple_cons y .. (tuple_cons z nil_tuple) ..)).
+
 Section DifferentialRing.
   Context {R : Type} {R_setoid : Setoid R} {R_comSemiRing : @comSemiRing R R_setoid}.
-  Instance setoid_poly : Setoid (@poly R).
+  #[global] Instance setoid_poly : Setoid (@poly R).
   Proof.
     apply list_A_setoid.
   Defined.
@@ -1282,34 +1293,34 @@ Section DifferentialRing.
     rewrite sum_coefficient_nth.
     destruct n;simpl; rewrite !derive_poly_nth;simpl;ring.
   Qed.
-  Instance cons_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun a0 a => a0 :: a)). 
+  #[global] Instance cons_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun a0 a => a0 :: a)). 
   Proof.
     intros a b H a0 b0 H0.
     apply eqlistA_cons;auto.
   Defined.
-  Instance sum_poly2_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (sum_polyf a)).
+  #[global] Instance sum_poly2_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (sum_polyf a)).
   Proof.
     apply sum_coefficients_proper.
     reflexivity.
   Defined.
-  Instance sum_poly1_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun b => sum_polyf b a)).
+  #[global] Instance sum_poly1_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun b => sum_polyf b a)).
   Proof.
     intros b b' H.
     apply sum_coefficients_proper.
     apply H.
     reflexivity.
   Defined.
-  Instance mult_poly2_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (mult_polyf a)).
+  #[global] Instance mult_poly2_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (mult_polyf a)).
   Proof.
     apply mult_poly_proper.
     reflexivity.
   Defined.
 
- Instance convolution_coeff_proper2 n a:  (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun b => convolution_coeff a b n)).
+ #[global] Instance convolution_coeff_proper2 n a:  (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun b => convolution_coeff a b n)).
  Proof.
    apply convolution_coeff_proper;reflexivity.
  Defined.
- Instance mult_coefficients2_proper a : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (mult_coefficients a)).
+ #[global] Instance mult_coefficients2_proper a : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (mult_coefficients a)).
  Proof.
    apply mult_coefficients_proper.
    reflexivity.
@@ -1319,7 +1330,7 @@ Section DifferentialRing.
 
   Proof.
      rewrite !(mult_poly_sym _ b).
-     rewrite sum_coefficients_proper; try apply (mult_poly_sym _ b).
+     (* rewrite sum_coefficients_proper; try apply (mult_poly_sym _ b). *)
      rewrite <-mult_poly_distr.
      enough (sum_polyf [a0] (0 :: a) == a0 :: a) as ->;try reflexivity.
      apply (nth_ext_A _ _ 0 0).
@@ -1341,7 +1352,7 @@ Section DifferentialRing.
     apply length_zero_iff_nil.
     rewrite derive_poly_length; simpl; lia.
   Qed.
-  Instance ntimes_proper n : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (ntimes n)).
+  #[global] Instance ntimes_proper n : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (ntimes n)).
   Proof.
     intros a b H.
     induction n.
@@ -1351,7 +1362,7 @@ Section DifferentialRing.
     ring.
   Defined.
 
-  Instance derive_poly_proper : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) derive_poly).
+  #[global] Instance derive_poly_proper : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) derive_poly).
   Proof.
     intros a b H.
     apply (nth_ext_A _ _ 0 0).
@@ -1555,7 +1566,7 @@ Section DifferentialAlgebra.
   Context {K V : Type } {V_setoid : Setoid V} {K_setoid : Setoid K} {V_comSemiRing : @comSemiRing V V_setoid} {K_comSemiRing : @comSemiRing K K_setoid} {K_comRing : @comRing K K_setoid K_comSemiRing} {K_field : (@Field _ K_setoid K_comSemiRing K_comRing) } {V_DR : (@differentialRing V V_setoid V_comSemiRing)} {KV_DA : @differentialAlgebra K V _ _ _ _ _ _ _ V_DR}.  
 
   Add Ring RRing: (@ComSemiRingTheory _ V_setoid V_comSemiRing).
-
+  Add Ring KRing: (@ComRingTheory K K_setoid K_comSemiRing K_comRing).
   Lemma PolyDifferentialAlgebra : @differentialAlgebra K (@poly V) K_setoid (@setoid_poly V V_setoid) (poly_comSemiRing) _ _ _ _ (@differentialRingPoly V _ V_comSemiRing).
   Proof.
   exists (fun x (v : (@poly V)) => map (fun y =>  x [*] y) v).
@@ -1616,4 +1627,50 @@ Section DifferentialAlgebra.
     rewrite smult_mult_compat.
     ring.
  Defined.
+
+
+ Lemma poly_antideriv_exists (char0 : (forall n, (not (ntimes (S n) 1 == 0)))) (p : poly) :  {P : poly | length P = (length p + 1)%nat /\ forall n,  nth (S n) P 0 == inv (char0 n) * nth n p 0}.
+ Proof.
+   induction p using poly_rev_ind.
+   - exists [0].
+     split;[simpl;lia|].
+     intros.
+     rewrite !nth_overflow; simpl;try lia;ring.
+  - destruct IHp as [P0 [L H]].
+    exists (P0 ++ [inv (char0 (length p)) * x]).
+    split;[rewrite !app_length;simpl;lia|].
+    intros.
+    destruct (Nat.lt_total (S n) (length P0)) as [N | [N | N]].
+    rewrite !app_nth1; auto;try lia;apply H.
+    rewrite !app_nth2;try lia.
+    rewrite N at 1.
+    replace (length P0 - length P0)%nat with 0%nat by lia.
+    replace (length p) with n by lia.
+    replace (n - n)%nat with 0%nat by lia.
+    simpl;reflexivity.
+    rewrite !nth_overflow;try (rewrite app_length;simpl;lia).
+    ring.
+ Defined.
+
+ Definition antiderive_poly (char0 : (forall n, (not (ntimes (S n) 1 == 0)))) p := proj1_sig (poly_antideriv_exists char0 p).
+
+ Lemma antiderive_derive (char0 : (forall n, (not (ntimes (S n) 1 == 0)))) p : derive_poly (antiderive_poly char0 p) == p.
+ Proof.
+   unfold derive_poly, antiderive_poly.
+   destruct (poly_antideriv_exists char0 p) as [P [LP HP]].
+   simpl.
+   destruct (poly_deriv_exists P) as [P' [LP' HP']].
+   simpl.
+   apply (nth_ext_A _ _ 0 0).
+   simpl;rewrite LP', LP;lia.
+   intros.
+   rewrite HP', HP.
+   rewrite ntimes_mult.
+   setoid_replace (nth n p 0) with (nth n p 0 * 1) at 1 by ring.
+   rewrite ntimes_mult.
+   rewrite (mulC (nth _ _ _) _).
+   rewrite <-mulA.
+   rewrite mulI.
+   ring.
+ Qed.
 End DifferentialAlgebra.
