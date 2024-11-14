@@ -195,9 +195,9 @@ Instance R_totalOrder : @TotalOrder R _.
 Proof.
   exists Rle;intros;unfold SetoidClass.equiv;simpl;try lra.
 Defined.
-Instance Rdist_metric : metric  Rdist.
+Instance Rdist_metric : MetricSpace.
 Proof.
-   split.
+   exists Rdist.
    intros a b H c d H0.
    rewrite H, H0; reflexivity.
    apply Rdist_refl.
@@ -217,10 +217,10 @@ Defined.
 
 Instance approx_RQ : ApproximationStructure Q R Q.
 Proof.
-  exists Q2R Q2R Rdist; try apply Rdist_metric;intros a b ->;reflexivity.
+  exists Q2R Q2R ; try apply Rdist_metric;intros a b ->;reflexivity.
 Defined.
 
-Definition PM_Q2 : PolynomialModel approx_RQ 2.
+Definition PM_Q2 : PolynomialModel approx_RQ 2 t[(0,1);(0,1)].
 Proof.
    exists [[1%Q]] (fun t => 0.5%R) 0.5%Q.
    intros.
@@ -229,8 +229,7 @@ Proof.
    destruct (destruct_tuple tl) as [y [tl' P']].
    unfold eval_mpoly.
    simpl.
-   rewrite Q2R_plus.
-   rewrite Q2R_mult.
+   rewrite RMicromega.Q2R_1.
    unfold Rdist.
    apply Rabs_le.
    split;lra.
@@ -258,21 +257,37 @@ Proof.
   rewrite inject_Z_injective in H.
   lia.
 Qed. 
-Definition pmq_add : PolynomialModel approx_RQ 2 -> PolynomialModel approx_RQ 2 -> PolynomialModel approx_RQ 2. 
+Definition embed_add_compat p q : embed_poly approx_RQ (add p q) = add (embed_poly approx_RQ p) (embed_poly approx_RQ q).  
+Proof.
+  simpl.
+  revert q;induction p;[simpl;auto|].
+  intros.
+  destruct q;simpl;auto.
+  rewrite IHp.
+  f_equal.
+  revert m;induction a;[simpl;auto|].
+  intros.
+  destruct m;simpl;auto.
+  rewrite IHa.
+  f_equal.
+  rewrite Q2R_plus;auto.
+Defined.
+Definition pmq_add {dom}: PolynomialModel approx_RQ 2 dom -> PolynomialModel approx_RQ 2 dom -> PolynomialModel approx_RQ 2 dom. 
 Proof.
   intros p1 p2.
   destruct p1,p2.
   exists (@add _ Q_mpoly2Setoid Q_mpoly2ComRing pm_p pm_p0) (fun t => pm_f t + pm_f0 t) (pm_err + pm_err0)%Q.
   intros.
+  rewrite embed_add_compat.
   rewrite mpoly_add_spec.
-  setoid_replace (add pm_p.[x0] pm_p0.[x0]) with (pm_p.[x0] + pm_p0.[x0])%Q; [|simpl;ring].
+  setoid_replace (add (embed_poly approx_RQ pm_p).[x0] (embed_poly approx_RQ pm_p0).[x0]) with ((embed_poly approx_RQ pm_p).[x0] + (embed_poly approx_RQ pm_p0).[x0])%R; [|simpl;ring].
   unfold le, R_totalOrder.
   rewrite !Q2R_plus.
   rewrite Rdist_plus.
-  apply Rplus_le_compat;[apply pm_spec | apply pm_spec0].
+  apply Rplus_le_compat;[apply pm_spec | apply pm_spec0];try apply H.
 Defined.
 
-Instance pmq_add_addition : PolynomialModelAddition pmq_add.
+Instance pmq_add_addition {dom}: PolynomialModelAddition (@pmq_add dom).
 Proof.
   split.
   intros.
@@ -280,4 +295,21 @@ Proof.
   destruct p4,p5;simpl.
   ring.
 Qed.
+
+
+Definition pmq_composition {dom1 dom2}: PolynomialModel approx_RQ 1 dom1 -> @tuple 1 (PolynomialModel approx_RQ 2 dom2) -> PolynomialModel approx_RQ 2 dom2.
+Proof.
+  assert (forall x, in_hypercube dom (tuple_map embed x) -> Rdist ()).
+  intros p qs.
+  destruct (destruct_tuple qs) as [q [n N]].
+  destruct p as [p f err P].
+  destruct q as [q g err' Q].
+  exists (p \o (tuple_cons q nil_tuple)) (fun x => (f (tuple_cons (g x) nil_tuple))) err.
+  intros.
+  rewrite (mpoly_composition_spec p (tuple_cons q nil_tuple)).
+  setoid_replace (eval_tuple_rec (tuple_cons q nil_tuple) x0) with (tuple_cons q.[x0] nil_tuple) by simpl;auto.
+ setoid_replace (tuple_cons (g (tuple_map embed x0)) nil_tuple) with (tuple_map embed (tuple_cons q.[x0] nil_tuple)).
+  apply P.
+  admit.
+  
 End Q_poly.

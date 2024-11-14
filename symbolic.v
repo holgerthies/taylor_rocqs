@@ -8,27 +8,91 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import polynomial.
 
-Definition tuple_map {n A B} (f : A -> B) (x : @tuple n A) : @tuple n B.
-Proof.
-  induction n.
-  apply nil_tuple.
-  destruct (destruct_tuple x) as [hd [tl P]].
-  apply (tuple_cons (f hd) (IHn tl)).
- Defined.
-Definition in_hypercube {A : Type} `{T : TotalOrder A} {d : nat} (t : @tuple d (A*A)) (x : @tuple d A): Prop.
-Proof.
-  induction d.
-  apply True.
-  destruct (destruct_tuple x) as [xh [xt xP]].
-  destruct (destruct_tuple t) as [th [tt tP]].
-  apply (((fst th) <= xh) /\ (xh <= (snd th) ) /\ (IHd tt xt)).
-Defined.
+Section Symbolic.
+Context (A : Type).
+Inductive Symbolic 
+  :=
+  | Szero : Symbolic
+  | Sone :  Symbolic
+  | Sconst : A -> Symbolic
+  | Sadd : Symbolic -> Symbolic -> Symbolic
+  | Smul : Symbolic -> Symbolic -> Symbolic
+  .
+  Inductive symbolic_equiv : Symbolic -> Symbolic -> Prop :=
+    | Srefl : forall x, symbolic_equiv x x
+    | Ssym : forall x y, symbolic_equiv x y -> symbolic_equiv y x
+    | Strans : forall x y z, symbolic_equiv x y -> symbolic_equiv y z -> symbolic_equiv x z
+    | SaddC : forall x y, symbolic_equiv (Sadd x y) (Sadd y x) 
+    | SaddA : forall x y z, symbolic_equiv (Sadd (Sadd x y) z) (Sadd x (Sadd y z))  
+    | SmulC : forall x y, symbolic_equiv (Smul x y) (Smul y x) 
+    | SmulA : forall x y z, symbolic_equiv (Smul (Smul x y) z) (Smul x (Smul y z))  
+    | SmulD : forall x y z, symbolic_equiv (Smul x (Sadd y z)) (Sadd (Smul x y) (Smul x z)) 
+    | Sadd0 : forall x, symbolic_equiv (Sadd x Szero) x
+    | Smul0 : forall x, symbolic_equiv (Smul x Szero) Szero 
+    | Smul1 : forall x, symbolic_equiv (Smul x Sone) x
+    | SaddProper : forall x1 y1 x2 y2, symbolic_equiv x1 y1 -> symbolic_equiv x2 y2 -> symbolic_equiv (Sadd x1 x2) (Sadd y1 y2)
+    | SmulProper : forall x1 y1 x2 y2, symbolic_equiv x1 y1 -> symbolic_equiv x2 y2 -> symbolic_equiv (Smul x1 x2) (Smul y1 y2)
+  .
 
-Section MultivariateFun.
+  Instance Proper_symbolic_add :
+  Proper (symbolic_equiv ==> symbolic_equiv ==> symbolic_equiv) Sadd.
+  Proof.
+    intros x1 x2 H1 y1 y2 H2.
+    apply SaddProper;auto.
+  Defined.
+
+  Instance Proper_symbolic_mul :
+  Proper (symbolic_equiv ==> symbolic_equiv ==> symbolic_equiv) Smul.
+  Proof.
+    intros x1 x2 H1 y1 y2 H2.
+    apply SmulProper;auto.
+  Defined.
+
+  Instance S_setoid : (Setoid Symbolic).
+  Proof.
+    exists symbolic_equiv.
+    constructor.
+    intros x;apply Srefl.
+    intros x y;apply Ssym.
+    intros x y z;apply Strans.
+  Defined.
+  Instance S_semiRing : comSemiRing.
+  Proof.
+    exists Szero Sone Sadd Smul; intros.
+    apply Proper_symbolic_add.
+    apply Proper_symbolic_mul.
+    apply Srefl.
+    apply Srefl.
+    apply SaddA.
+    apply SaddC.
+    apply Sadd0.
+    apply SmulA.
+    apply SmulC.
+    apply Smul0.
+    apply Smul1.
+    apply SmulD.
+ Defined.
+End Symbolic.
+
+Section Interval.
   Context `{R : Type} `{R_setoid : Setoid R} `{R_semiRing : @comSemiRing R R_setoid}.
+  
   Definition mfun n := (@tuple n R) -> R.
 
-End MultivariateFun.
+End Interval.
+Section Norm.
+Context `{A: Type} `{B : Type}.
+Context `{semiRingA : comSemiRing A}.
+Context `{FieldB : Field B}.
+Context `{orderE : TotalOrder B}.
+Class MetricSpace  := {
+    metric_distance : A -> A -> B ;
+    metric_proper :> Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) metric_distance;
+    metric_zero : forall x y, metric_distance x y == 0 <-> x == y;
+    metric_sym : forall x y, metric_distance x y == metric_distance y x;
+    metric_triangle : forall x y z, metric_distance x y <= metric_distance x z + metric_distance z y
+  }.
+End Norm.
 
 Class ApproximationStructure (base_type : Type) (target_type : Type) (error_type : Type) `{semiRingB : comSemiRing base_type} `{fieldT : Field target_type} `{semiRingE : comSemiRing error_type}  `{orderE : TotalOrder target_type}  := {
     embed : base_type -> target_type;
@@ -37,7 +101,7 @@ Class ApproximationStructure (base_type : Type) (target_type : Type) (error_type
     embedE_proper :> Proper (SetoidClass.equiv ==> SetoidClass.equiv) embedE;
   }.
 Section Approximation.
-  Context {base_type : Type} {target_type : Type} {error_type : Type} `{semiRingB : comSemiRing base_type}  `{fieldT : Field target_type} `{semiRingE : comSemiRing error_type}   `{orderT : TotalOrder target_type} `{normT : NormedSemiRing target_type target_type}.
+  Context {base_type : Type} {target_type : Type} {error_type : Type} `{semiRingB : comSemiRing base_type} `{fieldT : Field target_type} `{semiRingE : comSemiRing error_type}   `{orderT : TotalOrder target_type} `{metricT : MetricSpace target_type target_type}.
   Definition embed_poly {d : nat} (a : ApproximationStructure base_type target_type error_type) : @mpoly base_type d -> @mpoly target_type d. 
   Proof.
     intros.
@@ -45,15 +109,17 @@ Section Approximation.
     apply (a.(embed) X).
     apply (map IHd X).
    Defined.
-
-  Definition dist x y:= normT.(norm) (x-y).
-
-
+  Class ExactPolynomialModel  (d : nat) (dom : @tuple d (target_type * target_type)) := {
+    epm_p : @mpoly target_type d;
+    epm_f : @mfun target_type d;
+    pme_err : target_type;
+    pme_spec : forall x, in_hypercube dom x -> (metricT.(metric_distance) epm_p.[x] (epm_f x)) <=  pme_err;
+  }.
   Class PolynomialModel (approx : ApproximationStructure base_type target_type error_type) (d : nat) (dom : @tuple d (target_type * target_type)) := {
     pm_p : @mpoly base_type d;
     pm_f : @mfun target_type d;
     pm_err : error_type;
-    pm_spec : forall x, in_hypercube dom x -> (dist (embed_poly approx pm_p).[x] (pm_f x)) <=  embedE pm_err;
+    pm_spec : forall x, in_hypercube dom x -> (metricT.(metric_distance) (embed_poly approx pm_p).[x] (pm_f x)) <=  embedE pm_err;
   }.
   Definition eval_pm {a : ApproximationStructure base_type target_type error_type} {d} {dom} (p : PolynomialModel a d dom) (t : @tuple d base_type) :  base_type * error_type.
   Proof.

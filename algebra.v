@@ -47,13 +47,25 @@ Section AlgebraicStructures.
     }.
   Class TotalOrder := {
       le : A -> A -> Prop;
+      le_proper :> Proper (equiv ==> equiv ==> equiv) le;
       le_refl : forall x, le x x;
       le_anti_sym : forall x y, le x y -> le y x -> x == y;
       le_trans : forall x y z, le x y -> le y z -> le x z;
       le_total : forall x y, le x y \/ le y x
     }.
     
+  Class TotallyOrderedField `(R_Field : Field) `(R_TotalOrder : TotalOrder) := {
+      le_plus_compat : forall x y z, le x y -> le (add x z) (add y z);
+      mul_pos_pos : forall x y, le zero x -> le zero x -> le zero (mul x y)
+    }.
+
   Definition minus {R_semiRing : comSemiRing}  {R_comRing : comRing} (x y : A)  := add x (opp y).
+  #[global] Instance minus_proper {R_semiRing : comSemiRing}  {R_comRing : comRing} : Proper (equiv ==> equiv ==> equiv) minus.
+  Proof.
+    intros a b P0 c d P1.
+    unfold minus.
+    rewrite P0,P1;reflexivity.
+  Defined.
 End AlgebraicStructures. 
 
 Infix "+" := add.
@@ -64,7 +76,28 @@ Infix "<=" := le.
 Notation "0" := zero.
 Notation "1" := one.
 Notation "p ^'" := (derivation p) (at level 2, left associativity).
-
+Section Norm.
+  Context `{A: Type} `{B : Type}.
+  Context `{semiRingA : comSemiRing A}.
+  Context `{TotallyOrderedFieldB : TotallyOrderedField B}.
+  Class NormedSemiRing := {
+    norm : A -> B ;
+    norm_proper :> Proper (SetoidClass.equiv ==> SetoidClass.equiv) norm;
+    norm_zero : forall x,  norm x == 0 <-> x == 0;
+    norm_triangle : forall x y, norm (x+y) <= norm x + norm y;
+    norm_mult : forall x y, norm (x*y) <= norm x * norm y;
+  }.
+End Norm.
+Section OrderTheory.
+Context {A : Type} `{TotallyOrderedField A}.
+Lemma le_le_plus_le a b c d: a <= c -> b <= d -> a + b <= c + d.
+Proof.
+  intros.
+  apply (le_trans _ _ _ (le_plus_compat _ _ _ H1)).
+  rewrite !(addC c).
+  apply le_plus_compat;auto.
+Qed.
+End OrderTheory.
 Section DifferentialAlgebra.
 
   Context {K V : Type} {K_setoid : Setoid K} {V_setoid : Setoid V} {R_comRing : @comSemiRing V V_setoid} {K_comSemiRing : @comSemiRing K K_setoid} {K_comRing : @comRing K K_setoid K_comSemiRing} {K_field : @Field K _ K_comSemiRing K_comRing }.
