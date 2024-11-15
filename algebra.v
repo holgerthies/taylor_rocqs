@@ -56,7 +56,7 @@ Section AlgebraicStructures.
     
   Class TotallyOrderedField `(R_Field : Field) `(R_TotalOrder : TotalOrder) := {
       le_plus_compat : forall x y z, le x y -> le (add x z) (add y z);
-      mul_pos_pos : forall x y, le zero x -> le zero x -> le zero (mul x y)
+      mul_pos_pos : forall x y, le zero x -> le zero y -> le zero (mul x y)
     }.
 
   Definition minus {R_semiRing : comSemiRing}  {R_comRing : comRing} (x y : A)  := add x (opp y).
@@ -83,21 +83,14 @@ Section Norm.
   Class NormedSemiRing := {
     norm : A -> B ;
     norm_proper :> Proper (SetoidClass.equiv ==> SetoidClass.equiv) norm;
+    norm_nonneg : forall x, 0 <= norm x;
     norm_zero : forall x,  norm x == 0 <-> x == 0;
     norm_triangle : forall x y, norm (x+y) <= norm x + norm y;
     norm_mult : forall x y, norm (x*y) <= norm x * norm y;
   }.
+
+
 End Norm.
-Section OrderTheory.
-Context {A : Type} `{TotallyOrderedField A}.
-Lemma le_le_plus_le a b c d: a <= c -> b <= d -> a + b <= c + d.
-Proof.
-  intros.
-  apply (le_trans _ _ _ (le_plus_compat _ _ _ H1)).
-  rewrite !(addC c).
-  apply le_plus_compat;auto.
-Qed.
-End OrderTheory.
 Section DifferentialAlgebra.
 
   Context {K V : Type} {K_setoid : Setoid K} {V_setoid : Setoid V} {R_comRing : @comSemiRing V V_setoid} {K_comSemiRing : @comSemiRing K K_setoid} {K_comRing : @comRing K K_setoid K_comSemiRing} {K_field : @Field K _ K_comSemiRing K_comRing }.
@@ -173,3 +166,43 @@ Section DifferentialAlgebraTheory.
   Qed.
 
 End DifferentialAlgebraTheory.
+
+Section OrderTheory.
+Context {A : Type} `{TotallyOrderedField A}.
+Add Ring TRing: ComRingTheory.
+
+Lemma le_le_plus_le a b c d: a <= c -> b <= d -> a + b <= c + d.
+Proof.
+  intros.
+  apply (le_trans _ _ _ (le_plus_compat _ _ _ H1)).
+  rewrite !(addC c).
+  apply le_plus_compat;auto.
+Qed.
+Lemma le_iff_le0 x y: x <= y <-> 0 <= (y-x). 
+Proof.
+  split;intros.
+  setoid_replace 0 with (x-x) by ring.
+  apply le_plus_compat;auto.
+  setoid_replace x with (0 + x ) by ring.
+  setoid_replace y with ((y-x)+x) by ring.
+  apply le_plus_compat;auto.
+Qed.
+
+Lemma mul_le_compat_pos {r r1 r2} : 0 <= r -> r1 <= r2 -> r * r1 <= r * r2.
+Proof.
+  intros.
+  apply le_iff_le0.
+  setoid_replace (r*r2 - r*r1) with (r * (r2 - r1)) by ring.
+  apply mul_pos_pos;auto.
+  rewrite <-le_iff_le0;auto.
+Qed.
+
+Lemma mul_le_le_compat_pos {r1 r2 x y} : 0 <= r1 -> (0 <= x) -> r1 <= r2 -> x <= y -> r1 * x <= r2 * y.
+Proof.
+  intros.
+  apply (le_trans _ _ _ (mul_le_compat_pos H1 H4 )).
+  rewrite !(mulC _ y).
+  apply mul_le_compat_pos;auto.
+  apply (le_trans _ _ _ H2);auto.
+Qed.
+End OrderTheory.

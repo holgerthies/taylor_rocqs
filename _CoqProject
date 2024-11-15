@@ -2,3 +2,5 @@
 algebra.v
 polynomial.v
 polyapprox.v
+symbolic.v
+intervalpoly.v

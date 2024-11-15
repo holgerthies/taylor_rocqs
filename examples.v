@@ -11,6 +11,7 @@ Require Import algebra polynomial.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import polyapprox.
+Require Import intervalpoly.
 Section Z_poly.
 Instance Z_setoid : Setoid Z.
 Proof.
@@ -194,6 +195,37 @@ Defined.
 Instance R_totalOrder : @TotalOrder R _.
 Proof.
   exists Rle;intros;unfold SetoidClass.equiv;simpl;try lra.
+  intros a b H c d H0.
+  lra.
+Defined.
+
+Instance Q_totalOrder : @TotalOrder Q _.
+Proof.
+  exists Qle; intros;try lra.
+  intros a b H a0 b0 H0;rewrite H,H0;reflexivity.
+  apply Qle_antisym;auto.
+Defined.
+Instance Q_totallyOrderedField : TotallyOrderedField Q_field Q_totalOrder.
+Proof.
+  constructor;unfold le;simpl;intros;try lra.
+  apply Qmult_le_0_compat;auto.
+Defined.
+
+Lemma Q_abs_zero x : Qabs.Qabs x == 0%Q <-> x == 0%Q. 
+Proof.
+Admitted.
+
+Instance Q_normed : @NormedSemiRing Q Q (Q_setoid) Q_semiRing Q_setoid Q_semiRing Q_totalOrder.
+Proof.
+  exists Qabs.Qabs;intros.
+  intros a b ->;reflexivity.
+  apply Qabs.Qabs_nonneg.
+  split;intros; [| rewrite H;reflexivity].
+  simpl in H.
+  apply Q_abs_zero;auto.
+  apply Qabs.Qabs_triangle.
+  rewrite Qabs.Qabs_Qmult.
+  apply le_refl.
 Defined.
 Instance Rdist_metric : MetricSpace.
 Proof.
