@@ -74,3 +74,10 @@ Inductive Symbolic
  Defined.
 End Symbolic.
 
+Definition tupleToSymbolic {A n} (t : @tuple n A) : (@tuple n (Symbolic A)).
+Proof.
+    induction n.
+    apply nil_tuple.
+    destruct (destruct_tuple t) as [h [tl T]].
+    apply (tuple_cons (Sconst A h) (IHn tl)).
+Defined.

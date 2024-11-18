@@ -59,7 +59,9 @@ Section IntervalPoly.
   Context `{K : Type}.
   Context `{ofieldK : TotallyOrderedField K}.
   Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_semiRing := R_semiRing) (semiRingA := R_semiRing) (R_TotalOrder := R_TotalOrder))}.
-  Definition symInterval := (Symbolic (@cinterval K)).
+ 
+  Add Ring TRing: ComRingTheory.
+Definition symInterval := (Symbolic (@cinterval K)).
 
   Definition eval_symInterval (i : symInterval) : (@cinterval K).
   Proof.
@@ -79,13 +81,6 @@ Section IntervalPoly.
     apply ((IHn a) :: IHp).
   Defined.
 
-  Definition tupleToSymbolic {A n} (t : @tuple n A) : (@tuple n (Symbolic A)).
-  Proof.
-    induction n.
-    apply nil_tuple.
-    destruct (destruct_tuple t) as [h [tl T]].
-    apply (tuple_cons (Sconst A h) (IHn tl)).
-  Defined.
 
   Definition evalInterval {n} (p : @mpoly K n) (i : @tuple n (@cinterval K)) := eval_symInterval (toIntervalPoly p).[tupleToSymbolic i].
 
@@ -105,5 +100,41 @@ Section IntervalPoly.
      destruct (destruct_tuple x) as [x0 [xt Px]].
      rewrite destruct_tuple_cons.
   Admitted.
+
+  Lemma in_interval_bound i:  {B | forall x, in_cinterval x i -> normK.(norm) x <= B}. 
+  Proof.
+    exists (normK.(norm) (fst i) +  (snd i)).
+    intros.
+    unfold in_cinterval in H0.
+    setoid_replace x with (fst i + (x - fst i)) by ring.
+    apply (le_trans _ _ _ (norm_triangle _ _)).
+    rewrite !(addC (norm (fst i))).
+    apply le_plus_compat.
+    apply H0.
+  Defined.
+
+  Lemma boundPoly {n} (p : @mpoly K n) (i : @tuple n (@cinterval K)) : {b | forall x, in_cintervalt x i -> normK.(norm) p.[x] <= b}.
+  Proof.
+    pose proof (evalInterval_spec p i).
+    destruct (in_interval_bound (evalInterval p i)).
+    exists x.
+    intros.
+    apply l.
+    apply H0;auto.
+ Defined.
+
+ Definition is_eps_close {n} (x y : @tuple n K) (eps :K) : Prop. 
+ Proof.
+   induction n.
+   apply True.
+   destruct (destruct_tuple x) as [xh [xt Px]].
+   destruct (destruct_tuple y) as [yh [yt Py]].
+   apply ((normK.(norm) (xh-yh) <= eps) /\ (IHn xt yt)).
+ Defined.
+
+ Lemma boundPolyDiff {n} (p : @mpoly K n) (i : @tuple n (@cinterval K)) (eps : K) : {b | forall x y, in_cintervalt x i  -> is_eps_close x y eps -> normK.(norm) (p.[x] - p.[y]) <= b}.
+ Proof.
+ Admitted.
+ 
 End IntervalPoly.
 

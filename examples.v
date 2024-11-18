@@ -12,6 +12,7 @@ Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import polyapprox.
 Require Import intervalpoly.
+Require Import symbolic.
 Section Z_poly.
 Instance Z_setoid : Setoid Z.
 Proof.
@@ -227,15 +228,17 @@ Proof.
   rewrite Qabs.Qabs_Qmult.
   apply le_refl.
 Defined.
-Instance Rdist_metric : MetricSpace.
-Proof.
-   exists Rdist.
-   intros a b H c d H0.
-   rewrite H, H0; reflexivity.
-   apply Rdist_refl.
-   apply Rdist_sym.
-   apply Rdist_tri.
-Defined.
+
+Compute (proj1_sig (boundPoly q2 t[(3,1);(5,1)]%Q)).
+(* Instance Rdist_metric : MetricSpace. *)
+(* Proof. *)
+(*    exists Rdist. *)
+(*    intros a b H c d H0. *)
+(*    rewrite H, H0; reflexivity. *)
+(*    apply Rdist_refl. *)
+(*    apply Rdist_sym. *)
+(*    apply Rdist_tri. *)
+(* Defined. *)
 
 Instance R_Field : Field R_comRing.
 Proof.
@@ -247,14 +250,47 @@ Proof.
    unfold SetoidClass.equiv;simpl;lra.
 Defined.
 
+Instance TotalOrderR : TotalOrder.
+Proof.
+  exists Rle; intros;try lra.
+  intros a b -> c d ->;reflexivity.
+  simpl;lra.
+Defined.
+
+Instance R_TotallyOrderedField : TotallyOrderedField R_Field TotalOrderR.
+Proof.
+  constructor;simpl;intros; try lra.
+  nra.
+Defined.
+
 Instance approx_RQ : ApproximationStructure Q R Q.
 Proof.
-  exists Q2R Q2R ; try apply Rdist_metric;intros a b ->;reflexivity.
+  exists Q2R Q2R; try (intros a b ->;reflexivity).
+  apply 0%Q.
+  apply 1%Q.
+  apply Qplus.
+  apply Qmult.
+Defined.
+
+Instance normR : NormedSemiRing.
+Proof.
+  exists Rabs;intros.
+  intros a b ->;reflexivity.
+  apply Rabs_pos.
+  simpl.
+  split;intros; [| rewrite H;rewrite Rabs_R0;reflexivity].
+  enough (not (x0 <> 0)) by tauto.
+  intros H0.
+  contradict H.
+  apply Rabs_no_R0;auto.
+  apply Rabs_triang.
+  rewrite Rabs_mult.
+  apply le_refl.
 Defined.
 
 Definition PM_Q2 : PolynomialModel approx_RQ 2 t[(0,1);(0,1)].
 Proof.
-   exists [[1%Q]] (fun t => 0.5%R) 0.5%Q.
+   exists [[Sconst _ 1%Q]] (fun t => 0.5%R) 0.5%Q.
    intros.
    simpl.
    destruct (destruct_tuple x0) as [x [tl P]].
