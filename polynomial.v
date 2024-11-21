@@ -24,18 +24,20 @@ Defined.
    rewrite e.
    reflexivity.
   Defined.
-  Section Polynomial.
-  Context {A : Type} `{setoidA : Setoid A}.
-  Context {A_comRing : comSemiRing}.
+ Instance list_A_setoid {A} {A_setoid : Setoid A} : Setoid (list A).
+ Proof.
+   exists  (eqlistA SetoidClass.equiv).
+   apply eqlistA_equiv.
+   apply setoid_equiv.
+ Defined.
 
+ Section RawPolynomial.
+  Context `{A_rawRing : RawRing}.
   Fixpoint npow (x : A) (n : nat) : A :=
     match n with
     | O => 1
     | S m => x * (npow x m)
     end.
-
-
-  Add Ring ARing: ComSemiRingTheory.
 
   Definition poly := list A.
   
@@ -44,6 +46,47 @@ Defined.
     | nil => 0
     | h :: t => h + x * (eval_poly t x)  
     end.
+
+  Definition sum_polyf  : poly -> poly -> poly.
+  Proof.
+    intros p1.
+    induction p1 as [|a0 p1' S]; intros p2.
+    apply p2.
+    destruct p2 as [|b0 p2'].
+    apply (a0 :: p1').
+    apply ((a0 + b0) :: (S p2')).
+  Defined.
+
+ Fixpoint convolution_coeff_rec (a b : list A) n i :=
+   nth (n-i)%nat a 0 * nth i b 0 + match i with
+     | 0 => 0
+     | S i' => convolution_coeff_rec a b n i'
+    end.
+ Definition convolution_coeff (a b : list A) n := convolution_coeff_rec a b n n.
+ Fixpoint mult_coefficients_rec (a b : list A) n :=
+   match n with
+    | 0 => []
+    | S n' =>  convolution_coeff a b ((length a + length b - 1) - n)%nat :: mult_coefficients_rec a b n'
+     end.
+
+ Definition mult_coefficients a b := mult_coefficients_rec a b (length a + length b - 1).
+ Definition mult_polyf a b := match (a,b) with
+                                      | ([], _) => []
+                                      | (_, []) => []
+                                      |  (_, _) => mult_coefficients a b end.
+  #[global] Instance poly_rawRing: RawRing (A := poly).
+  Proof.
+    constructor.
+    apply []. apply [1]. apply (sum_polyf). apply (mult_polyf).
+  Defined.
+  End RawPolynomial.
+  Section Polynomial.
+  Context `{A_comRing : comSemiRing}.
+
+
+
+  Add Ring ARing: ComSemiRingTheory.
+
 
   Fixpoint eval_poly_rec (a : poly) (x : A) (n : nat) :=
     match n with
@@ -103,24 +146,15 @@ Defined.
  Lemma smul_poly lambda p1: {p2 | forall x, eval_poly p2 x == lambda * eval_poly p1 x}.
  Proof.
    induction p1 as [| a0 p1' IH]; [exists []; intros;simpl;ring |].
-   destruct IH as [p2' H].
+   destruct IH as [p2' H0].
    exists ((lambda * a0) :: p2' ).
    intros.
    simpl.
    setoid_replace (lambda * (a0 + x*eval_poly p1' x)) with (lambda*a0 + x * (lambda * eval_poly p1' x)) by ring.
-   rewrite H;auto.
+   rewrite H0;auto.
    ring.
  Defined.
 
-  Definition sum_polyf  : poly -> poly -> poly.
-  Proof.
-    intros p1.
-    induction p1 as [|a0 p1' S]; intros p2.
-    apply p2.
-    destruct p2 as [|b0 p2'].
-    apply (a0 :: p1').
-    apply ((a0 + b0) :: (S p2')).
-  Defined.
 
   Lemma sum_polyf_spec p1 p2 x: eval_poly (sum_polyf p1 p2) x == eval_poly p1 x + eval_poly p2 x.
   Proof.
@@ -128,8 +162,8 @@ Defined.
     induction p1 as [| a0 p1'];intros; [simpl;ring|].
      destruct p2 as [| b0 p2'];[simpl;ring|].
      simpl.
-     assert (forall y z u, y == z + u -> a0 + b0 + y == a0+z+(b0+u)) by (intros;rewrite H;ring).
-     apply H.
+     assert (forall y z u, y == z + u -> a0 + b0 + y == a0+z+(b0+u)) by (intros;rewrite H0;ring).
+     apply H0.
      rewrite <-distrL.
      apply ring_eq_mult_eq;auto.
      ring.
@@ -168,13 +202,7 @@ Defined.
  Defined.
 
 
- Fixpoint convolution_coeff_rec (a b : list A) n i :=
-   nth (n-i)%nat a 0 * nth i b 0 + match i with
-     | 0 => 0
-     | S i' => convolution_coeff_rec a b n i'
-    end.
 
- Definition convolution_coeff (a b : list A) n := convolution_coeff_rec a b n n.
 
    Lemma convolution_coeff_rec_cons a b a0 n i  :(i <= n)%nat -> convolution_coeff_rec (a0 :: a) b (S n) i == convolution_coeff_rec a b n i.
   Proof.
@@ -199,11 +227,6 @@ Defined.
    ring.
  Qed.
    
- Fixpoint mult_coefficients_rec (a b : list A) n :=
-   match n with
-    | 0 => []
-    | S n' =>  convolution_coeff a b ((length a + length b - 1) - n)%nat :: mult_coefficients_rec a b n'
-     end.
 
  Definition mult_coefficients_rec_spec a b n m : (n < m)%nat -> nth n (mult_coefficients_rec a b m) 0 == convolution_coeff a b (length a + length b - 1  + n - m)%nat .
  Proof.
@@ -215,7 +238,6 @@ Defined.
    auto;ring.
  Qed.
 
- Definition mult_coefficients a b := mult_coefficients_rec a b (length a + length b - 1).
 
  Definition mult_coefficients_spec a b n : (n < length a + length b - 1)%nat -> nth n (mult_coefficients a b) 0 == convolution_coeff a b n.
  Proof.
@@ -269,12 +291,6 @@ Defined.
     }
     rewrite !nth_overflow;try ring;try lia;auto.
  Qed.
- #[global] Instance list_A_setoid : Setoid (list A).
- Proof.
-   exists  (eqlistA SetoidClass.equiv).
-   apply eqlistA_equiv.
-   apply setoid_equiv.
- Defined.
  Lemma nth_ext_A_iff l1 l2 d1 d2 : (l1 == l2) <-> (length l1 = length l2 /\ forall n, n < length l1 -> nth n l1 d1 == nth n l2 d2).
  Proof.
    intros.
@@ -282,35 +298,35 @@ Defined.
    - apply (@eqlistA_length A SetoidClass.equiv);auto.
    - intros.
      generalize dependent n.
-     induction H.
+     induction H0.
      intros.
-     simpl in H0;lia.
+     simpl in H1;lia.
      destruct n.
      simpl;auto.
      intros.
      simpl.
      apply IHeqlistA.
-     simpl in H1;lia.
-  - destruct H.
+     simpl in H2;lia.
+  - destruct H0.
     generalize dependent l1.
     induction l2;intros.
-    + simpl in H.
-      apply length_zero_iff_nil in H.
-      rewrite H.
+    + simpl in H0.
+      apply length_zero_iff_nil in H0.
+      rewrite H0.
       reflexivity.
     + destruct l1.
-      simpl in H.
+      simpl in H0.
       lia.
       apply eqlistA_cons.
-      specialize (H0 0%nat).
-      simpl in H0.
-      apply H0;lia.
+      specialize (H1 0%nat).
+      simpl in H1.
+      apply H1;lia.
       apply IHl2.
-      simpl in H;lia.
+      simpl in H0;lia.
       intros.
-      specialize (H0 (S n)).
-      simpl in H0.
-      apply H0.
+      specialize (H1 (S n)).
+      simpl in H1.
+      apply H1.
       lia.
   Qed.
  Lemma nth_ext_A l1 l2 d1 d2 : length l1 = length l2 -> (forall n, n < length l1 -> nth n l1 d1 == nth n l2 d2) -> l1 == l2.
@@ -323,7 +339,7 @@ Defined.
  #[global] Instance nth_proper : forall n l, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun (d :A) => nth n l d)).
  Proof.
    intros.
-   intros x y H.
+   intros x y H0.
    destruct (Nat.lt_ge_cases n (length l) ).
    rewrite (nth_indep _ _ y);auto;reflexivity.
    rewrite !nth_overflow;auto.
@@ -339,8 +355,8 @@ Defined.
 
     assert (0 == ((fun x => a0 * x) 0)) as R by ring.
     pose proof (nth_proper n (map (fun x => a0 * x) b) _ _ R).
-    simpl in H0.
-    rewrite H0.
+    simpl in H1.
+    rewrite H1.
     rewrite map_nth.
     reflexivity.
  Qed.
@@ -349,15 +365,15 @@ Defined.
  Proof.
    intros.
    apply length_zero_iff_nil.
-   apply eqlistA_length in H;auto.
+   apply eqlistA_length in H0;auto.
  Qed.
 
   Lemma eqlistA_destruct a0 a b0 b: a0 :: a == b0 :: b -> a0 == b0 /\ a == b.  
   Proof.
    intros.
-   apply eqlistA_altdef in H.
-   apply Forall2_cons_iff in H.
-   destruct H.
+   apply eqlistA_altdef in H0.
+   apply Forall2_cons_iff in H0.
+   destruct H0.
    split;auto.
    apply eqlistA_altdef;auto.
  Qed.
@@ -365,26 +381,26 @@ Defined.
  #[global] Instance eval_proper : forall x, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun l => eval_poly l x)).
  Proof.
    intros.
-   intros a b H.
+   intros a b H0.
    generalize dependent a.
    induction b;intros.
-   - apply nil_equiv in H.
-     rewrite H.
+   - apply nil_equiv in H0.
+     rewrite H0.
      simpl;reflexivity.
    -  destruct a0.
-      symmetry in H.
-      apply nil_equiv in H.
-      discriminate H.
+      symmetry in H0.
+      apply nil_equiv in H0.
+      discriminate H0.
       simpl.
-      destruct (eqlistA_destruct _ _ _ _ H).
+      destruct (eqlistA_destruct _ _ _ _ H0).
       rewrite IHb;auto.
-      rewrite H0;ring.
+      rewrite H1;ring.
  Qed.
 
  Lemma mult_coefficients_eval_single a0 b x : eval_poly (mult_coefficients [a0] b) x == a0 * eval_poly b x.
  Proof.
    pose proof (eval_proper x). 
-   rewrite H;[|apply mult_coefficients_single_list].
+   rewrite H0;[|apply mult_coefficients_single_list].
    induction b;simpl;try ring.
    rewrite IHb.
    ring.
@@ -413,7 +429,7 @@ Defined.
  Lemma mult_coefficients_eval_nil b x : eval_poly (mult_coefficients [] b) x == 0.
  Proof.
     pose proof (eval_proper x). 
-    rewrite H; try apply mult_coefficients_nil_list.
+    rewrite H0; try apply mult_coefficients_nil_list.
     induction (length b - 1)%nat;simpl;try reflexivity;auto.
     rewrite IHn.
     ring.
@@ -425,13 +441,13 @@ Defined.
    induction a;intros.
    unfold convolution_coeff.
    rewrite convolution_coeff_rec_nil;auto;try ring.
-   simpl in H.
+   simpl in H0.
    destruct n; try ring.
    - assert (b = []) as -> by (apply length_zero_iff_nil;lia).
      unfold convolution_coeff.
      simpl;ring.
    - rewrite convolution_coeff_cons.
-     rewrite IHa; simpl in H;try lia.
+     rewrite IHa; simpl in H0;try lia.
       rewrite nth_overflow; [ring | lia].
  Qed.
 
@@ -498,7 +514,7 @@ Qed.
    apply (nth_ext_A _ _ 0 0).
    rewrite !length_mult_coefficients;lia.
    intros.
-   rewrite length_mult_coefficients in H.
+   rewrite length_mult_coefficients in H0.
    rewrite !mult_coefficients_spec; try lia.
    apply convolution_coeff_sym.
   Qed.
@@ -506,11 +522,11 @@ Qed.
  #[global] Instance nth_proper_list : forall n d, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun l => nth n l d)).
  Proof.
    intros.
-   intros a b H.
+   intros a b H0.
    destruct (Nat.lt_ge_cases n (length a)).
    apply nth_ext_A_iff;auto.
    rewrite !nth_overflow;try reflexivity;auto.
-   rewrite <-(eqlistA_length H);auto.
+   rewrite <-(eqlistA_length H0);auto.
  Qed.
 
  Lemma mult_coefficients_cons a b a0 b0 : mult_coefficients (a0 :: a) (b0 :: b) == sum_polyf (mult_coefficients [a0] (b0 :: b)) (0 :: mult_coefficients a (b0 :: b)).
@@ -521,8 +537,8 @@ Qed.
      rewrite length_mult_coefficients;simpl.
      rewrite max_r;try lia.
    - intros.
-     rewrite length_mult_coefficients in H.
-     simpl in H.
+     rewrite length_mult_coefficients in H0.
+     simpl in H0.
      rewrite mult_coefficients_spec; try (simpl;lia).
      rewrite sum_coefficient_nth;try ring.
      rewrite nth_proper_list; try apply mult_coefficients_single_list.
@@ -639,8 +655,7 @@ Qed.
    induction n;simpl;auto;try ring.
    rewrite IHn; ring.
  Qed.
-
- Lemma derive_monomial (a : A) (n : nat) : poly.
+ Lemma derive_monomial (a : A) (n : nat) : (poly (A:=A)).
  Proof.
    destruct n; [apply []|].
    destruct (monomial_poly (ntimes (S n) a) n) as [p P].
@@ -700,7 +715,7 @@ Qed.
        simpl.
        rewrite app_nth1;try rewrite <-P1;auto.
        ring.
-    + destruct H; [simpl;rewrite nth_middle, P1, nth_middle;ring|].
+    + destruct H0; [simpl;rewrite nth_middle, P1, nth_middle;ring|].
       simpl.
       rewrite !nth_overflow; try rewrite ntimes_zero; try ring; rewrite app_length;simpl; lia.
  Defined.
@@ -768,10 +783,6 @@ Qed.
 (*      apply M. *)
 (*  Qed. *)
 
- Definition mult_polyf a b := match (a,b) with
-                                      | ([], _) => []
-                                      | (_, []) => []
-                                      |  (_, _) => mult_coefficients a b end.
 
    Lemma mult_coefficients0 a b : nth 0 (mult_coefficients a b) 0 == nth 0 a 0 * nth 0 b 0.
    Proof.
@@ -789,7 +800,7 @@ Qed.
 
   Lemma mult_coefficient_cons' a0 a b : b <> nil -> mult_coefficients (a0 :: a) b == sum_polyf (mult_coefficients [a0] b) (0 :: (mult_coefficients a b)).
   Proof.
-    destruct b;intros;[contradict H;auto |].
+    destruct b;intros;[contradict H0;auto |].
     apply mult_coefficients_cons.
   Qed.
 
@@ -832,9 +843,9 @@ Qed.
     rewrite length_mult_coefficients, !length_sum_coefficients, !length_mult_coefficients;lia.
     intros.
     rewrite sum_coefficient_nth.
-    rewrite length_mult_coefficients, length_sum_coefficients in H.
+    rewrite length_mult_coefficients, length_sum_coefficients in H0.
     rewrite !mult_coefficients_convolution.
-    clear H.
+    clear H0.
     revert n.
     induction a.
     intros.
@@ -895,20 +906,20 @@ Qed.
  Proof.
    intros n.
    induction n.
-   intros a b H x y H0.
-   destruct a;destruct b;destruct x; destruct y;unfold mult_polyf;try reflexivity; try (apply eqlistA_length in H;contradict H;simpl;lia); try (apply eqlistA_length in H0;contradict H0;simpl;lia).
+   intros a b P x y H0.
+   destruct a;destruct b;destruct x; destruct y;unfold mult_polyf;try reflexivity; try (apply eqlistA_length in P;contradict P;simpl;lia); try (apply eqlistA_length in H0;contradict H0;simpl;lia).
    unfold convolution_coeff;rewrite !convolution_coeff_rec_nil;reflexivity.
    unfold convolution_coeff;rewrite !convolution_coeff_rec_nil2;reflexivity.
-   destruct (eqlistA_destruct _ _ _ _ H).
+   destruct (eqlistA_destruct _ _ _ _ P).
    destruct (eqlistA_destruct _ _ _ _ H0).
    unfold convolution_coeff;simpl.
    rewrite H1, H3.
    ring.
-   intros a b H x y H0.
-   destruct a; destruct b;try (apply eqlistA_length in H;contradict H;simpl;lia).
+   intros a b P x y H0.
+   destruct a; destruct b;try (apply eqlistA_length in P;contradict P;simpl;lia).
    unfold convolution_coeff;rewrite !convolution_coeff_rec_nil;reflexivity.
    rewrite !convolution_coeff_cons.
-   destruct (eqlistA_destruct _ _ _ _ H).
+   destruct (eqlistA_destruct _ _ _ _ P).
    rewrite IHn; try apply H2; try apply H0.
    rewrite H1.
    rewrite nth_proper_list; try apply H0.
@@ -916,9 +927,9 @@ Qed.
  Qed.
  Instance mult_coefficients_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) mult_coefficients).
  Proof.
-   intros a b H x y H0.
+   intros a b P x y H0.
    apply (nth_ext_A _ _ 0 0).
-   - apply eqlistA_length in H.
+   - apply eqlistA_length in P.
      apply eqlistA_length in H0.
      rewrite !length_mult_coefficients;lia.
    - intros.
@@ -928,20 +939,20 @@ Qed.
 
  #[global] Instance mult_poly_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) mult_polyf).
  Proof.
-   intros a b H x y H0.
-   destruct a;destruct b;destruct x; destruct y;unfold mult_polyf;try reflexivity; try (apply eqlistA_length in H;contradict H;simpl;lia); try (apply eqlistA_length in H0;contradict H0;simpl;lia).
+   intros a b P x y H0.
+   destruct a;destruct b;destruct x; destruct y;unfold mult_polyf;try reflexivity; try (apply eqlistA_length in P;contradict P;simpl;lia); try (apply eqlistA_length in H0;contradict H0;simpl;lia).
    apply mult_coefficients_proper;auto.
  Qed.
  #[global] Instance sum_coefficients_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) sum_polyf).
  Proof.
-   intros a b H x y H0.
+   intros a b P x y H0.
    apply (nth_ext_A _ _ 0 0).
-   - apply eqlistA_length in H.
+   - apply eqlistA_length in P.
      apply eqlistA_length in H0.
      rewrite !length_sum_coefficients;lia.
    - intros.
      rewrite !sum_coefficient_nth.
-     rewrite nth_proper_list;try apply H.
+     rewrite nth_proper_list;try apply P.
      rewrite (nth_proper_list _ _ _ _ H0).
      reflexivity.
   Qed.
@@ -999,7 +1010,7 @@ Qed.
       rewrite !length_mult_coefficients;simpl;lia.
     - intros.
       rewrite !mult_polyf_convolution.
-      clear H.
+      clear H0.
       destruct a.
       unfold mult_polyf at 1;unfold convolution_coeff; rewrite !convolution_coeff_rec_nil;ring.
       unfold mult_polyf.
@@ -1029,10 +1040,11 @@ Qed.
    Qed.
 
 
-  Lemma poly_comSemiRing : @comSemiRing poly _.
+  #[global] Instance poly_comSemiRing : comSemiRing (A := poly).
   Proof.
-    exists [] [1] (sum_polyf) (mult_polyf); intros; try (apply (nth_ext_A _ _ 0 0);[intros;rewrite !length_sum_coefficients;simpl;lia|intros;rewrite !sum_coefficient_nth;destruct n; simpl;ring]); try (simpl;reflexivity).
-    apply sum_coefficients_proper.
+
+  constructor;intros; try (simpl;apply (nth_ext_A _ _ 0 0);[intros;rewrite !length_sum_coefficients;simpl;lia|intros;rewrite !sum_coefficient_nth;destruct n; simpl;ring]); try (simpl;reflexivity).
+     apply sum_coefficients_proper.
     apply mult_poly_proper.
     apply mult_poly_assoc.
     apply mult_poly_sym.
@@ -1043,8 +1055,8 @@ Qed.
 
 End Polynomial.
 
-Section MultiPoly.
-  Context `{R : Type} `{R_setoid : Setoid R} `{R_semiRing : @comSemiRing R R_setoid}.
+Section MultiRawPoly.
+  Context `{R : Type} `{R_setoid : Setoid R} `{R_rawRing : RawRing (A:=R)}.
   Fixpoint mpoly n :=
     match n with
     | 0 => R
@@ -1059,7 +1071,22 @@ Section MultiPoly.
     apply list_A_setoid.
   Defined.
 
-  #[global] Instance mpoly_comSemiRing n:  @comSemiRing (mpoly n) (mpoly_setoid n).
+  #[global] Instance mpoly_rawRing n: RawRing (A := (mpoly n)).
+  Proof.
+    induction n.
+    apply R_rawRing.
+    apply poly_rawRing.
+  Defined.
+  Fixpoint const_to_mpoly n x : (mpoly n) := 
+    match n with
+    | 0 => x
+    | (S n) => [const_to_mpoly n x]
+   end.
+  Definition eval_mpoly {n} (p : mpoly (S n)) x := eval_poly p (const_to_mpoly n x).
+  End MultiRawPoly.
+  Section MultiPoly.
+  Context `{R : Type} `{R_semiRing : comSemiRing (A:=R)}.
+  #[global] Instance mpoly_comSemiRing n:  comSemiRing (A := (mpoly n)).
   Proof.
     intros.
     induction n.
@@ -1067,18 +1094,10 @@ Section MultiPoly.
     apply poly_comSemiRing.
   Defined.
 
-  Fixpoint const_to_mpoly n x : (mpoly n) := 
-    match n with
-    | 0 => x
-    | (S n) => [const_to_mpoly n x]
-   end.
-
-  Definition eval_mpoly {n} (p : mpoly (S n)) x :=  @eval_poly _ _ (mpoly_comSemiRing n) p (const_to_mpoly n x).
-
 End MultiPoly.
 Section Composition.
 
-  Context `{R : Type} `{R_setoid : Setoid R} `{R_semiRing : @comSemiRing R R_setoid}.
+  Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
 
   Definition to_poly_poly (p : @poly R) : (@poly (@poly R)).
   Proof.
@@ -1090,8 +1109,7 @@ Section Composition.
   Proof. apply list_A_setoid. Defined.
   Instance ppoly_setoid : Setoid (@poly (@poly R)).
   Proof. apply list_A_setoid. Defined.
-  Instance poly_semi : @comSemiRing (@poly R) poly_setoid.
-  Proof. apply poly_comSemiRing. Defined.
+
 
   Definition composition (p1 p2 : @poly R) : @poly R.
   Proof.
@@ -1102,7 +1120,7 @@ Section Composition.
 End Composition.  
 
  Notation "p .{ x }" := (eval_mpoly  p x) (at level 2, left associativity).
-Definition eval_tuple {R} {R_setoid : Setoid R} {R_semiRing : (@comSemiRing R R_setoid)} {n} (p : @mpoly R n) (t : @tuple n R) : R. 
+Definition eval_tuple {R} `{R_rawRing : RawRing (A:=R)} {n} (p : @mpoly R n) (t : @tuple n R) : R. 
 Proof.
    induction n.
    apply p.
@@ -1114,7 +1132,7 @@ Defined.
  Notation "p .[ x ]" := (eval_tuple  p x) (at level 2, left associativity).
 
 Section MultiPolyComposition.
-  Context `{R : Type} `{R_setoid : Setoid R} `{R_semiRing : @comSemiRing R R_setoid}.
+  Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
   Definition to_mmpoly {n} m (p : @mpoly R n) : (@mpoly (@mpoly R m ) n).
   Proof.
     induction n.
@@ -1128,7 +1146,7 @@ Section MultiPolyComposition.
   Definition mpoly_composition {n m} (p : @mpoly R n) (qs : @tuple n (@mpoly R m)) : (@mpoly R m).
   Proof.
     pose proof (to_mmpoly m p).
-    apply (@eval_tuple _ (mpoly_setoid m) (mpoly_comSemiRing _) n X qs).
+    apply (eval_tuple (n:=n) X qs).
   Defined.
 
 
@@ -1141,13 +1159,9 @@ Section MultiPolyComposition.
     apply (tuple_cons (eval_tuple hd xs) IHn).
   Defined.
 
-  Instance mpoly_setoid' n : Setoid (@mpoly R n).
-  Proof. apply mpoly_setoid. Defined.
-  Instance mpoly_comSemiRing' n : @comSemiRing (@mpoly R n) _.
-  Proof. apply mpoly_comSemiRing. Defined.
-  Add Ring RRing: (@ComSemiRingTheory _ _ R_semiRing).
+  Add Ring RRing: ComSemiRingTheory.
 
-  Instance meval_proper n t : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun p => @eval_tuple _ (R_setoid) _ n p t)).
+  #[global] Instance meval_proper n t : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun p => eval_tuple (n := n) p t)).
   Proof.
     intros a b H0.
     induction n; simpl;auto.
@@ -1245,14 +1259,10 @@ Infix "\o" := mpoly_composition (at level 2).
 Notation "t[ x ; y ; .. ; z ]" := (tuple_cons x (tuple_cons y .. (tuple_cons z nil_tuple) ..)).
 
 Section DifferentialRing.
-  Context {R : Type} {R_setoid : Setoid R} {R_comSemiRing : @comSemiRing R R_setoid}.
-  #[global] Instance setoid_poly : Setoid (@poly R).
-  Proof.
-    apply list_A_setoid.
-  Defined.
+  Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
 
   Add Ring RRing: ComSemiRingTheory.
-  Add Ring PRing: (@ComSemiRingTheory (@poly R) _ (@poly_comSemiRing R R_setoid R_comSemiRing)).
+  Add Ring PRing: (ComSemiRingTheory (A := @poly R)).
 
   Lemma ntimes_plus n x y : ntimes n (x+y) == ntimes n x + ntimes n y.
   Proof.
@@ -1295,7 +1305,7 @@ Section DifferentialRing.
   Qed.
   #[global] Instance cons_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun a0 a => a0 :: a)). 
   Proof.
-    intros a b H a0 b0 H0.
+    intros a b H0 a0 b0 H1.
     apply eqlistA_cons;auto.
   Defined.
   #[global] Instance sum_poly2_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (sum_polyf a)).
@@ -1305,9 +1315,9 @@ Section DifferentialRing.
   Defined.
   #[global] Instance sum_poly1_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun b => sum_polyf b a)).
   Proof.
-    intros b b' H.
+    intros b b' H0.
     apply sum_coefficients_proper.
-    apply H.
+    apply H0.
     reflexivity.
   Defined.
   #[global] Instance mult_poly2_proper a : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (mult_polyf a)).
@@ -1354,20 +1364,20 @@ Section DifferentialRing.
   Qed.
   #[global] Instance ntimes_proper n : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (ntimes n)).
   Proof.
-    intros a b H.
+    intros a b H0.
     induction n.
     simpl;ring.
     simpl.
-    rewrite IHn, H.
+    rewrite IHn, H0.
     ring.
   Defined.
 
   #[global] Instance derive_poly_proper : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) derive_poly).
   Proof.
-    intros a b H.
+    intros a b H0.
     apply (nth_ext_A _ _ 0 0).
     rewrite !derive_poly_length.
-    apply eqlistA_length in H.
+    apply eqlistA_length in H0.
     lia.
     intros.
     rewrite !derive_poly_nth.
@@ -1526,7 +1536,7 @@ Section DifferentialRing.
       rewrite IHa.
             pose proof (mult_poly_cons a (r :: a1)).
 
-      rewrite (sum_poly1_proper (mult_polyf (r0::b1) _ )); try apply H.
+      rewrite (sum_poly1_proper (mult_polyf (r0::b1) _ )); try apply H0.
 
       rewrite sum_poly_assoc.
       apply sum_coefficients_proper; try reflexivity.
@@ -1552,7 +1562,7 @@ Section DifferentialRing.
       rewrite mult_polyf_shift_switch;reflexivity.
   Qed.
 
-  Lemma differentialRingPoly : @differentialRing _ _ (poly_comSemiRing).
+  #[global] Instance differentialRingPoly : differentialRing (A := poly).
   Proof.
     exists (derive_poly);intros; [apply poly_sum_rule|].
     simpl (_ + _).
@@ -1563,11 +1573,11 @@ End DifferentialRing.
 
 Section DifferentialAlgebra.
 
-  Context {K V : Type } {V_setoid : Setoid V} {K_setoid : Setoid K} {V_comSemiRing : @comSemiRing V V_setoid} {K_comSemiRing : @comSemiRing K K_setoid} {K_comRing : @comRing K K_setoid K_comSemiRing} {K_field : (@Field _ K_setoid K_comSemiRing K_comRing) } {V_DR : (@differentialRing V V_setoid V_comSemiRing)} {KV_DA : @differentialAlgebra K V _ _ _ _ _ _ _ V_DR}.  
+  Context  `{KV_DA : differentialAlgebra}.
 
-  Add Ring RRing: (@ComSemiRingTheory _ V_setoid V_comSemiRing).
-  Add Ring KRing: (@ComRingTheory K K_setoid K_comSemiRing K_comRing).
-  Lemma PolyDifferentialAlgebra : @differentialAlgebra K (@poly V) K_setoid (@setoid_poly V V_setoid) (poly_comSemiRing) _ _ _ _ (@differentialRingPoly V _ V_comSemiRing).
+  Add Ring RRing: (ComSemiRingTheory (A:=V)).
+  Add Ring KRing: (ComRingTheory (A:=K)).
+  Lemma PolyDifferentialAlgebra : differentialAlgebra (K:=K) (V:=(@poly V) ).
   Proof.
   exists (fun x (v : (@poly V)) => map (fun y =>  x [*] y) v).
   - intros.
@@ -1577,21 +1587,21 @@ Section DifferentialAlgebra.
     rewrite nth_proper;[|symmetry;apply smult1].
     rewrite map_nth.
     rewrite !smult1;reflexivity.
- - intros a b H c d H0.
+ - intros a b  H1 c d H2.
    apply (nth_ext_A _ _ 0 0).
    rewrite !map_length.
    apply (@eqlistA_length V SetoidClass.equiv).
-   apply H0.
+   apply H2.
    intros.
    rewrite (nth_indep _ 0 (a [*] 0));auto.
    rewrite (nth_indep _ 0 (b [*] 0));[|rewrite !map_length in *].
    rewrite !map_nth.
-   rewrite H.
-   rewrite nth_proper_list; try apply H0.
+   rewrite H1.
+   rewrite nth_proper_list; try apply H2.
    reflexivity.
    replace (length d) with (length c); auto.
    apply (@eqlistA_length V SetoidClass.equiv).
-   apply H0.
+   apply H2.
  - intros.
     apply (nth_ext_A _ _ 0 0).
     simpl;rewrite !length_sum_coefficients,!map_length,length_sum_coefficients;auto.
@@ -1621,27 +1631,27 @@ Section DifferentialAlgebra.
     rewrite (nth_proper n (map (fun y => (a * b) [*] _) _)); try (symmetry;apply (smult_zero (a * b))).
     rewrite !map_nth.
     pose proof (map_nth (fun x => a [*] (b [*] x)) v 0 n).
-    simpl in H0.
+    simpl in H2.
     rewrite (nth_indep _ _ ((fun x => a [*] (b [*] x)) 0));auto.
-    rewrite H0.
+    rewrite H2.
     rewrite smult_mult_compat.
     ring.
  Defined.
 
-
- Lemma poly_antideriv_exists (char0 : (forall n, (not (ntimes (S n) 1 == 0)))) (p : poly) :  {P : poly | length P = (length p + 1)%nat /\ forall n,  nth (S n) P 0 == inv (char0 n) * nth n p 0}.
+ Lemma poly_antideriv_exists (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) (p : (@poly V)) :  {P : (@poly V) | length P = (length p + 1)%nat /\ forall n,  nth (S n) P 0 == (inv (char0 n)) [*] (nth n p 0)}.
  Proof.
    induction p using poly_rev_ind.
    - exists [0].
      split;[simpl;lia|].
      intros.
-     rewrite !nth_overflow; simpl;try lia;ring.
-  - destruct IHp as [P0 [L H]].
-    exists (P0 ++ [inv (char0 (length p)) * x]).
+     rewrite !nth_overflow; simpl;try lia.
+     rewrite smult_zero;reflexivity.
+  - destruct IHp as [P0 [L H1]].
+    exists (P0 ++ [(inv (char0 (length p))) [*] x]).
     split;[rewrite !app_length;simpl;lia|].
     intros.
     destruct (Nat.lt_total (S n) (length P0)) as [N | [N | N]].
-    rewrite !app_nth1; auto;try lia;apply H.
+    rewrite !app_nth1; auto;try lia;apply H2.
     rewrite !app_nth2;try lia.
     rewrite N at 1.
     replace (length P0 - length P0)%nat with 0%nat by lia.
@@ -1649,12 +1659,32 @@ Section DifferentialAlgebra.
     replace (n - n)%nat with 0%nat by lia.
     simpl;reflexivity.
     rewrite !nth_overflow;try (rewrite app_length;simpl;lia).
-    ring.
+    rewrite smult_zero;reflexivity.
  Defined.
 
- Definition antiderive_poly (char0 : (forall n, (not (ntimes (S n) 1 == 0)))) p := proj1_sig (poly_antideriv_exists char0 p).
+ Definition antiderive_poly (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) p := proj1_sig (poly_antideriv_exists char0 p).
 
- Lemma antiderive_derive (char0 : (forall n, (not (ntimes (S n) 1 == 0)))) p : derive_poly (antiderive_poly char0 p) == p.
+  Lemma ntimes_smult n (x : K) y : ntimes n (x [*] y) == x [*] (ntimes n y).
+  Proof.
+    induction n;simpl.
+    rewrite smult_zero;reflexivity.
+    rewrite IHn.
+    rewrite smult_plus_distr;reflexivity.
+  Qed.
+
+  Lemma ntimes_VK n y : ntimes (S n) y == (ntimes (S n) (1 : K)) [*] y.
+  Proof.
+    induction n;simpl.
+    rewrite !add0.
+    rewrite smult1;reflexivity.
+    rewrite !splus_mult_dist.
+    rewrite IHn;simpl.
+    rewrite !splus_mult_dist.
+    rewrite !smult1.
+    reflexivity.
+  Defined.
+
+ Lemma antiderive_derive (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K) )))) p : derive_poly (antiderive_poly char0 p) == p.
  Proof.
    unfold derive_poly, antiderive_poly.
    destruct (poly_antideriv_exists char0 p) as [P [LP HP]].
@@ -1665,12 +1695,10 @@ Section DifferentialAlgebra.
    simpl;rewrite LP', LP;lia.
    intros.
    rewrite HP', HP.
-   rewrite ntimes_mult.
-   setoid_replace (nth n p 0) with (nth n p 0 * 1) at 1 by ring.
-   rewrite ntimes_mult.
-   rewrite (mulC (nth _ _ _) _).
-   rewrite <-mulA.
+   rewrite ntimes_smult.
+   rewrite ntimes_VK.
+   rewrite smult_mult_compat.
    rewrite mulI.
-   ring.
+   rewrite smult1;reflexivity.
  Qed.
 End DifferentialAlgebra.

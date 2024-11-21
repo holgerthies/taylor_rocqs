@@ -19,11 +19,16 @@ Proof.
   exists (eq).
   apply Eqsth.
 Defined.
-Instance Z_comRing : @comSemiRing Z Z_setoid.
+Instance Z_rawRing : RawRing (A := Z).
 Proof.
-
-  exists 0%Z 1%Z (fun x y => (x + y)%Z) (fun x y => (x * y)%Z); unfold equiv,Z_setoid;try (intros; ring);intros a b H c d H0;lia.
+  constructor; [apply 0%Z | apply 1%Z | apply (fun x y => (x + y)%Z) | apply (fun x y => (x * y)%Z)].
 Defined.
+
+Instance Z_comRing : comSemiRing (A := Z).
+Proof.
+   constructor;unfold equiv,Z_setoid;simpl;try (intros; ring);intros a b H c d H0;lia.
+Defined.
+
 Instance Z_mpoly0Setoid : Setoid (@mpoly Z 0).
 Proof. apply mpoly_setoid. Defined.
 
@@ -33,19 +38,6 @@ Proof. apply mpoly_setoid. Defined.
 Instance Z_mpoly2Setoid : Setoid (@mpoly Z 2).
 Proof. apply mpoly_setoid. Defined.
 
-Instance Z_mpoly0ComRing : @comSemiRing (@mpoly Z 0) _.
-Proof.
-  apply Z_comRing.
-Defined.
-Instance Z_mpoly1ComRing : @comSemiRing (@mpoly Z 1) _.
-Proof.
-  apply mpoly_comSemiRing.
-Defined.
-
-Instance Z_mpoly2ComRing : @comSemiRing (@mpoly Z 2) _.
-Proof.
-  apply mpoly_comSemiRing.
-Defined.
 
 Definition p1 : (@mpoly Z 1).
 Proof.
@@ -62,16 +54,6 @@ Check @derive_monomial.
 Definition p3 := (x*y+y+x*x*x*x+y*y*x*x).
 
 
-
-Instance  poly1_dr : (@differentialRing (@mpoly Z 1) _ _).
-Proof.
-  apply differentialRingPoly.
-Defined.
-Instance  poly2_dr : (@differentialRing (@mpoly Z 2) _ Z_mpoly2ComRing).
-Proof.
-  apply differentialRingPoly.
-Defined.
-
 Compute (p3^'^').
 
 End Z_poly.
@@ -87,14 +69,19 @@ Proof.
   apply Q_Setoid.
 Defined.
 
-Instance Q_semiRing : @comSemiRing Q Q_setoid.
+Instance Q_rawRing : RawRing (A := Q).
 Proof.
-  exists 0%Q 1%Q (fun x y => (x + y)%Q) (fun x y => (x * y)%Q);try (intros; unfold SetoidClass.equiv, Q_setoid;ring).
+  constructor; [apply 0%Q | apply 1%Q | apply (fun x y => (x + y)%Q) | apply (fun x y => (x * y)%Q)].
+Defined.
+
+Instance Q_semiRing : comSemiRing.
+Proof.
+  constructor;try (intros; unfold SetoidClass.equiv, Q_setoid;simpl;ring).
   apply Qplus_comp.
   apply Qmult_comp.
 Defined.
 
-Instance Q_Ring :@comRing Q _ Q_semiRing.
+Instance Q_Ring :comRing.
 Proof.
   exists (fun q => (- q)).
   apply Qopp_comp.
@@ -102,7 +89,7 @@ Proof.
   simpl;ring.
 Defined.
 
-Instance Q_field :@Field Q _ _ Q_Ring.
+Instance Q_field :Field.
 Proof.
    exists (fun q p => (1 / q)).
    intros.
@@ -114,50 +101,8 @@ Proof.
    apply Q_apart_0_1;auto.
 Defined.
 
-Instance Q_mpoly0ComRing : @comSemiRing (@mpoly Q 0) _.
-Proof.
-  apply Q_semiRing.
-Defined.
+Add Ring RRing : (ComSemiRingTheory (A := (mpoly 0))).
 
-Instance Q_mpoly1Setoid : Setoid (@mpoly Q 1).
-Proof. apply mpoly_setoid. Defined.
-
-Instance Q_mpoly2Setoid : Setoid (@mpoly Q 2).
-Proof. apply mpoly_setoid. Defined.
-
-Instance Q_mpoly1ComRing : @comSemiRing (@mpoly Q 1)_.
-Proof.
-  apply mpoly_comSemiRing.
-Defined.
-Instance Q_mpoly2ComRing : @comSemiRing (@mpoly Q 2) _.
-Proof.
-  apply mpoly_comSemiRing.
-Defined.
-
-Instance  qpoly1_dr : (@differentialRing (@mpoly Q 1) _ Q_mpoly1ComRing).
-Proof.
-  apply differentialRingPoly.
-Defined.
-
-Instance  qpoly2_dr : (@differentialRing (@mpoly Q 2) _ Q_mpoly2ComRing).
-Proof.
-  apply differentialRingPoly.
-Defined.
-
-Add Ring RRing : (@ComSemiRingTheory _ _ Q_mpoly0ComRing).
-
-Instance  qpoly0_dr : (@differentialRing (mpoly 0) _ Q_mpoly0ComRing).
-Proof.
-  exists (fun x => 0);intros;simpl;ring.
-Defined.
-
-Instance qp_da : (@differentialAlgebra Q (@mpoly Q 2) _ _ _  _ _ _ _ qpoly2_dr).
-Proof.
-  apply (@PolyDifferentialAlgebra Q (@mpoly Q 1) _ _ Q_mpoly1ComRing Q_semiRing _ qpoly1_dr).
-  apply (@PolyDifferentialAlgebra Q (@mpoly Q 0) _ _ Q_mpoly0ComRing Q_semiRing  _ qpoly0_dr).
-  exists (fun q x => (q * x));intros;simpl;try ring.
-  apply Qmult_comp.
-Defined.
 
 Definition q2 : (@mpoly Q 2).
 Proof.
@@ -183,30 +128,35 @@ Require Import Coq.setoid_ring.Ring_theory.
 Require Import Coq.setoid_ring.Ring.
 Require Import Qreals.
 Open Scope R_scope.
-Instance R_comSemiRing : @comSemiRing R _.
+Instance R_rawRing : RawRing (A := R).
 Proof.
-  exists 0%R 1%R Rplus Rmult; unfold SetoidClass.equiv;simpl;try (intros a b H0 c d H1;rewrite H0, H1);intros;try ring.
+  constructor; [apply 0%R  | apply 1%R | apply Rplus | apply Rmult].
 Defined.
 
-Instance R_comRing : @comRing R _ _.
+Instance R_comSemiRing :comSemiRing.
+Proof.
+  constructor; unfold SetoidClass.equiv;simpl;try (intros a b H0 c d H1;rewrite H0, H1);intros;try ring.
+Defined.
+
+Instance R_comRing : comRing.
 Proof.
   exists Ropp; unfold SetoidClass.equiv;simpl;try (intros a b H0 ;rewrite H0);intros;try ring.
 Defined.
 
-Instance R_totalOrder : @TotalOrder R _.
+Instance R_totalOrder : TotalOrder.
 Proof.
   exists Rle;intros;unfold SetoidClass.equiv;simpl;try lra.
   intros a b H c d H0.
   lra.
 Defined.
 
-Instance Q_totalOrder : @TotalOrder Q _.
+Instance Q_totalOrder : TotalOrder (A:=Q).
 Proof.
   exists Qle; intros;try lra.
   intros a b H a0 b0 H0;rewrite H,H0;reflexivity.
   apply Qle_antisym;auto.
 Defined.
-Instance Q_totallyOrderedField : TotallyOrderedField Q_field Q_totalOrder.
+Instance Q_totallyOrderedField : TotallyOrderedField.
 Proof.
   constructor;unfold le;simpl;intros;try lra.
   apply Qmult_le_0_compat;auto.
@@ -216,7 +166,7 @@ Lemma Q_abs_zero x : Qabs.Qabs x == 0%Q <-> x == 0%Q.
 Proof.
 Admitted.
 
-Instance Q_normed : @NormedSemiRing Q Q (Q_setoid) Q_semiRing Q_setoid Q_semiRing Q_totalOrder.
+Instance Q_normed : NormedSemiRing (A:=Q) (B:=Q).
 Proof.
   exists Qabs.Qabs;intros.
   intros a b ->;reflexivity.
@@ -240,7 +190,7 @@ Compute (proj1_sig (boundPoly q2 t[(3,1);(5,1)]%Q)).
 (*    apply Rdist_tri. *)
 (* Defined. *)
 
-Instance R_Field : Field R_comRing.
+Instance R_Field : Field.
 Proof.
    exists (fun q p => (1 / q)).
    intros.
@@ -250,14 +200,8 @@ Proof.
    unfold SetoidClass.equiv;simpl;lra.
 Defined.
 
-Instance TotalOrderR : TotalOrder.
-Proof.
-  exists Rle; intros;try lra.
-  intros a b -> c d ->;reflexivity.
-  simpl;lra.
-Defined.
 
-Instance R_TotallyOrderedField : TotallyOrderedField R_Field TotalOrderR.
+Instance R_TotallyOrderedField : TotallyOrderedField.
 Proof.
   constructor;simpl;intros; try lra.
   nra.
@@ -325,6 +269,7 @@ Proof.
   rewrite inject_Z_injective in H.
   lia.
 Qed. 
+
 Definition embed_add_compat p q : embed_poly approx_RQ (add p q) = add (embed_poly approx_RQ p) (embed_poly approx_RQ q).  
 Proof.
   simpl.

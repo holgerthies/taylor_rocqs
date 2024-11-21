@@ -10,9 +10,9 @@ Require Import symbolic.
 Require Import polynomial.
 
 Section Interval.
-  Context {K : Type}.
+  Context `{K : Type}.
   Context `{ofieldK : TotallyOrderedField K}.
-  Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_semiRing := R_semiRing) (semiRingA := R_semiRing) (R_TotalOrder := R_TotalOrder))}.
+  Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_rawRing := R_rawRing) (R_rawRing0 := R_rawRing) (R_TotalOrder := R_TotalOrder))}.
 
   Add Ring TRing: ComRingTheory.
   Definition cinterval := (K * K)%type.
@@ -47,10 +47,10 @@ Section Interval.
     apply(le_trans _ _ _ (norm_triangle _ _)).
     apply le_le_plus_le.
     - apply(le_trans _ _ _ (norm_triangle _ _)).
-      apply le_le_plus_le;apply (le_trans _ _ _ (norm_mult _ _)).
+      apply le_le_plus_le;rewrite !norm_mult.
       apply mul_le_compat_pos;try apply norm_nonneg;apply H1.
       apply mul_le_compat_pos;try apply norm_nonneg;apply H0.
-    - apply (le_trans _ _ _ (norm_mult _ _)).
+    - rewrite norm_mult.
       apply mul_le_le_compat_pos; try apply norm_nonneg;auto.
     Qed.
 
@@ -58,7 +58,7 @@ End Interval.
 Section IntervalPoly.
   Context `{K : Type}.
   Context `{ofieldK : TotallyOrderedField K}.
-  Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_semiRing := R_semiRing) (semiRingA := R_semiRing) (R_TotalOrder := R_TotalOrder))}.
+  Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_rawRing := R_rawRing) (R_rawRing0 := R_rawRing) (R_TotalOrder := R_TotalOrder))}.
  
   Add Ring TRing: ComRingTheory.
 Definition symInterval := (Symbolic (@cinterval K)).

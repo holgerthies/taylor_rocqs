@@ -56,9 +56,13 @@ Inductive Symbolic
     intros x y;apply Ssym.
     intros x y z;apply Strans.
   Defined.
-  #[global] Instance S_semiRing : comSemiRing.
+  #[global] Instance S_rawRing : RawRing (A := Symbolic).
   Proof.
-    exists Szero Sone Sadd Smul; intros.
+    constructor;[apply Szero | apply Sone|  apply Sadd | apply Smul].
+  Defined.
+  #[global] Instance S_semiRing : (comSemiRing (A := Symbolic)).
+  Proof.
+    constructor;intros.
     apply Proper_symbolic_add.
     apply Proper_symbolic_mul.
     apply Srefl.
