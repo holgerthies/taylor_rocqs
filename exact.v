@@ -37,9 +37,75 @@ Proof.
   apply IHp.
  Defined.
 
-  Lemma embed_poly_mul_compat {d : nat} (p q : (mpoly d)) : embed_poly (a := a) (mul p q) == mul (embed_poly p) (embed_poly  q).  
+
+  Instance embed_poly_proper {d} : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (embed_poly (d := d)).
   Admitted.
 
+  Instance map_proper {d} (f : @mpoly base_type d -> @mpoly target_type d) : Proper (SetoidClass.equiv ==>  SetoidClass.equiv) (map f).
+  Admitted.
+   Lemma embed_poly_length {d} (p : (mpoly (S d))) : length (embed_poly p) = length p.
+   Proof.
+     induction p.
+     simpl;auto.
+     simpl.
+     rewrite map_length;auto.
+  Qed.
+
+   Lemma embed_poly_nth {d} n (p : (mpoly (S d))) : nth n (embed_poly p) 0 = embed_poly (nth n p 0).
+   Proof.
+   Admitted.
+  Lemma embed_poly_mul_compat {d : nat} (p q : (mpoly d)) : embed_poly (a := a) (mul p q) == mul (embed_poly p) (embed_poly  q).  
+  Proof.
+    simpl.
+    induction d.
+    apply embed_mul_compat.
+    apply (nth_ext_A _ _ 0 0).
+    - rewrite embed_poly_length.
+      simpl;unfold mult_polyf.
+      destruct p;simpl;[reflexivity|destruct q; [reflexivity |]].
+      simpl.
+      rewrite !length_mult_coefficients.
+      simpl.
+      rewrite !map_length;auto.
+    - intros.
+      setoid_rewrite mult_polyf_convolution.
+      rewrite embed_poly_nth.
+      simpl.
+      rewrite embed_poly_proper.
+      admit. apply mult_polyf_convolution.
+    Search nth (_ * _).
+    revert q. induction p; [simpl;reflexivity|].
+    intros.
+    rewrite !embed_poly_length.
+    simpl.
+    admit.
+    intros.
+    simpl.
+    Search nth map.
+    assert ((0 : (@mpoly target_type d)) == (embed_poly (0 : (@mpoly base_type d)))).
+    admit.
+    rewrite nth_proper; try apply H2.
+    rewrite map_nth.
+    Search nth mult_polyf.
+    rewrite mult_polyf_convolution.
+    Search convolution_coeff.
+    destruct n.
+    Search convolution_coeff.
+    rewrite convolution_coeff_
+   Search mult_polyf.
+    replace (mult_polyf (a0 :: p) q) with (add (mul a0 * p) (mul ) ).
+    rewrite mult_poly_cons.
+    rewrite map_proper.
+    admit.
+    destruct q.
+    simpl.
+    reflexivity.
+    unfold mult_polyf.
+   reflexivity.
+    apply mult_poly_cons.
+    rewrite map_proper.
+    pose proof (map_proper (embed_poly) (a0 :: p)).
+     
   Lemma embed_poly0 {d}: embed_poly (d := d) (a := a) 0 == 0.
   Proof.
     induction d.
@@ -185,19 +251,24 @@ Proof.
 Defined.
 
 Lemma dist_tri x y z: dist x y <= dist x z + dist z y. 
-Admitted.
-Definition pm_f_diff_bound {d dom} (p : PolynomialModel (a := a) d dom) eps : {b | forall x y, in_cintervalt x dom -> in_cintervalt y dom -> is_eps_close x y eps -> dist (p.(pm_f) x) (p.(pm_f) y) <= (a.(embedE) b)}.  
+Proof.
+  unfold dist.
+  setoid_replace (x-y) with (x - z + (z - y)) by ring.
+  apply norm_triangle.
+Defined.
+
+Definition pm_f_diff_bound {d dom} (p : PolynomialModel (a := a) d dom) eps : {b | forall x y, in_cintervalt x dom -> in_cintervalt y dom -> is_eps_close x y eps -> dist (p.(pm_f) x) (p.(pm_f) y) <= (a.(embed) b)}.  
 Proof.
   destruct (boundPolyDiff (embed_poly (p.(pm_p))) dom eps) as [b B].
-  assert ({e : error_type | a.(embedE) p.(pm_err) + (b + a.(embedE) p.(pm_err))  <= a.(embedE) e}) as [e E].
+  assert ({e : base_type | a.(embed) p.(pm_err) + (b + a.(embed) p.(pm_err))  <= a.(embed) e}) as [e E].
   admit.
   exists e.
   intros.
-  apply (le_trans _ (embedE p.(pm_err) + (b + a.(embedE) p.(pm_err))));auto.
+  apply (le_trans _ (embed p.(pm_err) + (b + a.(embed) p.(pm_err))));auto.
   destruct p.
   simpl.
   apply (le_trans _ _ _ (dist_tri _ _ (embed_poly pm_p).[x])).
-  apply le_le_plus_le;[rewrite dist_sym;apply pm_spec;auto|].
+  apply le_le_plus_le;[unfold dist;rewrite dist_sym;apply pm_spec;auto|].
   apply (le_trans _ _ _ (dist_tri _ _ (embed_poly pm_p).[y])).
   apply le_le_plus_le;[apply B|];auto.
 Admitted.  

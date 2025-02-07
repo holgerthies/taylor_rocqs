@@ -13,6 +13,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import polyapprox.
 Require Import intervalpoly.
 Require Import symbolic.
+Require Import powerseries.
 Section Z_poly.
 Instance Z_setoid : Setoid Z.
 Proof.
@@ -39,11 +40,20 @@ Instance Z_mpoly2Setoid : Setoid (@mpoly Z 2).
 Proof. apply mpoly_setoid. Defined.
 
 
-Definition p1 : (@mpoly Z 1).
+Definition p1 : (@mps Z 1).
 Proof.
-  apply [1%Z; 0%Z; 5%Z].
+  intros n.
+  apply 1.
 Defined.
-Definition p2 : (@mpoly Z 2).
+
+Definition p2 : (@mps Z 1).
+Proof.
+  intros n.
+  destruct n.
+  apply 0.
+  apply 1.
+Defined.
+Definition c := composition p1 p2.
 Proof.
   apply [[1%Z]; [1%Z; 2%Z; 0%Z]].
 Defined.

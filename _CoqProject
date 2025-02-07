@@ -4,3 +4,4 @@ polynomial.v
 polyapprox.v
 symbolic.v
 intervalpoly.v
+powerseries.v
