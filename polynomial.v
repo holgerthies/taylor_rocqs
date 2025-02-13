@@ -6,24 +6,6 @@ Require Import algebra.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
- Definition tuple n {A} := {t : list A | length t = n}.
- Definition destruct_tuple {n} {A}  (t : @tuple (S n) A)  : {h : A & {t0 : @tuple n A | proj1_sig t = h :: (proj1_sig t0)}}.   
- Proof.
-   destruct t.
-   destruct x;[contradict e;simpl;lia|].
-   exists a.
-   assert (length x = n) by (simpl in e;lia).
-   exists (exist _ x H).
-   simpl;auto.
-Defined.
-  Definition tuple_cons {A} {n} (x :A ) (t : @tuple n A): @tuple (S n) A.  
-  Proof.
-   destruct t.
-   exists (x :: x0).
-   simpl.
-   rewrite e.
-   reflexivity.
-  Defined.
  Instance list_A_setoid {A} {A_setoid : Setoid A} : Setoid (list A).
  Proof.
    exists  (eqlistA SetoidClass.equiv).
@@ -1248,11 +1230,6 @@ Section MultiPolyComposition.
 
 End MultiPolyComposition.
 
-Definition nil_tuple {A}: (@tuple 0 A).
-Proof.
-  exists [].
-  simpl; reflexivity.
-Defined.
 
 
 Infix "\o" := mpoly_composition (at level 2).
@@ -1702,3 +1679,48 @@ Section DifferentialAlgebra.
    rewrite smult1;reflexivity.
  Qed.
 End DifferentialAlgebra.
+
+Section PartialDiffAlgebra.
+  Context `{A_semiRing : comSemiRing}.
+  Add Ring ARing: ComSemiRingTheory.
+  Definition poly_pdiff {n} (d : nat) (p : (@mpoly A n )) : (@mpoly A n).  
+  Proof.
+    revert dependent n.
+    induction d;intros.
+    destruct n.
+    apply 0.
+    apply (derive_poly p).
+    destruct n.
+    apply 0.
+    apply (map (IHd n) p).
+ Defined.
+
+  Lemma poly_pdiff0  n d : @poly_pdiff n d 0 == 0.
+  Proof.
+    induction d;destruct n;simpl;try ring;auto.
+  Qed.
+
+  #[global] Instance mpoly_pdiffring n : PartialDifferentialRing (A := (mpoly n)).
+  Proof.
+    exists poly_pdiff.
+    - intros.
+      revert n r1 r2.
+      induction d;intros; destruct n;simpl;try ring.
+      apply poly_sum_rule.
+      apply (nth_ext_A _ _ 0 0).
+      rewrite map_length,!length_sum_coefficients, !map_length;auto.
+      intros.
+      rewrite (nth_indep _ _ (poly_pdiff d zero));auto.
+      rewrite map_nth.
+      rewrite sum_coefficient_nth.
+      admit.
+   - intros.
+     admit.
+  - induction d1;intros; destruct n;simpl.
+    rewrite poly_pdiff0;reflexivity.
+    admit.
+    admit.
+    admit.
+ Admitted.
+
+End PartialDiffAlgebra.

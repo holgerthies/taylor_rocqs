@@ -4,6 +4,37 @@ Require Import ZArith.
 Import ListNotations.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
+ Definition tuple n {A} := {t : list A | length t = n}.
+ Definition destruct_tuple {n} {A}  (t : @tuple (S n) A)  : {h : A & {t0 : @tuple n A | proj1_sig t = h :: (proj1_sig t0)}}.   
+ Proof.
+   destruct t.
+   destruct x;[contradict e;simpl;lia|].
+   exists a.
+   assert (length x = n) by (simpl in e;lia).
+   exists (exist _ x H).
+   simpl;auto.
+Defined.
+  Definition tuple_cons {A} {n} (x :A ) (t : @tuple n A): @tuple (S n) A.  
+  Proof.
+   destruct t.
+   exists (x :: x0).
+   simpl.
+   rewrite e.
+   reflexivity.
+  Defined.
+
+Definition nil_tuple {A}: (@tuple 0 A).
+Proof.
+  exists [].
+  simpl; reflexivity.
+Defined.
+
+Definition tuple_nth {m T} (n : nat) (t : @tuple m T) (d : T) : T.
+Proof.
+  destruct t.
+  apply (nth n x d).
+Defined.
+
 Section AlgebraicStructures.
   Context {A : Type} `{Setoid A}.
   Class RawRing := {
@@ -13,6 +44,8 @@ Section AlgebraicStructures.
       mul : A -> A -> A;
 
     }.
+
+  Definition sum `{A_Rawring : RawRing } (f : nat -> A) n := (fold_right add zero (map f (seq 0 (S n)))).
   Class comSemiRing `{R_rawRing : RawRing}   := {
 
       add_proper :> Proper (equiv ==> equiv ==> equiv) add;
@@ -47,6 +80,15 @@ Section AlgebraicStructures.
     derivation_plus : forall r1 r2, derivation (add r1 r2) == add (derivation r1) (derivation r2);
     derivation_mult : forall r1 r2, derivation (mul r1 r2) == add (mul r2 (derivation r1)) (mul r1  (derivation r2))
     }.
+
+Class PartialDifferentialRing  `{R_semiRing : comSemiRing}:= {
+    pdiff : nat -> A -> A;
+    pdiff_plus : forall  d r1 r2, pdiff d (add r1 r2) == add (pdiff d r1) (pdiff d r2);
+    pdiff_mult : forall d r1 r2, pdiff  d (mul r1 r2) == add (mul r2 (pdiff d r1)) (mul r1  (pdiff d r2));
+    pdiff_comm : forall d1 d2 r, pdiff d1 (pdiff d2 r) == pdiff d2 (pdiff d1 r)
+                                                        
+  }.
+
   Class TotalOrder := {
       le : A -> A -> Prop;
       le_proper :> Proper (equiv ==> equiv ==> equiv) le;
@@ -206,3 +248,18 @@ Proof.
   apply (le_trans _ _ _ H2);auto.
 Qed.
 End OrderTheory.
+
+Section PartialDiffAlgebra.
+
+Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : nat), (RawRing (A:=(A n))) } `{forall (n : nat), (comSemiRing (A:=(A n))) } `{forall (n : nat), (PartialDifferentialRing (A:=(A n))) }.
+
+  
+Class CompositionalDiffAlgebra := {
+    composition : forall {m n}, A m -> @tuple m (A n) -> A n;
+    pdiff_chain : forall {m n d} (x : A m) (y : @tuple m (A n)), pdiff d (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m)
+  }.
+End PartialDiffAlgebra.
+
+Notation "D[ i ] f" := (pdiff i f) (at level 50, left associativity).
+
+Infix "\o" := composition (at level 2).

@@ -222,7 +222,89 @@ Qed.
     apply (fold_right add 0 (map (fun i => a i * (power_ps b i) n) (seq 0 (S n)))).
   Defined.
 
-  #[global] Instance differentialRingPoly : differentialRing (A := ps).
+  Lemma ps_product_rule a b n :  derive_ps (mult_ps a b) n == sum_ps (mult_ps a (derive_ps b)) (mult_ps b (derive_ps a)) n.
+  Proof.
+    revert b.
+    induction n.
+    - intros;simpl.
+      unfold derive_ps, mult_ps, sum_ps, convolution_coeff.
+      simpl.
+      ring.
+    - intros.
+      unfold derive_ps, mult_ps, sum_ps, convolution_coeff.
+      simpl.
+      
+      destruct a0.
+      {
+        remember (r0 :: r1 :: b) as p1.
+        rewrite derive_poly_cons.
+        rewrite derive_const.
+        apply (nth_ext_A _ _ 0 0).
+        rewrite Heqp1.
+        unfold mult_polyf.
+        rewrite derive_poly_length, length_sum_coefficients, !length_mult_coefficients.
+        unfold sum_polyf.
+        destruct (derive_poly (r0 :: r1 :: b)) eqn:E.
+        apply length_zero_iff_nil in E; rewrite derive_poly_length in E;simpl in E;lia.
+        rewrite <-E; clear E.
+        remember mult_coefficients as f.
+        simpl.
+        rewrite Heqf.
+        rewrite !length_mult_coefficients, derive_poly_length;simpl.
+        destruct (length b + 1)%nat eqn:e; simpl; try lia.
+        intros.
+        rewrite derive_poly_nth, sum_coefficient_nth, !mult_polyf_convolution,<-!mult_coefficients_convolution.
+        rewrite ntimes_proper; [|apply nth_proper_list;apply mult_coefficient_cons';rewrite Heqp1;discriminate].
+        rewrite (nth_proper_list n);[|apply mult_coefficient_cons';try (rewrite Heqp1;rewrite <-length_zero_iff_nil; rewrite derive_poly_length;simpl;lia )].
+
+        rewrite !sum_coefficient_nth.
+        assert ( nth n (mult_coefficients p1 (sum_polyf [r] [0])) 0
+ ==  nth n (mult_coefficients (sum_polyf [r] [0]) p1) 0) as -> by (rewrite nth_proper_list; try apply mult_coefficients_sym;ring).
+        simpl.
+        rewrite !mult_coefficients_single.
+        rewrite !derive_poly_nth.
+        destruct n;simpl;try ring.
+        rewrite mult_coefficients_single.
+        rewrite !derive_poly_nth.
+        simpl.
+        rewrite !ntimes_plus, !ntimes_mult.
+        ring.
+      }
+      remember (r1 :: b) as b1.
+      remember (r2 :: a0) as a1.
+      rewrite mult_poly_cons.
+      rewrite poly_sum_rule.
+      rewrite sum_coefficients_proper; [|apply poly_scalar_mult_deriv | reflexivity].
+      rewrite mult_polyf_shift_switch.
+      rewrite IHa.
+            pose proof (mult_poly_cons a (r :: a1)).
+
+      rewrite (sum_poly1_proper (mult_polyf (r0::b1) _ )); try apply H0.
+
+      rewrite sum_poly_assoc.
+      apply sum_coefficients_proper; try reflexivity.
+      rewrite (derive_poly_const_independent a).
+      rewrite sum_poly1_proper; [| apply mult_poly2_proper;try apply derive_poly_cons].
+      rewrite (sum_poly2_proper (mult_polyf (0 :: r :: a1) _)); [| apply mult_poly2_proper;try apply derive_poly_cons].
+      rewrite sum_poly1_proper; [| apply mult_poly_distr].
+      rewrite !mult_poly_distr.
+      rewrite <-(sum_poly_assoc (mult_polyf (0 :: _) _)).
+      rewrite (sum_poly1_proper (mult_polyf (r0 :: b1) _));try apply (sum_poly_sym _ (mult_polyf (r0 :: b1) (r :: a1))).
+      rewrite !sum_poly_assoc.
+      apply sum_coefficients_proper.
+      rewrite mult_poly_sym;reflexivity.
+      rewrite Heqb1.
+      apply sum_coefficients_proper.
+      destruct (derive_poly (r0 :: r1 :: b)) eqn:E.
+      apply length_zero_iff_nil in E; rewrite derive_poly_length in E;simpl in E;lia.
+      clear E.
+      rewrite <-mult_polyf_shift_switch;reflexivity.
+      rewrite Heqa1.
+      destruct (derive_poly (r :: r2 :: a0)) eqn:E.
+      apply length_zero_iff_nil in E; rewrite derive_poly_length in E;simpl in E;lia.
+      rewrite mult_polyf_shift_switch;reflexivity.
+  Qed.
+  #[global] Instance differentialRingPs : differentialRing (A := ps).
   Proof.
     exists (derive_ps).
     - intros a b n.
@@ -251,21 +333,7 @@ Section MultiPowerseries.
     induction n.
     apply H.
     apply seq_A_setoid.
-  Defined.
-
-  #[global] Instance mps_rawRing n: RawRing (A := (mps n)).
-  Proof.
-    induction n.
-    apply R_rawRing.
-    apply ps_rawRing.
-  Defined.
-  
-  #[global] Instance mps_comSemiRing n:  comSemiRing (A := (mps n)).
-  Proof.
-    intros.
-    induction n.
-    apply A_comRing.
-    apply ps_comSemiRing.
+.
   Defined.
 
   Fixpoint const_to_mps n x : (mps n) := 
@@ -277,11 +345,10 @@ Section MultiPowerseries.
   Definition multips_composition {n m} (a : mps n) (bs : @tuple n (mps (S m))) : (mps (S m)).
   Proof.
     revert a bs.
-    induction n;intros.
+    induction n;ggintros.
     apply (const_to_mps (S m) a).
     destruct (destruct_tuple bs) as [hd [tl P]].
     apply ((fun n => (fold_right add 0 (map (fun i => ((IHn (a i) tl) * (power_ps hd i)) n)  (seq 0 (S n))))) : (mps (S m))).
   Defined.
 End MultiPowerseries.
-
 
