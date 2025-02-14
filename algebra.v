@@ -3,6 +3,7 @@ Require Import List.
 Require Import ZArith.
 Import ListNotations.
 Require Import Setoid.
+Require Import Coq.Lists.SetoidList.
 Require Import Coq.Classes.SetoidClass.
  Definition tuple n {A} := {t : list A | length t = n}.
  Definition destruct_tuple {n} {A}  (t : @tuple (S n) A)  : {h : A & {t0 : @tuple n A | proj1_sig t = h :: (proj1_sig t0)}}.   
@@ -35,6 +36,21 @@ Proof.
   apply (nth n x d).
 Defined.
 
+ Definition tuple_equivalence {A n} {A_setoid : Setoid A} (x : @tuple n A) (y : @tuple n A) : Prop.
+ Proof.
+   destruct x, y.
+   apply (eqlistA SetoidClass.equiv x x0).
+ Defined.
+
+ Instance tuple_setoid {A n} {A_setoid : Setoid A} : Setoid (@tuple n A).
+ Proof.
+ 
+   exists  tuple_equivalence.
+   constructor.
+   intros [x P];simpl;apply eqlistA_equiv;apply setoid_equiv.
+   intros [x P] [y P'];simpl;apply eqlistA_equiv;apply setoid_equiv.
+   intros [x P] [y P'] [z P''];simpl;apply eqlistA_equiv;apply setoid_equiv.
+ Defined.
 Section AlgebraicStructures.
   Context {A : Type} `{Setoid A}.
   Class RawRing := {
@@ -45,7 +61,7 @@ Section AlgebraicStructures.
 
     }.
 
-  Definition sum `{A_Rawring : RawRing } (f : nat -> A) n := (fold_right add zero (map f (seq 0 (S n)))).
+  Definition sum `{A_Rawring : RawRing } (f : nat -> A) n := (fold_right add zero (map f (seq 0 n))).
   Class comSemiRing `{R_rawRing : RawRing}   := {
 
       add_proper :> Proper (equiv ==> equiv ==> equiv) add;
@@ -78,15 +94,16 @@ Section AlgebraicStructures.
     {
     derivation : A -> A;
     derivation_plus : forall r1 r2, derivation (add r1 r2) == add (derivation r1) (derivation r2);
-    derivation_mult : forall r1 r2, derivation (mul r1 r2) == add (mul r2 (derivation r1)) (mul r1  (derivation r2))
+    derivation_mult : forall r1 r2, derivation (mul r1 r2) == add (mul r2 (derivation r1)) (mul r1  (derivation r2));
+    derivation_proper :> Proper (equiv ==> equiv) derivation;
     }.
 
 Class PartialDifferentialRing  `{R_semiRing : comSemiRing}:= {
     pdiff : nat -> A -> A;
     pdiff_plus : forall  d r1 r2, pdiff d (add r1 r2) == add (pdiff d r1) (pdiff d r2);
     pdiff_mult : forall d r1 r2, pdiff  d (mul r1 r2) == add (mul r2 (pdiff d r1)) (mul r1  (pdiff d r2));
-    pdiff_comm : forall d1 d2 r, pdiff d1 (pdiff d2 r) == pdiff d2 (pdiff d1 r)
-                                                        
+    pdiff_comm : forall d1 d2 r, pdiff d1 (pdiff d2 r) == pdiff d2 (pdiff d1 r);
+    pdiff_proper :> forall n, Proper (equiv ==> equiv) (pdiff n);
   }.
 
   Class TotalOrder := {
@@ -187,6 +204,37 @@ Section RingTheory.
   Lemma ring_eq_mult_eq : forall x y x' y', x == x' -> y == y' -> x * y == x' * y'. 
   Proof. intros x y _ _ <- <-;ring. Qed.
 
+  Lemma sum_S_fun (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
+  Proof.
+    unfold sum.
+    simpl.
+    ring_simplify.
+    enough (map f (seq 1 n) = map (fun n => f (S n)) (seq 0 n)) as -> by reflexivity.
+    rewrite <- seq_shift.
+    rewrite map_map;auto.
+  Qed.
+
+  Lemma sum_S (f : nat -> A) n : (sum f (S n)) == add (sum f n) (f n). 
+  Proof.
+    revert f.
+    induction n;intros.
+    unfold sum; simpl;ring.
+    rewrite sum_S_fun.
+    rewrite IHn.
+    ring_simplify.
+    rewrite <- sum_S_fun.
+    ring.
+  Qed.
+
+   Lemma sum_ext f g d  : (forall n, (n < d)%nat -> (f n) == (g n)) -> sum f d == sum g d.
+   Proof.
+     intros.
+     induction d;intros.
+     unfold sum; simpl; reflexivity.
+     rewrite !sum_S.
+     rewrite IHd;[| intros; apply H0;  lia].
+     rewrite H0;try lia;reflexivity.
+   Qed.
 End RingTheory.
 
 Section DifferentialAlgebraTheory.
@@ -200,7 +248,8 @@ Section DifferentialAlgebraTheory.
     rewrite smult_mult_compat.
     setoid_replace (a*0) with (0 : K) by ring;auto.
     reflexivity.
-    rewrite <- (smult1 0) at 2.
+    pose proof (smult1 0).
+    rewrite <- H1 at 2.
     setoid_replace (1 : K) with (0+1 : K) by ring.
     rewrite splus_mult_dist.
     rewrite smult1.
@@ -256,10 +305,31 @@ Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : na
   
 Class CompositionalDiffAlgebra := {
     composition : forall {m n}, A m -> @tuple m (A n) -> A n;
+    composition_proper {m n}:> Proper (equiv ==> equiv ==> equiv) (@composition m n);
+    comp1 {m} (n : nat) : A m;
+    composition_id {m n} i (x : @tuple m (A n)) : composition (comp1 i) x == tuple_nth i x 0;
+    composition_plus_comp : forall {m n} x y (z :@tuple m (A n)) , composition (x+y) z == (composition x z) + (composition y z);
+    composition_mult_comp : forall {m n} x y (z :@tuple m (A n)) , composition (x*y) z == (composition x z) * (composition y z);
     pdiff_chain : forall {m n d} (x : A m) (y : @tuple m (A n)), pdiff d (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m)
   }.
+
 End PartialDiffAlgebra.
 
 Notation "D[ i ] f" := (pdiff i f) (at level 50, left associativity).
 
 Infix "\o" := composition (at level 2).
+
+Section PartialDiffAlgebraTheory.
+
+Context `{CompositionalDiffAlgebra} .
+Lemma composition_sum_comp {m n} (f : nat -> A m) (g : @tuple m (A n)) i : (sum f (S i)) \o g == (sum (fun i => (f i) \o g) (S i)). 
+Proof.
+  induction i.
+  unfold sum; simpl.
+  unfold sum;simpl;rewrite !add0;reflexivity.
+  rewrite !(sum_S _ (S i)).
+  rewrite composition_plus_comp.
+  rewrite IHi.
+  reflexivity.
+Qed.
+End PartialDiffAlgebraTheory.

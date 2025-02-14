@@ -8,6 +8,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import Classical.
 
+
 Definition tuple_map {n A B} (f : A -> B) (x : @tuple n A) : @tuple n B.
 Proof.
   induction n.
@@ -27,16 +28,57 @@ Proof.
    apply (nth_ext _ _ d d);auto;lia.
  Qed.
 
- Lemma tuple_nth_ext' {n A} (x y : @tuple n A) d1 d2 : (forall i, (i < n) -> tuple_nth i x d1 = tuple_nth i y d2) -> x = y.
+ Lemma eqlistA_nth_ext {A} {A_setoid : Setoid A} l1 l2 d1 d2 : (eqlistA SetoidClass.equiv l1 l2) <-> (length l1 = length l2 /\ forall n, n < length l1 -> nth n l1 d1 == nth n l2 d2).
+ Proof.
+   intros.
+   split;intros;[split|].
+   - apply (@eqlistA_length A SetoidClass.equiv);auto.
+   - intros.
+     generalize dependent n.
+     induction H.
+     intros.
+     simpl in H0;lia.
+     destruct n.
+     simpl;auto.
+     intros.
+     simpl.
+     apply IHeqlistA.
+     simpl in H1;lia.
+  - destruct H.
+    generalize dependent l1.
+    induction l2;intros.
+    + simpl in H.
+      apply length_zero_iff_nil in H.
+      rewrite H.
+      reflexivity.
+    + destruct l1.
+      simpl in H.
+      lia.
+      apply eqlistA_cons.
+      specialize (H0 0%nat).
+      simpl in H0.
+      apply H0;lia.
+      apply IHl2.
+      simpl in H;lia.
+      intros.
+      specialize (H0 (S n)).
+      simpl in H0.
+      apply H0.
+      lia.
+  Qed.
+
+ Lemma tuple_nth_ext' {n A} {A_setoid : Setoid A} (x y : @tuple n A) d1 d2 : (forall i, (i < n) -> tuple_nth i x d1 == tuple_nth i y d2) -> x == y.
  Proof.
    intros.
    destruct x, y.
    simpl in H.
-   apply ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
-   apply (nth_ext _ _ d1 d2);try lia.
+   unfold SetoidClass.equiv.
+   simpl.
+   rewrite eqlistA_nth_ext;split;try lia.
    intros.
    apply H;lia.
  Qed.
+
 Section PIVP.
   Context `{CompositionalDiffAlgebra} .
   Definition multi_composition {n m r} (ps : (@tuple r (A n))) (qs : @tuple n (A m)) : (@tuple r (A m)).
@@ -182,10 +224,10 @@ Proof.
      rewrite derive_tuple_nth;auto.
    Defined.
 
-  Definition IVP_solution_derivatives {d} f y : @is_IVP_solution_series d f y -> forall n,  {fn | nth_derivative y n = multi_composition fn y}.
+  Definition IVP_solution_derivatives {d} f y : @is_IVP_solution_series d f y -> forall n,  {fn | nth_derivative y n == multi_composition fn y}.
   Proof.
      intros.
-     enough (forall i, (i < d)%nat -> {fi  | (fi \o y ) = tuple_nth i (nth_derivative y n) 0}).
+     enough (forall i, (i < d)%nat -> {fi  | (fi \o y ) == tuple_nth i (nth_derivative y n) 0}).
      {
        destruct (tuple_choice_P _ X 0).
        exists x.
@@ -193,17 +235,27 @@ Proof.
        intros.
        rewrite tuple_nth_multicomposition;try lia.
        rewrite (e _ H5).
-       destruct (X i H5);auto.
+       destruct (X i H5);rewrite e0;reflexivity.
      }
      intros.
      induction n.
      simpl.
-     admit.
+     exists (comp1 i).
+     apply composition_id.
      rewrite tuple_nth_nth_derivative_S;auto.
      destruct IHn as [fn P].
-     rewrite <-P.
-     pose proof (pdiff_chain fn y (d := 0)).
      exists (sum (fun i => tuple_nth i f 0 * (D[i] fn)) d).
-     
+     destruct d; try lia.
+     pose proof (pdiff_chain fn y (d := 0)).
+     rewrite <-P.
+     rewrite H6.
+     rewrite composition_sum_comp.
+     apply sum_ext; intros.
+     rewrite composition_mult_comp.
+     rewrite <- derive_tuple_nth; try lia.
+     rewrite H4.
+     rewrite tuple_nth_multicomposition;try lia.
+     reflexivity.
+   Defined.
 End PIVP.
 
