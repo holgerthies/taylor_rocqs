@@ -81,7 +81,7 @@ Proof.
 
 Section PIVP.
   Context `{CompositionalDiffAlgebra} .
-  Definition multi_composition {n m r} (ps : (@tuple r (A n))) (qs : @tuple n (A m)) : (@tuple r (A m)).
+  Definition multi_composition {n m r} (ps : (@tuple r (A n))) (qs : @tuple n (A (S m))) : (@tuple r (A (S m))).
 Proof.
   induction r.
   apply nil_tuple.
@@ -122,7 +122,7 @@ Proof.
    destruct t;simpl;auto.
  Defined.
 
- Lemma tuple_nth_multicomposition {n m r} i d (ps : (@tuple r (A n))) (qs : @tuple n (A m)) : (i < r)%nat -> tuple_nth i (multi_composition ps qs) d = (tuple_nth i ps 0) \o qs.
+ Lemma tuple_nth_multicomposition {n m r} i d (ps : (@tuple r (A n))) (qs : @tuple n (A (S m))) : (i < r)%nat -> tuple_nth i (multi_composition ps qs) d = (tuple_nth i ps 0) \o qs.
  Proof.
    revert i.
   induction r;intros; try lia.
@@ -259,3 +259,8 @@ Proof.
    Defined.
 End PIVP.
 
+Section TaylorApproximation.
+  Context `{CompositionalDiffAlgebra}.
+  
+
+End TaylorApproximation.

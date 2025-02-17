@@ -626,17 +626,7 @@ Qed.
  (*   apply sum_rule;auto. *)
  (* Qed. *)
 
- Fixpoint ntimes (n : nat) x := 
-   match n with
-    | 0 => 0
-    | (S n') => x + ntimes n' x
-   end. 
 
- Lemma ntimes_zero n : ntimes n 0 == 0.
- Proof.
-   induction n;simpl;auto;try ring.
-   rewrite IHn; ring.
- Qed.
  Lemma derive_monomial (a : A) (n : nat) : (poly (A:=A)).
  Proof.
    destruct n; [apply []|].
@@ -1241,24 +1231,6 @@ Section DifferentialRing.
   Add Ring RRing: ComSemiRingTheory.
   Add Ring PRing: (ComSemiRingTheory (A := @poly R)).
 
-  Lemma ntimes_plus n x y : ntimes n (x+y) == ntimes n x + ntimes n y.
-  Proof.
-    induction n;simpl;[ring|].
-    rewrite IHn;ring.
-  Qed.
-
-  Lemma ntimes_mult n x y : ntimes n (x*y) == x * ntimes n y.
-  Proof.
-    induction n;simpl;[ring|].
-    rewrite IHn;ring.
-  Qed.
-
-  Lemma ntimes_0 n  : ntimes n 0 == 0.
-  Proof.
-    induction n;simpl;[ring|].
-    rewrite IHn;ring.
-  Qed.
-
   Lemma derive_poly_length (a : (@poly R)) : length (derive_poly a) = (length a - 1)%nat.
   Proof.
     unfold derive_poly; simpl.
@@ -1339,15 +1311,6 @@ Section DifferentialRing.
     apply length_zero_iff_nil.
     rewrite derive_poly_length; simpl; lia.
   Qed.
-  #[global] Instance ntimes_proper n : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (ntimes n)).
-  Proof.
-    intros a b H0.
-    induction n.
-    simpl;ring.
-    simpl.
-    rewrite IHn, H0.
-    ring.
-  Defined.
 
   #[global] Instance derive_poly_proper : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) derive_poly).
   Proof.
@@ -1695,11 +1658,20 @@ Section PartialDiffAlgebra.
     apply (map (IHd n) p).
  Defined.
 
-  Lemma poly_pdiff0  n d : @poly_pdiff n d 0 == 0.
+  Lemma poly_pdiff0  n d : @poly_pdiff n d 0 = 0.
   Proof.
     induction d;destruct n;simpl;try ring;auto.
   Qed.
 
+  #[global] Instance mpoly_pdiff_proper : forall n d, Proper (SetoidClass.equiv ==> SetoidClass.equiv)  (@poly_pdiff n d).
+  Proof.
+    intros.
+    intros a b H0.
+    induction d;destruct n;simpl;try ring.
+    rewrite H0;reflexivity.
+    apply (nth_ext_A _ _ 0 0).
+    rewrite !map_length.
+    Search (_ == _).
   #[global] Instance mpoly_pdiffring n : PartialDifferentialRing (A := (mpoly n)).
   Proof.
     exists poly_pdiff.
@@ -1713,6 +1685,18 @@ Section PartialDiffAlgebra.
       rewrite (nth_indep _ _ (poly_pdiff d zero));auto.
       rewrite map_nth.
       rewrite sum_coefficient_nth.
+      assert (forall r, nth n0 (map (@poly_pdiff n d) r) 0 = poly_pdiff d (nth n0 r 0)).
+      {
+        intros.
+        replace 0 with (@poly_pdiff n d 0) by apply poly_pdiff0.
+        rewrite map_nth.
+        rewrite poly_pdiff0;auto.
+      }
+      rewrite !H1.
+      rewrite sum_coefficient_nth.
+      apply IHd.
+      admit.
+
       admit.
    - intros.
      admit.

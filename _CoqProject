@@ -1,7 +1,7 @@
 -R . TR
 algebra.v
+powerseries.v
 polynomial.v
 polyapprox.v
 symbolic.v
 intervalpoly.v
-powerseries.v

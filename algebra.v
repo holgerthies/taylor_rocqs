@@ -190,6 +190,38 @@ Section RingTheory.
   Context `{A_Ring : comRing }.
   Add Ring ARing : ComSemiRingTheory.
 
+ Fixpoint ntimes (n : nat) x := 
+   match n with
+    | 0 => 0
+    | (S n') => x + ntimes n' x
+   end. 
+ Lemma ntimes_zero n : ntimes n 0 == 0.
+ Proof.
+   induction n;simpl;auto;try ring.
+   rewrite IHn; ring.
+ Qed.
+  Lemma ntimes_plus n x y : ntimes n (x+y) == ntimes n x + ntimes n y.
+  Proof.
+    induction n;simpl;[ring|].
+    rewrite IHn;ring.
+  Qed.
+
+  Lemma ntimes_mult n x y : ntimes n (x*y) == x * ntimes n y.
+  Proof.
+    induction n;simpl;[ring|].
+    rewrite IHn;ring.
+  Qed.
+
+
+  #[global] Instance ntimes_proper n : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (ntimes n)).
+  Proof.
+    intros a b H0.
+    induction n.
+    simpl;ring.
+    simpl.
+    rewrite IHn, H0.
+    ring.
+  Defined.
   Lemma ComRingTheory  : ring_theory 0 1 add mul minus opp  equiv.
   Proof.
 
@@ -300,17 +332,18 @@ End OrderTheory.
 
 Section PartialDiffAlgebra.
 
-Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : nat), (RawRing (A:=(A n))) } `{forall (n : nat), (comSemiRing (A:=(A n))) } `{forall (n : nat), (PartialDifferentialRing (A:=(A n))) }.
+Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : nat), (RawRing (A:=(A n))) } `{forall (n : nat), (comSemiRing (A:=(A n))) }  `{forall (n : nat), (PartialDifferentialRing (A:=(A n))) }.
 
   
 Class CompositionalDiffAlgebra := {
-    composition : forall {m n}, A m -> @tuple m (A n) -> A n;
-    composition_proper {m n}:> Proper (equiv ==> equiv ==> equiv) (@composition m n);
+    embed : forall n, A 0%nat -> A n;
+    composition : forall {m n}, A m -> @tuple m (A (S n)) -> A (S n);
     comp1 {m} (n : nat) : A m;
-    composition_id {m n} i (x : @tuple m (A n)) : composition (comp1 i) x == tuple_nth i x 0;
-    composition_plus_comp : forall {m n} x y (z :@tuple m (A n)) , composition (x+y) z == (composition x z) + (composition y z);
-    composition_mult_comp : forall {m n} x y (z :@tuple m (A n)) , composition (x*y) z == (composition x z) * (composition y z);
-    pdiff_chain : forall {m n d} (x : A m) (y : @tuple m (A n)), pdiff d (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m)
+    composition_proper {m n}:> Proper (equiv ==> equiv ==> equiv) (@composition m n);
+    composition_id {m n} i (x : @tuple m (A (S n))) : composition (comp1 i) x == tuple_nth i x 0;
+    composition_plus_comp : forall {m n} x y (z :@tuple m (A (S n))) , composition (x+y) z == (composition x z) + (composition y z);
+    composition_mult_comp : forall {m n} x y (z :@tuple m (A (S n))) , composition (x*y) z == (composition x z) * (composition y z);
+    pdiff_chain : forall {m n d} (x : A m) (y : @tuple m (A (S n))), pdiff d (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m)
   }.
 
 End PartialDiffAlgebra.
@@ -322,7 +355,7 @@ Infix "\o" := composition (at level 2).
 Section PartialDiffAlgebraTheory.
 
 Context `{CompositionalDiffAlgebra} .
-Lemma composition_sum_comp {m n} (f : nat -> A m) (g : @tuple m (A n)) i : (sum f (S i)) \o g == (sum (fun i => (f i) \o g) (S i)). 
+Lemma composition_sum_comp {m n} (f : nat -> A m) (g : @tuple m (A (S n))) i : (sum f (S i)) \o g == (sum (fun i => (f i) \o g) (S i)). 
 Proof.
   induction i.
   unfold sum; simpl.
