@@ -328,6 +328,39 @@ Proof.
   apply mul_le_compat_pos;auto.
   apply (le_trans _ _ _ H2);auto.
 Qed.
+Lemma le_0_1 : 0 <= 1.
+Proof.
+  destruct (le_total 0 1);auto.
+  setoid_replace 1 with (opp 1 * opp 1) by ring.
+  setoid_replace 0 with ((opp 1) * 0) by ring.
+  enough (0 <= (opp 1))by (apply mul_le_compat_pos;auto).
+  setoid_replace (opp 1) with (0 + (opp 1)) by ring.
+  setoid_replace 0 with (1 + (opp 1)) at 1 by ring.
+  apply le_plus_compat;auto.
+Qed.
+
+Lemma le_0_n n : 0 <= (ntimes n 1).
+Proof.
+  induction n.
+  simpl;apply R_TotalOrder.
+  simpl.
+  setoid_replace 0 with (0 + 0) by ring.
+  apply le_le_plus_le; [|apply IHn].
+  apply le_0_1.
+Qed.
+
+Lemma char0 : forall n, not ((ntimes (S n) 1) == 0).
+Proof.
+  intros.
+  induction n;simpl;intros Hn.
+  apply distinct_0_1;rewrite <-Hn; ring.
+  contradict IHn.
+  enough (ntimes (S n) 1 <= 0)by (apply le_anti_sym;auto;apply le_0_n).
+  rewrite <- Hn.
+  setoid_replace (ntimes (S n) 1) with (0 + ntimes (S n) 1) at 1 by ring.
+  apply le_plus_compat.
+  apply le_0_1.
+Qed.
 End OrderTheory.
 
 Section PartialDiffAlgebra.

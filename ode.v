@@ -3,6 +3,7 @@ Require Import List.
 Require Import ZArith.
 Import ListNotations.
 Require Import algebra.
+Require Import powerseries.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
@@ -224,43 +225,86 @@ Proof.
      rewrite derive_tuple_nth;auto.
    Defined.
 
-  Definition IVP_solution_derivatives {d} f y : @is_IVP_solution_series d f y -> forall n,  {fn | nth_derivative y n == multi_composition fn y}.
+  Definition IVP_solution_derivatives {d} f :  forall n,  {fn | forall y, @is_IVP_solution_series d f y -> nth_derivative y n == multi_composition fn y}.
   Proof.
      intros.
-     enough (forall i, (i < d)%nat -> {fi  | (fi \o y ) == tuple_nth i (nth_derivative y n) 0}).
+     enough (forall i, (i < d)%nat -> {fi  | forall y, @is_IVP_solution_series d f y -> (fi \o y ) == tuple_nth i (nth_derivative y n) 0}).
      {
        destruct (tuple_choice_P _ X 0).
-       exists x.
+       exists x;intros.
        apply (tuple_nth_ext' _ _ 0 0).
        intros.
        rewrite tuple_nth_multicomposition;try lia.
        rewrite (e _ H5).
-       destruct (X i H5);rewrite e0;reflexivity.
+       destruct (X i H5);rewrite e0;auto; reflexivity.
      }
      intros.
      induction n.
      simpl.
-     exists (comp1 i).
+     exists (comp1 i);intros.
      apply composition_id.
-     rewrite tuple_nth_nth_derivative_S;auto.
      destruct IHn as [fn P].
-     exists (sum (fun i => tuple_nth i f 0 * (D[i] fn)) d).
+     exists (sum (fun i => tuple_nth i f 0 * (D[i] fn)) d);intros.
+     rewrite tuple_nth_nth_derivative_S;auto.
      destruct d; try lia.
      pose proof (pdiff_chain fn y (d := 0)).
-     rewrite <-P.
+     rewrite <-P;auto.
      rewrite H6.
      rewrite composition_sum_comp.
      apply sum_ext; intros.
      rewrite composition_mult_comp.
      rewrite <- derive_tuple_nth; try lia.
-     rewrite H4.
+     rewrite H5.
      rewrite tuple_nth_multicomposition;try lia.
      reflexivity.
    Defined.
+
+  
 End PIVP.
 
-Section TaylorApproximation.
-  Context `{CompositionalDiffAlgebra}.
-  
 
-End TaylorApproximation.
+Section OdeBounds.
+  Context `{CompositionalDiffAlgebra} `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}.
+  Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}.
+  Definition inv_factorial (n : nat) : (A 0).
+  Proof.
+    induction n.
+    apply 1.
+    apply (inv (char0 n) * IHn).
+  Defined.
+
+  Definition inv_factorial_t {d} (n : (@tuple d nat)) : (A 0).
+  Proof.
+    induction d.
+    apply 1.
+    destruct (destruct_tuple n) as [hd [tl P]].
+    apply (inv_factorial hd * IHd tl).
+  Defined.
+
+  Definition IVP_solution_taylor {d} (f : @tuple d (A d)) (y : (@tuple d (A 1%nat))) (i : nat) :  is_IVP_solution_series f y -> {a : (@mps (A 0%nat) 1) | forall n,  a n == inv_factorial n * value _ (tuple_nth i (nth_derivative y n) 0)}.
+  Proof.
+    intros.
+    enough (forall n, {an : (A 0%nat) | an == inv_factorial n * value _ (tuple_nth i (nth_derivative y n) 0)}).
+    exists (fun n => (proj1_sig (X n)));intros; destruct (X n);auto.
+    intros.
+    destruct (IVP_solution_derivatives f y H5 n).
+    exists (inv_factorial n * value _ (tuple_nth i x 0)).
+    Search tuple_nth nth_derivative.
+  Definition pdiff_n {d} (x : (A d)) (i n : nat) : (A d).
+  Proof.
+    induction n.
+    apply x.
+    apply (pdiff i (IHn)).
+  Defined.
+
+  Definition partial_derivative {d} (x : (A d)) (n : (@tuple d nat)) : (A d).
+  Proof.
+     induction d.
+     apply 0.
+     destruct (destruct_tuple n) as [hd [tl P]].
+  Admitted.
+
+  Definition TaylorCoefficient {d} (x : (A d)) (n : (@tuple d nat)) : (A 0) :=  (inv_factorial_t n * (value d (partial_derivative x n))).
+  
+  
+End OdeBounds.

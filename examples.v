@@ -53,18 +53,29 @@ Proof.
   apply 0.
   apply 1.
 Defined.
-Definition c := composition p1 p2.
+
+Definition mp1 : (@mps Z 2).
 Proof.
-  apply [[1%Z]; [1%Z; 2%Z; 0%Z]].
+  intros n.
+  intros m.
+  apply (Z.of_nat (n+m+1)).
 Defined.
+
+Definition poly1 : (@mps Z 2).
+Proof.
+  intros n.
+  apply match n with 0 => 0 | 1 => 0 | 2 => 1 | _ => 0 end.
+Defined.
+
+Definition print_mp1 (a : @mps Z 1) n:= map a (seq 0 (S n)).
+Definition print_mp2 (a : @mps Z 2) n:= map (fun j => print_mp1 (a j) n) (seq 0 (S n)).
 
 Definition x : (@mpoly Z 2) := [[0%Z]; [1%Z]]. 
 Definition y : (@mpoly Z 2) := [[0%Z; 1%Z]; [0%Z]]. 
-Check @derive_monomial.
 Definition p3 := (x*y+y+x*x*x*x+y*y*x*x).
 
-
-Compute (p3^'^').
+Compute p3.
+Compute (poly_pdiff 1 p3).
 
 End Z_poly.
 
