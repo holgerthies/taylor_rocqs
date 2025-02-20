@@ -522,8 +522,8 @@ Section MultiPowerseries.
   #[global] Instance multips_diffalgebra  : CompositionalDiffAlgebra.
   Proof.
     exists @multips_composition mps_comp1.
-    - intros.
-      apply (const_to_mps _ X).
+    (* - intros. *)
+    (*   apply (const_to_mps _ X). *)
     - intros;apply multips_composition_proper.
     - intros.
       induction m.

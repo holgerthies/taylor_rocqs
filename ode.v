@@ -3,20 +3,13 @@ Require Import List.
 Require Import ZArith.
 Import ListNotations.
 Require Import algebra.
+
 Require Import powerseries.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import Classical.
 
-
-Definition tuple_map {n A B} (f : A -> B) (x : @tuple n A) : @tuple n B.
-Proof.
-  induction n.
-  apply nil_tuple.
-  destruct (destruct_tuple x) as [hd [tl P]].
-  apply (tuple_cons (f hd) (IHn tl)).
- Defined.
 
 
 
@@ -29,66 +22,9 @@ Proof.
    apply (nth_ext _ _ d d);auto;lia.
  Qed.
 
- Lemma eqlistA_nth_ext {A} {A_setoid : Setoid A} l1 l2 d1 d2 : (eqlistA SetoidClass.equiv l1 l2) <-> (length l1 = length l2 /\ forall n, n < length l1 -> nth n l1 d1 == nth n l2 d2).
- Proof.
-   intros.
-   split;intros;[split|].
-   - apply (@eqlistA_length A SetoidClass.equiv);auto.
-   - intros.
-     generalize dependent n.
-     induction H.
-     intros.
-     simpl in H0;lia.
-     destruct n.
-     simpl;auto.
-     intros.
-     simpl.
-     apply IHeqlistA.
-     simpl in H1;lia.
-  - destruct H.
-    generalize dependent l1.
-    induction l2;intros.
-    + simpl in H.
-      apply length_zero_iff_nil in H.
-      rewrite H.
-      reflexivity.
-    + destruct l1.
-      simpl in H.
-      lia.
-      apply eqlistA_cons.
-      specialize (H0 0%nat).
-      simpl in H0.
-      apply H0;lia.
-      apply IHl2.
-      simpl in H;lia.
-      intros.
-      specialize (H0 (S n)).
-      simpl in H0.
-      apply H0.
-      lia.
-  Qed.
-
- Lemma tuple_nth_ext' {n A} {A_setoid : Setoid A} (x y : @tuple n A) d1 d2 : (forall i, (i < n) -> tuple_nth i x d1 == tuple_nth i y d2) -> x == y.
- Proof.
-   intros.
-   destruct x, y.
-   simpl in H.
-   unfold SetoidClass.equiv.
-   simpl.
-   rewrite eqlistA_nth_ext;split;try lia.
-   intros.
-   apply H;lia.
- Qed.
 
 Section PIVP.
   Context `{CompositionalDiffAlgebra} .
-  Definition multi_composition {n m r} (ps : (@tuple r (A n))) (qs : @tuple n (A (S m))) : (@tuple r (A (S m))).
-Proof.
-  induction r.
-  apply nil_tuple.
-  destruct (destruct_tuple ps) as [hd [tl P]].
-  apply (tuple_cons (hd \o qs) (IHr tl)).
-  Defined.
 
  Definition derive_tuple {d} (y : @tuple d (A 1)) :  @tuple d (A 1).
  Proof.
@@ -106,46 +42,6 @@ Proof.
    apply (derive_tuple IHn).
  Defined.
 
- Lemma tuple_nth_nil {T} n (t : (@tuple 0 T)) d : (tuple_nth n t d) = d.
- Proof.
-   destruct t.
-   simpl.
-   apply nth_overflow.
-   lia.
- Defined.
- Lemma tuple_nth_cons_hd {T m} (hd : T) (t : (@tuple m T)) d : (tuple_nth 0 (tuple_cons hd t) d) = hd.
- Proof.
-   destruct t;simpl;auto.
- Defined.
-
- Lemma tuple_nth_cons_tl {T m} n (hd : T) (t : (@tuple m T)) d : (tuple_nth (S n) (tuple_cons hd t) d) = tuple_nth n t d.
- Proof.
-   destruct t;simpl;auto.
- Defined.
-
- Lemma tuple_nth_multicomposition {n m r} i d (ps : (@tuple r (A n))) (qs : @tuple n (A (S m))) : (i < r)%nat -> tuple_nth i (multi_composition ps qs) d = (tuple_nth i ps 0) \o qs.
- Proof.
-   revert i.
-  induction r;intros; try lia.
-  simpl.
-  destruct (destruct_tuple ps) as [hd [tl P]].
-  destruct ps.
-  destruct i.
-  rewrite tuple_nth_cons_hd.
-  simpl in *.
-  rewrite P;auto.
-  rewrite tuple_nth_cons_tl.
-  rewrite IHr; try lia.
-  simpl in *.
-  rewrite P.
-  destruct tl; simpl;auto.
- Qed.
-
- Lemma proj1_sig_tuple_cons {T n} x (y: @tuple n T) : proj1_sig (tuple_cons x y) = x :: (proj1_sig y).
- Proof.
-   destruct y.
-   simpl;auto.
- Qed.
 
  Lemma derive_tuple_cons {m} x (y : @tuple m (A 1)) : derive_tuple (tuple_cons x y) = tuple_cons (pdiff 0 x) (derive_tuple y).
 
@@ -225,30 +121,23 @@ Proof.
      rewrite derive_tuple_nth;auto.
    Defined.
 
-  Definition IVP_solution_derivatives {d} f :  forall n,  {fn | forall y, @is_IVP_solution_series d f y -> nth_derivative y n == multi_composition fn y}.
-  Proof.
-     intros.
-     enough (forall i, (i < d)%nat -> {fi  | forall y, @is_IVP_solution_series d f y -> (fi \o y ) == tuple_nth i (nth_derivative y n) 0}).
-     {
-       destruct (tuple_choice_P _ X 0).
-       exists x;intros.
-       apply (tuple_nth_ext' _ _ 0 0).
-       intros.
-       rewrite tuple_nth_multicomposition;try lia.
-       rewrite (e _ H5).
-       destruct (X i H5);rewrite e0;auto; reflexivity.
-     }
+   Fixpoint IVP_Di {d} (f : @tuple d (A d)) (n i : nat) :=
+     match n with
+     | 0%nat => (comp1 i)
+     | (S n') => (sum (fun j => tuple_nth j f 0 * (D[j] (IVP_Di f n' i))) d)
+   end.
+
+   Definition IVP_Di_spec {d} f n: forall i y,  (i < d)%nat ->  @is_IVP_solution_series d f y -> ((IVP_Di f n i) \o y ) == tuple_nth i (nth_derivative y n) 0.
+   Proof.
      intros.
      induction n.
      simpl.
-     exists (comp1 i);intros.
      apply composition_id.
-     destruct IHn as [fn P].
-     exists (sum (fun i => tuple_nth i f 0 * (D[i] fn)) d);intros.
      rewrite tuple_nth_nth_derivative_S;auto.
      destruct d; try lia.
-     pose proof (pdiff_chain fn y (d := 0)).
-     rewrite <-P;auto.
+     pose proof (pdiff_chain (IVP_Di f n i) y (d := 0)).
+     simpl.
+     rewrite <-IHn.
      rewrite H6.
      rewrite composition_sum_comp.
      apply sum_ext; intros.
@@ -257,15 +146,46 @@ Proof.
      rewrite H5.
      rewrite tuple_nth_multicomposition;try lia.
      reflexivity.
+  Defined.
+
+   Definition IVP_D {d} (f :@tuple d (A d)) (n :nat) : @tuple d (A d).
+   Proof.
+     destruct (seq_to_tuple (IVP_Di f n) d (def := 0)).
+     apply x.
    Defined.
 
+   Lemma IVP_D_nth {d} f n i : i < d -> tuple_nth i (@IVP_D d f n) 0 = IVP_Di f n i. 
+   Proof.
+     intros.
+     unfold IVP_D.
+     destruct (seq_to_tuple _ _ ).
+     rewrite e;auto.
+   Qed.
+
+  Definition IVP_D_spec {d} f :  forall n y, @is_IVP_solution_series d f y -> nth_derivative y n == (IVP_D f n) \o\ y.
+  Proof.
+     intros.
+     apply (tuple_nth_ext' _ _ 0 0).
+     intros.
+     rewrite tuple_nth_multicomposition;try lia.
+     unfold IVP_D.
+     destruct (seq_to_tuple _ _).
+     rewrite e;try lia.
+     rewrite IVP_Di_spec;auto.
+     reflexivity.
+   Qed.
   
+
 End PIVP.
 
 
 Section OdeBounds.
-  Context `{CompositionalDiffAlgebra} `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}.
+  Context `{AbstractFunction }.
+  Context `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}. 
   Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}.
+(* {domain : @tuple d (@cinterval (A 0))}  *)
+  Context {d : nat} (f : A[d;d])  (y0 : A[d;0%nat]) (dom_f : y0 \in_dom f).
+
   Definition inv_factorial (n : nat) : (A 0).
   Proof.
     induction n.
@@ -273,38 +193,54 @@ Section OdeBounds.
     apply (inv (char0 n) * IHn).
   Defined.
 
-  Definition inv_factorial_t {d} (n : (@tuple d nat)) : (A 0).
-  Proof.
-    induction d.
-    apply 1.
-    destruct (destruct_tuple n) as [hd [tl P]].
-    apply (inv_factorial hd * IHd tl).
-  Defined.
+  Notation "![ n ]" := (inv_factorial n).
 
-  Definition IVP_solution_taylor {d} (f : @tuple d (A d)) (y : (@tuple d (A 1%nat))) (i : nat) :  is_IVP_solution_series f y -> {a : (@mps (A 0%nat) 1) | forall n,  a n == inv_factorial n * value _ (tuple_nth i (nth_derivative y n) 0)}.
+  Lemma dom_D : forall n, y0 \in_dom (IVP_D f n).
   Proof.
     intros.
-    enough (forall n, {an : (A 0%nat) | an == inv_factorial n * value _ (tuple_nth i (nth_derivative y n) 0)}).
-    exists (fun n => (proj1_sig (X n)));intros; destruct (X n);auto.
+    induction n;intros i Hi;rewrite IVP_D_nth;auto;[apply dom_id|].
+    simpl.
+    destruct d; try lia.
+    apply dom_sum;intros.
+    apply dom_mult.
+    apply dom_f;lia.
+    apply dom_diff.
+    rewrite <- IVP_D_nth;try lia.
+    apply IHn;lia.
+  Qed.
+
+  Definition ivp_solution_taylor (n : nat) : A[d;0%nat] := ![n] ** ([IVP_D f n](y0; (dom_D n))).
+
+  Definition is_IVP_solution y (Hy : 0 \in_dom y) := is_IVP_solution_series f y  /\ [y](0;Hy) == y0.
+   
+  Lemma  is_IVP_solution_deriv_dom {y Hy}: is_IVP_solution y Hy -> forall n, 0 \in_dom (nth_derivative y n). 
+  Proof.
     intros.
-    destruct (IVP_solution_derivatives f y H5 n).
-    exists (inv_factorial n * value _ (tuple_nth i x 0)).
-    Search tuple_nth nth_derivative.
-  Definition pdiff_n {d} (x : (A d)) (i n : nat) : (A d).
-  Proof.
-    induction n.
-    apply x.
-    apply (pdiff i (IHn)).
-  Defined.
+    induction n;[apply Hy|].
+    intros i Hi.
+    rewrite tuple_nth_nth_derivative_S;auto.
+    apply dom_diff.
+    apply IHn;auto.
+  Qed.
 
-  Definition partial_derivative {d} (x : (A d)) (n : (@tuple d nat)) : (A d).
+  Lemma ivp_solution_taylor_spec n y Hy (S :  is_IVP_solution y Hy) : ivp_solution_taylor n == ![n] ** ([nth_derivative y n](0;(is_IVP_solution_deriv_dom S n))).
   Proof.
-     induction d.
-     apply 0.
-     destruct (destruct_tuple n) as [hd [tl P]].
-  Admitted.
-
-  Definition TaylorCoefficient {d} (x : (A d)) (n : (@tuple d nat)) : (A 0) :=  (inv_factorial_t n * (value d (partial_derivative x n))).
-  
-  
+    unfold ivp_solution_taylor.
+    setoid_replace (([IVP_D f n](y0; dom_D n))) with ([nth_derivative y n](0; is_IVP_solution_deriv_dom S n));try reflexivity.
+    destruct S.
+    pose proof (IVP_D_spec _ n _ i).
+    assert (0 \in_dom (IVP_D f n) \o\ y).
+    {
+      apply (dom_composition _ y 0 Hy _ e).
+      apply dom_D.
+    }
+    rewrite (meval_proper _ _ _ _ (is_IVP_solution_deriv_dom (conj i e) n) H8 H7);try reflexivity.
+    assert (([y](0; Hy)) \in_dom (IVP_D f n)).
+    {
+      rewrite e.
+      apply dom_D.
+    }
+    rewrite (eval_composition_compat  _ _ _ Hy H9).
+    apply meval_proper;try rewrite e;reflexivity.
+  Qed.
 End OdeBounds.
