@@ -179,7 +179,7 @@ Section PIVP.
 End PIVP.
 
 
-Section OdeBounds.
+Section TaylorSequence.
   Context `{AbstractFunction }.
   Context `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}. 
   Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}.
@@ -243,4 +243,4 @@ Section OdeBounds.
     rewrite (eval_composition_compat  _ _ _ Hy H9).
     apply meval_proper;try rewrite e;reflexivity.
   Qed.
-End OdeBounds.
+End TaylorSequence.
