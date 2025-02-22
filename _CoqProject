@@ -3,5 +3,6 @@ algebra.v
 powerseries.v
 polynomial.v
 ode.v
+examples.v
 symbolic.v
 intervalpoly.v

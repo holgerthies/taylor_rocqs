@@ -206,8 +206,6 @@ Section TaylorSequence.
 
   Open Scope fun_scope.
   Context `{AbstractFunction }.
-  Check H1.
-  Check @Sn_invertible.
   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
   Context {d : nat} (f : A{d;d})  (y0 : A{d;0%nat}) (dom_f : y0 \in_dom f).
 
@@ -320,6 +318,15 @@ Section TaylorSequence.
    Qed.
 End TaylorSequence.
 
+Section IVP_Record.
+  Open Scope fun_scope.
+  Context `{AbstractFunction }.
+  Record IVP {d} := {
+      f : A{d;d};
+      y0 : A{d;0%nat}
+    }.
+
+End IVP_Record.
   (* Notation "![ n ]" := (inv_factorial n). *)
   
   

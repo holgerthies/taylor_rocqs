@@ -520,7 +520,7 @@ Proof.
   - intros.
     destruct (destruct_tuple X) as [hd0 [tl0 _]].
     destruct (destruct_tuple X0) as [hd1 [tl1 _]].
-    apply (tuple_cons (hd0*hd1) (add1 tl0 tl1)).
+    apply (tuple_cons (hd0*hd1) (mul2 tl0 tl1)).
 Defined.
 
 #[global] Instance  VectorSemiRing {m n} :  comSemiRing (A := (@tuple m (A n))).  
