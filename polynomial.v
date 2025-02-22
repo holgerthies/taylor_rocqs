@@ -1,12 +1,12 @@
 Require Import Psatz.
-Require Import List.
 Require Import ZArith.
-Import ListNotations.
-Require Import algebra.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
- Instance list_A_setoid {A} {A_setoid : Setoid A} : Setoid (list A).
+Require Import algebra.
+Require Import List.
+Import ListNotations.
+ #[global] Instance list_A_setoid {A} {A_setoid : Setoid A} : Setoid (list A).
  Proof.
    exists  (eqlistA SetoidClass.equiv).
    apply eqlistA_equiv.
@@ -47,14 +47,14 @@ Require Import Coq.Lists.SetoidList.
  Definition convolution_coeff (a b : list A) n := convolution_coeff_rec a b n n.
  Fixpoint mult_coefficients_rec (a b : list A) n :=
    match n with
-    | 0 => []
+    | 0 => nil 
     | S n' =>  convolution_coeff a b ((length a + length b - 1) - n)%nat :: mult_coefficients_rec a b n'
      end.
 
  Definition mult_coefficients a b := mult_coefficients_rec a b (length a + length b - 1).
  Definition mult_polyf a b := match (a,b) with
-                                      | ([], _) => []
-                                      | (_, []) => []
+                                      | (nil, _) =>nil 
+                                      | (_, nil) =>nil 
                                       |  (_, _) => mult_coefficients a b end.
   #[global] Instance poly_rawRing: RawRing (A := poly).
   Proof.
@@ -78,10 +78,10 @@ Require Import Coq.Lists.SetoidList.
 
   Definition eval_poly2 a x := eval_poly_rec a x (length a).
 
-  Lemma eval_poly2_app1 a an x : eval_poly2 (a ++ [an]) x = an * (npow x (length a)) + eval_poly2 a x.
+  Lemma eval_poly2_app1 a an x : eval_poly2 (a ++ cons an nil) x = an * (npow x (length a)) + eval_poly2 a x.
   Proof.
     unfold eval_poly2 at 1.
-    replace (length (a ++ [an])) with (S (length a)) by (rewrite app_length;simpl;lia).
+    replace (length (a ++ cons an nil)) with (S (length a)) by (rewrite app_length;simpl;lia).
     simpl.
     rewrite last_last.
     rewrite removelast_last.
@@ -93,7 +93,7 @@ Require Import Coq.Lists.SetoidList.
   revert a.
   induction b as [| b0 b IH];intros.
   rewrite app_nil_r;unfold eval_poly2;simpl;ring.
-  replace (a ++ b0 :: b) with ((a ++ [b0]) ++ b) by (rewrite <-app_assoc;auto).
+  replace (a ++ b0 :: b) with ((a ++ cons b0 nil) ++ b) by (rewrite <-app_assoc;auto).
   rewrite IH.
   rewrite eval_poly2_app1.
   rewrite app_length.
@@ -105,7 +105,7 @@ Require Import Coq.Lists.SetoidList.
   setoid_replace (b0 * npow x (length a) + x *npow x (length a)*eval_poly2 b x) with (npow x (length a) * (b0 + x * eval_poly2 b x)) by ring.
   apply ring_eq_mult_eq;auto.
   ring.
-  replace (b0 :: b) with ([b0]++b) by auto.
+  replace (b0 :: b) with ((cons b0 nil )++b) by auto.
   rewrite IH.
   simpl.
   unfold eval_poly2.
@@ -117,7 +117,7 @@ Require Import Coq.Lists.SetoidList.
   Lemma eval_eval2 a x : eval_poly a x == eval_poly2 a x.
   Proof.
     induction a as [| a0 a]; [unfold eval_poly2;simpl;ring|].
-    replace (a0 :: a) with ([a0]++a) by auto.
+    replace (a0 :: a) with (cons a0 nil ++a) by auto.
     rewrite eval_poly2_app.
     simpl.
     rewrite IHa.
@@ -235,8 +235,7 @@ Require Import Coq.Lists.SetoidList.
    unfold mult_coefficients.
    induction (length a + length b - 1)%nat; simpl; try lia.
  Qed.
-
- Lemma convolution_coeff_rec_nil b i j : convolution_coeff_rec [] b j i == 0.
+ Lemma convolution_coeff_rec_nil b i j : convolution_coeff_rec nil b j i == 0.
  Proof.
    induction i;intros.
    simpl.
@@ -254,8 +253,7 @@ Require Import Coq.Lists.SetoidList.
    rewrite IHi.
    destruct (j - S i)%nat;ring.
  Qed.    
-
- Lemma mult_coefficients_single a0 b n : nth n (mult_coefficients [a0] b) 0 == a0 * (nth n b 0).
+ Lemma mult_coefficients_single a0 b n : nth n (mult_coefficients (cons a0 nil) b) 0 == a0 * (nth n b 0).
  Proof.
    destruct (Nat.le_gt_cases (n+1) ((length b))%nat).
    - rewrite mult_coefficients_spec; simpl;try rewrite Nat.sub_0_r;try lia.
@@ -265,7 +263,7 @@ Require Import Coq.Lists.SetoidList.
      rewrite convolution_coeff_rec_cons; try lia.
      rewrite convolution_coeff_rec_nil.
      ring.
-   - assert (length (mult_coefficients [a0] b) <= n)%nat.
+   - assert (length (mult_coefficients (cons a0 nil) b) <= n)%nat.
     {
      rewrite length_mult_coefficients.
      simpl.
@@ -327,7 +325,7 @@ Require Import Coq.Lists.SetoidList.
    rewrite !nth_overflow;auto.
  Defined.
 
- Lemma mult_coefficients_single_list a0 b : mult_coefficients [a0] b == map (fun x => a0 * x) b.
+ Lemma mult_coefficients_single_list a0 b : mult_coefficients (cons a0 nil) b == map (fun x => a0 * x) b.
  Proof.
    apply (nth_ext_A _ _ 0 0).
    - rewrite length_mult_coefficients, map_length.
@@ -342,8 +340,7 @@ Require Import Coq.Lists.SetoidList.
     rewrite map_nth.
     reflexivity.
  Qed.
-
- Lemma nil_equiv a : a == [] -> a = [].
+ Lemma nil_equiv a : a == nil -> a = nil.
  Proof.
    intros.
    apply length_zero_iff_nil.
@@ -379,7 +376,7 @@ Require Import Coq.Lists.SetoidList.
       rewrite H1;ring.
  Qed.
 
- Lemma mult_coefficients_eval_single a0 b x : eval_poly (mult_coefficients [a0] b) x == a0 * eval_poly b x.
+ Lemma mult_coefficients_eval_single a0 b x : eval_poly (mult_coefficients (cons  a0 nil) b) x == a0 * eval_poly b x.
  Proof.
    pose proof (eval_proper x). 
    rewrite H0;[|apply mult_coefficients_single_list].
@@ -388,7 +385,7 @@ Require Import Coq.Lists.SetoidList.
    ring.
  Qed.
 
- Lemma mult_coefficients_nil b n : nth n (mult_coefficients [] b) 0 == 0.
+ Lemma mult_coefficients_nil b n : nth n (mult_coefficients nil b) 0 == 0.
  Proof.
    destruct (Nat.le_gt_cases (n+1) ((length b-1))%nat).
    - rewrite mult_coefficients_spec; simpl; try lia.
@@ -399,7 +396,7 @@ Require Import Coq.Lists.SetoidList.
     simpl;lia.
  Qed.
 
- Lemma mult_coefficients_nil_list b : mult_coefficients [] b == repeat 0 (length b - 1)%nat.
+ Lemma mult_coefficients_nil_list b : mult_coefficients nil b == repeat 0 (length b - 1)%nat.
  Proof.
     apply (nth_ext_A _ _ 0 0).
     rewrite length_mult_coefficients, repeat_length.
@@ -408,7 +405,7 @@ Require Import Coq.Lists.SetoidList.
     rewrite mult_coefficients_nil, nth_repeat;auto;reflexivity.
  Qed.
 
- Lemma mult_coefficients_eval_nil b x : eval_poly (mult_coefficients [] b) x == 0.
+ Lemma mult_coefficients_eval_nil b x : eval_poly (mult_coefficients nil b) x == 0.
  Proof.
     pose proof (eval_proper x). 
     rewrite H0; try apply mult_coefficients_nil_list.
@@ -425,7 +422,7 @@ Require Import Coq.Lists.SetoidList.
    rewrite convolution_coeff_rec_nil;auto;try ring.
    simpl in H0.
    destruct n; try ring.
-   - assert (b = []) as -> by (apply length_zero_iff_nil;lia).
+   - assert (b = nil) as -> by (apply length_zero_iff_nil;lia).
      unfold convolution_coeff.
      simpl;ring.
    - rewrite convolution_coeff_cons.
@@ -510,7 +507,6 @@ Qed.
    rewrite !nth_overflow;try reflexivity;auto.
    rewrite <-(eqlistA_length H0);auto.
  Qed.
-
  Lemma mult_coefficients_cons a b a0 b0 : mult_coefficients (a0 :: a) (b0 :: b) == sum_polyf (mult_coefficients [a0] (b0 :: b)) (0 :: mult_coefficients a (b0 :: b)).
  Proof.
    apply (nth_ext_A _ _ 0 0).
@@ -1133,7 +1129,7 @@ Section MultiPolyComposition.
 
   Add Ring RRing: ComSemiRingTheory.
 
-  #[global] Instance meval_proper n t : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun p => eval_tuple (n := n) p t)).
+  #[global] Instance pmeval_proper n t : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun p => eval_tuple (n := n) p t)).
   Proof.
     intros a b H0.
     induction n; simpl;auto.
@@ -1141,6 +1137,9 @@ Section MultiPolyComposition.
     apply IHn.
     apply eval_proper;auto.
   Defined.
+  #[global] Instance pmeval_proper2 n : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (eval_tuple (n := n))).
+  Proof.
+  Admitted.
   Lemma const_to_mpoly_spec n p x0 : (eval_poly p (const_to_mpoly n x0)) == p.{x0}.
   Proof.
     induction n;simpl;reflexivity.
@@ -1152,10 +1151,10 @@ Section MultiPolyComposition.
     induction n;intros;simpl; try ring.
     destruct (destruct_tuple x) as [x0 [tl P]].
     unfold eval_mpoly at 1.
-    rewrite meval_proper; try apply sum_polyf_spec.
+    rewrite pmeval_proper; try apply sum_polyf_spec.
     rewrite IHn.
     simpl.
-    apply add_proper;rewrite meval_proper;try apply const_to_mpoly_spec;reflexivity.
+    apply add_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
   Qed.
 
   Lemma mpoly_mul_spec {n} (p1 p2 : (@mpoly R n)) x : (p1 * p2).[x] == p1.[x]*p2.[x].
@@ -1163,10 +1162,10 @@ Section MultiPolyComposition.
     revert x.
     induction n;intros;simpl; try ring.
     destruct (destruct_tuple x) as [x0 [tl P]].
-    rewrite meval_proper; try apply mult_polyf_spec.
+    rewrite pmeval_proper; try apply mult_polyf_spec.
     rewrite IHn.
     simpl.
-    apply mul_proper;rewrite meval_proper;try apply const_to_mpoly_spec;reflexivity.
+    apply mul_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
   Qed.
 
 
@@ -1222,7 +1221,7 @@ End MultiPolyComposition.
 
 
 
-Infix "\o" := mpoly_composition (at level 2).
+(* Infix "\o" := mpoly_composition (at level 2). *)
 Notation "t[ x ; y ; .. ; z ]" := (tuple_cons x (tuple_cons y .. (tuple_cons z nil_tuple) ..)).
 
 Section DifferentialRing.
@@ -1353,7 +1352,7 @@ Section DifferentialRing.
     rewrite <-mult_coefficients_convolution.
     rewrite mult_coefficients_single.
     rewrite derive_poly_nth.
-    rewrite ntimes_plus, ntimes_0, ntimes_mult.
+    rewrite ntimes_plus, ntimes_zero, ntimes_mult.
     ring.
   Qed.
 
@@ -1504,149 +1503,18 @@ Section DifferentialRing.
 
   #[global] Instance differentialRingPoly : differentialRing (A := poly).
   Proof.
-    exists (derive_poly);intros; [apply poly_sum_rule|].
+    exists (derive_poly);intros; [apply poly_sum_rule| |].
     simpl (_ + _).
     rewrite sum_poly_sym.
     apply poly_product_rule.
+    apply derive_poly_proper.
   Defined.
 End DifferentialRing.
-
-Section DifferentialAlgebra.
-
-  Context  `{KV_DA : differentialAlgebra}.
-
-  Add Ring RRing: (ComSemiRingTheory (A:=V)).
-  Add Ring KRing: (ComRingTheory (A:=K)).
-  Lemma PolyDifferentialAlgebra : differentialAlgebra (K:=K) (V:=(@poly V) ).
-  Proof.
-  exists (fun x (v : (@poly V)) => map (fun y =>  x [*] y) v).
-  - intros.
-    apply (nth_ext_A _ _ 0 0).
-    rewrite map_length;auto.
-    intros.
-    rewrite nth_proper;[|symmetry;apply smult1].
-    rewrite map_nth.
-    rewrite !smult1;reflexivity.
- - intros a b  H1 c d H2.
-   apply (nth_ext_A _ _ 0 0).
-   rewrite !map_length.
-   apply (@eqlistA_length V SetoidClass.equiv).
-   apply H2.
-   intros.
-   rewrite (nth_indep _ 0 (a [*] 0));auto.
-   rewrite (nth_indep _ 0 (b [*] 0));[|rewrite !map_length in *].
-   rewrite !map_nth.
-   rewrite H1.
-   rewrite nth_proper_list; try apply H2.
-   reflexivity.
-   replace (length d) with (length c); auto.
-   apply (@eqlistA_length V SetoidClass.equiv).
-   apply H2.
- - intros.
-    apply (nth_ext_A _ _ 0 0).
-    simpl;rewrite !length_sum_coefficients,!map_length,length_sum_coefficients;auto.
-    intros.
-    rewrite (nth_indep _ 0 (a [*] 0));auto.
-    simpl;rewrite !map_nth, !sum_coefficient_nth;simpl.
-    rewrite (nth_proper n (map _ u)); try (symmetry;apply (smult_zero a)).
-    rewrite (nth_proper n (map _ v)); try (symmetry;apply (smult_zero a)).
-    rewrite !map_nth.
-    rewrite smult_plus_distr.
-    ring.
-  - intros.
-    apply (nth_ext_A _ _ 0 0).
-    simpl;rewrite !length_sum_coefficients,!map_length;lia.
-    intros.
-    simpl;rewrite sum_coefficient_nth.
-    rewrite (nth_proper n); try (symmetry;apply (smult_zero (a+b))).
-    rewrite (nth_proper n (map (fun y => a [*] _) _)); try (symmetry;apply (smult_zero a)).
-    rewrite (nth_proper n (map (fun y => b [*] _) _)); try (symmetry;apply (smult_zero b)).
-    rewrite !map_nth.
-    apply splus_mult_dist.
-  - intros.
-    rewrite map_map.
-    apply (nth_ext_A _ _ 0 0).
-    rewrite !map_length;auto.
-    intros.
-    rewrite (nth_proper n (map (fun y => (a * b) [*] _) _)); try (symmetry;apply (smult_zero (a * b))).
-    rewrite !map_nth.
-    pose proof (map_nth (fun x => a [*] (b [*] x)) v 0 n).
-    simpl in H2.
-    rewrite (nth_indep _ _ ((fun x => a [*] (b [*] x)) 0));auto.
-    rewrite H2.
-    rewrite smult_mult_compat.
-    ring.
- Defined.
-
- Lemma poly_antideriv_exists (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) (p : (@poly V)) :  {P : (@poly V) | length P = (length p + 1)%nat /\ forall n,  nth (S n) P 0 == (inv (char0 n)) [*] (nth n p 0)}.
- Proof.
-   induction p using poly_rev_ind.
-   - exists [0].
-     split;[simpl;lia|].
-     intros.
-     rewrite !nth_overflow; simpl;try lia.
-     rewrite smult_zero;reflexivity.
-  - destruct IHp as [P0 [L H1]].
-    exists (P0 ++ [(inv (char0 (length p))) [*] x]).
-    split;[rewrite !app_length;simpl;lia|].
-    intros.
-    destruct (Nat.lt_total (S n) (length P0)) as [N | [N | N]].
-    rewrite !app_nth1; auto;try lia;apply H2.
-    rewrite !app_nth2;try lia.
-    rewrite N at 1.
-    replace (length P0 - length P0)%nat with 0%nat by lia.
-    replace (length p) with n by lia.
-    replace (n - n)%nat with 0%nat by lia.
-    simpl;reflexivity.
-    rewrite !nth_overflow;try (rewrite app_length;simpl;lia).
-    rewrite smult_zero;reflexivity.
- Defined.
-
- Definition antiderive_poly (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) p := proj1_sig (poly_antideriv_exists char0 p).
-
-  Lemma ntimes_smult n (x : K) y : ntimes n (x [*] y) == x [*] (ntimes n y).
-  Proof.
-    induction n;simpl.
-    rewrite smult_zero;reflexivity.
-    rewrite IHn.
-    rewrite smult_plus_distr;reflexivity.
-  Qed.
-
-  Lemma ntimes_VK n y : ntimes (S n) y == (ntimes (S n) (1 : K)) [*] y.
-  Proof.
-    induction n;simpl.
-    rewrite !add0.
-    rewrite smult1;reflexivity.
-    rewrite !splus_mult_dist.
-    rewrite IHn;simpl.
-    rewrite !splus_mult_dist.
-    rewrite !smult1.
-    reflexivity.
-  Defined.
-
- Lemma antiderive_derive (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K) )))) p : derive_poly (antiderive_poly char0 p) == p.
- Proof.
-   unfold derive_poly, antiderive_poly.
-   destruct (poly_antideriv_exists char0 p) as [P [LP HP]].
-   simpl.
-   destruct (poly_deriv_exists P) as [P' [LP' HP']].
-   simpl.
-   apply (nth_ext_A _ _ 0 0).
-   simpl;rewrite LP', LP;lia.
-   intros.
-   rewrite HP', HP.
-   rewrite ntimes_smult.
-   rewrite ntimes_VK.
-   rewrite smult_mult_compat.
-   rewrite mulI.
-   rewrite smult1;reflexivity.
- Qed.
-End DifferentialAlgebra.
 
 Section PartialDiffAlgebra.
   Context `{A_semiRing : comSemiRing}.
   Add Ring ARing: ComSemiRingTheory.
-  Definition poly_pdiff {n} (d : nat) (p : (@mpoly A n )) : (@mpoly A n).  
+  Definition poly_pdiff {n} (d : nat) (p : (@mpoly A n )) : (@mpoly A n).
   Proof.
     revert dependent n.
     induction d;intros.
@@ -1671,7 +1539,12 @@ Section PartialDiffAlgebra.
     rewrite H0;reflexivity.
     apply (nth_ext_A _ _ 0 0).
     rewrite !map_length.
-    Search (_ == _).
+ Admitted.
+  Lemma poly_pdiff_mult m : forall (p : (mpoly m)) q n, poly_pdiff n (p * q) == q * poly_pdiff n p + p * poly_pdiff n q.
+  Admitted.                                                                    
+  Lemma poly_pdiff_switch d : forall (p : (mpoly d)) m n, poly_pdiff n (poly_pdiff m p) == poly_pdiff m (poly_pdiff n p).
+  Admitted.                                                                    
+
   #[global] Instance mpoly_pdiffring n : PartialDifferentialRing (A := (mpoly n)).
   Proof.
     exists poly_pdiff.
@@ -1695,16 +1568,198 @@ Section PartialDiffAlgebra.
       rewrite !H1.
       rewrite sum_coefficient_nth.
       apply IHd.
-      admit.
+  - intros; apply poly_pdiff_mult.
+  - intros; apply poly_pdiff_switch.
+  - apply mpoly_pdiff_proper.
+Defined.
 
-      admit.
+  Definition poly_comp1 {m} (n : nat) : @mpoly A m .
+  Proof.
+    revert m.
+    induction n;intros.
+    destruct m.
+    apply 1.
+    apply [0;1].
+    destruct m.
+    apply 1.
+    apply [IHn m].
+ Defined.
+
+  Lemma poly_comp1_composition {m n} (f : @tuple n (mpoly (S m))) (i : nat) : mpoly_composition (poly_comp1 i) f == tuple_nth i f 0.
+  Admitted.
+  Lemma poly_composition_plus_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x+y) z == (mpoly_composition x z) + (mpoly_composition y z).
+  Admitted.
+  Lemma poly_composition_mult_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x*y) z == (mpoly_composition x z) * (mpoly_composition y z).
+  Admitted.
+
+  Definition mpoly_comp'  {n m} := mpoly_composition (n := n) (m := (S m)).
+
+  #[global] Instance mpoly_composition_proper {n m}: (Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (mpoly_composition (n := n) (m := m))).
+  Admitted.
+
+    Lemma mpoly_pdiff_chain : forall {m n d} (x : mpoly m) (y : @tuple m (mpoly (S n))), pdiff d (mpoly_composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) m).
+    Admitted.
+
+  #[global] Instance mpoly_comp_diff_algebra : CompositionalDiffAlgebra (A := (@mpoly A) ).
+  Proof.
+  exists @mpoly_comp' @poly_comp1;unfold mpoly_comp'.
+   - intros;  apply mpoly_composition_proper.
+   - intros; apply poly_comp1_composition.
+   - intros;apply poly_composition_plus_comp.
+   - intros;apply poly_composition_mult_comp.
+   - intros;apply mpoly_pdiff_chain.
+  Defined. 
+End PartialDiffAlgebra.
+
+Section Evaluation.
+  Context `{A_semiRing : comSemiRing}.
+  Add Ring ARing: ComSemiRingTheory.
+  #[global] Instance poly_eval : HasEvaluation (A := mpoly).
+  Proof.
+    exists (fun n f x => True) (fun n f x H => eval_tuple (R := A) f x).
+    - intros n a b Heq c d Heq'.
+      reflexivity.
    - intros.
-     admit.
-  - induction d1;intros; destruct n;simpl.
-    rewrite poly_pdiff0;reflexivity.
-    admit.
-    admit.
-    admit.
+     rewrite H0, H1.
+     reflexivity.
+  Defined.
+
+  #[global] Instance poly_function : AbstractFunction (A := mpoly).
+  Proof.
+    constructor;intros;simpl;try reflexivity.
  Admitted.
 
-End PartialDiffAlgebra.
+End Evaluation.
+
+(* Section DifferentialAlgebra. *)
+
+(*   Context  `{KV_DA : differentialAlgebra}. *)
+
+(*   Add Ring RRing: (ComSemiRingTheory (A:=V)). *)
+(*   Add Ring KRing: (ComRingTheory (A:=K)). *)
+(*   Lemma PolyDifferentialAlgebra : differentialAlgebra (K:=K) (V:=(@poly V) ). *)
+(*   Proof. *)
+(*   exists (fun x (v : (@poly V)) => map (fun y =>  x [*] y) v). *)
+(*   - intros. *)
+(*     apply (nth_ext_A _ _ 0 0). *)
+(*     rewrite map_length;auto. *)
+(*     intros. *)
+(*     rewrite nth_proper;[|symmetry;apply smult1]. *)
+(*     rewrite map_nth. *)
+(*     rewrite !smult1;reflexivity. *)
+(*  - intros a b  H1 c d H2. *)
+(*    apply (nth_ext_A _ _ 0 0). *)
+(*    rewrite !map_length. *)
+(*    apply (@eqlistA_length V SetoidClass.equiv). *)
+(*    apply H2. *)
+(*    intros. *)
+(*    rewrite (nth_indep _ 0 (a [*] 0));auto. *)
+(*    rewrite (nth_indep _ 0 (b [*] 0));[|rewrite !map_length in *]. *)
+(*    rewrite !map_nth. *)
+(*    rewrite H1. *)
+(*    rewrite nth_proper_list; try apply H2. *)
+(*    reflexivity. *)
+(*    replace (length d) with (length c); auto. *)
+(*    apply (@eqlistA_length V SetoidClass.equiv). *)
+(*    apply H2. *)
+(*  - intros. *)
+(*     apply (nth_ext_A _ _ 0 0). *)
+(*     simpl;rewrite !length_sum_coefficients,!map_length,length_sum_coefficients;auto. *)
+(*     intros. *)
+(*     rewrite (nth_indep _ 0 (a [*] 0));auto. *)
+(*     simpl;rewrite !map_nth, !sum_coefficient_nth;simpl. *)
+(*     rewrite (nth_proper n (map _ u)); try (symmetry;apply (smult_zero a)). *)
+(*     rewrite (nth_proper n (map _ v)); try (symmetry;apply (smult_zero a)). *)
+(*     rewrite !map_nth. *)
+(*     rewrite smult_plus_distr. *)
+(*     ring. *)
+(*   - intros. *)
+(*     apply (nth_ext_A _ _ 0 0). *)
+(*     simpl;rewrite !length_sum_coefficients,!map_length;lia. *)
+(*     intros. *)
+(*     simpl;rewrite sum_coefficient_nth. *)
+(*     rewrite (nth_proper n); try (symmetry;apply (smult_zero (a+b))). *)
+(*     rewrite (nth_proper n (map (fun y => a [*] _) _)); try (symmetry;apply (smult_zero a)). *)
+(*     rewrite (nth_proper n (map (fun y => b [*] _) _)); try (symmetry;apply (smult_zero b)). *)
+(*     rewrite !map_nth. *)
+(*     apply splus_mult_dist. *)
+(*   - intros. *)
+(*     rewrite map_map. *)
+(*     apply (nth_ext_A _ _ 0 0). *)
+(*     rewrite !map_length;auto. *)
+(*     intros. *)
+(*     rewrite (nth_proper n (map (fun y => (a * b) [*] _) _)); try (symmetry;apply (smult_zero (a * b))). *)
+(*     rewrite !map_nth. *)
+(*     pose proof (map_nth (fun x => a [*] (b [*] x)) v 0 n). *)
+(*     simpl in H2. *)
+(*     rewrite (nth_indep _ _ ((fun x => a [*] (b [*] x)) 0));auto. *)
+(*     rewrite H2. *)
+(*     rewrite smult_mult_compat. *)
+(*     ring. *)
+(*  Defined. *)
+
+(*  Lemma poly_antideriv_exists (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) (p : (@poly V)) :  {P : (@poly V) | length P = (length p + 1)%nat /\ forall n,  nth (S n) P 0 == (inv (char0 n)) [*] (nth n p 0)}. *)
+(*  Proof. *)
+(*    induction p using poly_rev_ind. *)
+(*    - exists [0]. *)
+(*      split;[simpl;lia|]. *)
+(*      intros. *)
+(*      rewrite !nth_overflow; simpl;try lia. *)
+(*      rewrite smult_zero;reflexivity. *)
+(*   - destruct IHp as [P0 [L H1]]. *)
+(*     exists (P0 ++ [(inv (char0 (length p))) [*] x]). *)
+(*     split;[rewrite !app_length;simpl;lia|]. *)
+(*     intros. *)
+(*     destruct (Nat.lt_total (S n) (length P0)) as [N | [N | N]]. *)
+(*     rewrite !app_nth1; auto;try lia;apply H2. *)
+(*     rewrite !app_nth2;try lia. *)
+(*     rewrite N at 1. *)
+(*     replace (length P0 - length P0)%nat with 0%nat by lia. *)
+(*     replace (length p) with n by lia. *)
+(*     replace (n - n)%nat with 0%nat by lia. *)
+(*     simpl;reflexivity. *)
+(*     rewrite !nth_overflow;try (rewrite app_length;simpl;lia). *)
+(*     rewrite smult_zero;reflexivity. *)
+(*  Defined. *)
+
+(*  Definition antiderive_poly (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) p := proj1_sig (poly_antideriv_exists char0 p). *)
+
+(*   Lemma ntimes_smult n (x : K) y : ntimes n (x [*] y) == x [*] (ntimes n y). *)
+(*   Proof. *)
+(*     induction n;simpl. *)
+(*     rewrite smult_zero;reflexivity. *)
+(*     rewrite IHn. *)
+(*     rewrite smult_plus_distr;reflexivity. *)
+(*   Qed. *)
+
+(*   Lemma ntimes_VK n y : ntimes (S n) y == (ntimes (S n) (1 : K)) [*] y. *)
+(*   Proof. *)
+(*     induction n;simpl. *)
+(*     rewrite !add0. *)
+(*     rewrite smult1;reflexivity. *)
+(*     rewrite !splus_mult_dist. *)
+(*     rewrite IHn;simpl. *)
+(*     rewrite !splus_mult_dist. *)
+(*     rewrite !smult1. *)
+(*     reflexivity. *)
+(*   Defined. *)
+
+(*  Lemma antiderive_derive (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K) )))) p : derive_poly (antiderive_poly char0 p) == p. *)
+(*  Proof. *)
+(*    unfold derive_poly, antiderive_poly. *)
+(*    destruct (poly_antideriv_exists char0 p) as [P [LP HP]]. *)
+(*    simpl. *)
+(*    destruct (poly_deriv_exists P) as [P' [LP' HP']]. *)
+(*    simpl. *)
+(*    apply (nth_ext_A _ _ 0 0). *)
+(*    simpl;rewrite LP', LP;lia. *)
+(*    intros. *)
+(*    rewrite HP', HP. *)
+(*    rewrite ntimes_smult. *)
+(*    rewrite ntimes_VK. *)
+(*    rewrite smult_mult_compat. *)
+(*    rewrite mulI. *)
+(*    rewrite smult1;reflexivity. *)
+(*  Qed. *)
+(* End DifferentialAlgebra. *)
+

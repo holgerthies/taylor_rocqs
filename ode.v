@@ -3,7 +3,7 @@ Require Import List.
 Require Import ZArith.
 Import ListNotations.
 Require Import algebra.
-
+Require Import polynomial.
 Require Import powerseries.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
@@ -12,6 +12,7 @@ Require Import Classical.
 
 
 
+ Open Scope diff_scope.
 
  Lemma tuple_nth_ext {n A} (x y : @tuple n A) d : (forall n, tuple_nth n x d = tuple_nth n y d) -> x = y.
  Proof.
@@ -113,7 +114,6 @@ Section PIVP.
      destruct (Hp' i lt').
      simpl; rewrite e0;auto.
    Qed.
-
    Lemma tuple_nth_nth_derivative_S {d} n m (t : tuple d) x : (n < d)%nat -> tuple_nth n (nth_derivative t (S m)) x = pdiff 0 (tuple_nth n (nth_derivative t m) x).
    Proof.
      intros.
@@ -178,22 +178,40 @@ Section PIVP.
 
 End PIVP.
 
+Section PolynomialModel.
+  Context `{comSemiRing}.
+  Record AbstractPolynomialModel {d} := {
+      p : @poly (@tuple d A);
+      r : A;
+      err : A
+    }.
+End PolynomialModel.
 
-Section TaylorSequence.
-  Context `{AbstractFunction }.
-  Context `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}. 
-  Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}.
-(* {domain : @tuple d (@cinterval (A 0))}  *)
-  Context {d : nat} (f : A[d;d])  (y0 : A[d;0%nat]) (dom_f : y0 \in_dom f).
+Section invfactorial.
+  Context `{comSemiRing}.
+  Class Sn_invertible := {
+      inv_Sn  (n : nat) : A; 
+      inv_Sn_spec : forall n, (ntimes (S n) 1) * inv_Sn n == 1
+  }.
 
-  Definition inv_factorial (n : nat) : (A 0).
+  Definition inv_factorial `{Sn_invertible} (n : nat) : A.
   Proof.
     induction n.
     apply 1.
-    apply (inv (char0 n) * IHn).
+    apply  (inv_Sn n  * IHn).
   Defined.
-
+End invfactorial.
   Notation "![ n ]" := (inv_factorial n).
+Section TaylorSequence.
+
+  Open Scope fun_scope.
+  Context `{AbstractFunction }.
+  Check H1.
+  Check @Sn_invertible.
+  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+  Context {d : nat} (f : A{d;d})  (y0 : A{d;0%nat}) (dom_f : y0 \in_dom f).
+
+
 
   Lemma dom_D : forall n, y0 \in_dom (IVP_D f n).
   Proof.
@@ -209,9 +227,9 @@ Section TaylorSequence.
     apply IHn;lia.
   Qed.
 
-  Definition ivp_solution_taylor (n : nat) : A[d;0%nat] := ![n] ** ([IVP_D f n](y0; (dom_D n))).
+  Definition ivp_solution_taylor (n : nat) : A{d;0%nat} := ![n] ** ((IVP_D f n) @ (y0; (dom_D n))).
 
-  Definition is_IVP_solution y (Hy : 0 \in_dom y) := is_IVP_solution_series f y  /\ [y](0;Hy) == y0.
+  Definition is_IVP_solution y (Hy : 0 \in_dom y) := is_IVP_solution_series f y  /\ y @ (0;Hy) == y0.
    
   Lemma  is_IVP_solution_deriv_dom {y Hy}: is_IVP_solution y Hy -> forall n, 0 \in_dom (nth_derivative y n). 
   Proof.
@@ -223,10 +241,30 @@ Section TaylorSequence.
     apply IHn;auto.
   Qed.
 
-  Lemma ivp_solution_taylor_spec n y Hy (S :  is_IVP_solution y Hy) : ivp_solution_taylor n == ![n] ** ([nth_derivative y n](0;(is_IVP_solution_deriv_dom S n))).
+
+  Lemma ivp_solution_taylor0 : ivp_solution_taylor 0 == y0.
+  Proof.
+    unfold ivp_solution_taylor, IVP_D.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    rewrite scalar_mult_spec.
+    rewrite mulC, mul1.
+    rewrite (evalt_spec _ _ H6).
+    assert (in_domain (IVP_Di f 0 i) y0).
+    {
+      pose proof (dom_D 0 i H6).
+      rewrite IVP_D_nth in H7;auto.
+    }
+    rewrite (algebra.eval_proper  _ (IVP_Di f 0 i) y0 y0 _ H7);try reflexivity.
+    simpl;rewrite eval_id;auto;reflexivity.
+    destruct (seq_to_tuple _ _).
+    rewrite e;auto;reflexivity.
+  Qed.
+
+  Lemma ivp_solution_taylor_spec n y Hy (S :  is_IVP_solution y Hy) : ivp_solution_taylor n == ![n] ** ((nth_derivative y n) @ (0;(is_IVP_solution_deriv_dom S n))).
   Proof.
     unfold ivp_solution_taylor.
-    setoid_replace (([IVP_D f n](y0; dom_D n))) with ([nth_derivative y n](0; is_IVP_solution_deriv_dom S n));try reflexivity.
+    setoid_replace (((IVP_D f n) @ (y0; dom_D n))) with ((nth_derivative y n) @ (0; is_IVP_solution_deriv_dom S n));try reflexivity.
     destruct S.
     pose proof (IVP_D_spec _ n _ i).
     assert (0 \in_dom (IVP_D f n) \o\ y).
@@ -234,13 +272,99 @@ Section TaylorSequence.
       apply (dom_composition _ y 0 Hy _ e).
       apply dom_D.
     }
-    rewrite (meval_proper _ _ _ _ (is_IVP_solution_deriv_dom (conj i e) n) H8 H7);try reflexivity.
-    assert (([y](0; Hy)) \in_dom (IVP_D f n)).
+    rewrite (meval_proper _ _ _ _ (is_IVP_solution_deriv_dom (conj i e) n) H7 H6);try reflexivity.
+    assert ((y @ (0; Hy)) \in_dom (IVP_D f n)).
     {
       rewrite e.
       apply dom_D.
     }
-    rewrite (eval_composition_compat  _ _ _ Hy H9).
+    rewrite (eval_composition_compat  _ _ _ Hy H8).
     apply meval_proper;try rewrite e;reflexivity.
   Qed.
+
+  Definition ivp_taylor_poly (n : nat)  : @poly A{d;0%nat}.
+  Proof.
+    induction n.
+    apply [y0].
+    apply (IHn ++ [ivp_solution_taylor (S n)]).
+  Defined.
+
+  Lemma ivp_taylor_poly_length : forall n, length (ivp_taylor_poly n) = (S n).
+  Proof.
+    intros.
+    induction n.
+    simpl;auto.
+    simpl.
+    rewrite app_length.
+    rewrite IHn;simpl.
+    lia.
+  Qed.
+
+  Lemma ivp_taylor_poly_spec : forall n i, (i <= n)%nat -> nth i (ivp_taylor_poly n) 0 == ivp_solution_taylor i.
+  Proof.
+    intros.
+    induction n.
+    - replace i with 0%nat by lia.
+      rewrite ivp_solution_taylor0.
+      simpl nth.
+      reflexivity.
+   - assert (i < S n \/ i = S n) by lia.
+     destruct H7.
+     + simpl nth.
+       rewrite app_nth1; [|rewrite ivp_taylor_poly_length;lia].
+       rewrite IHn;try lia;reflexivity.
+     + rewrite H7.
+       simpl nth.
+       rewrite app_nth2; rewrite ivp_taylor_poly_length;try lia.
+       rewrite Nat.sub_diag;simpl nth;reflexivity.
+   Qed.
 End TaylorSequence.
+
+  (* Notation "![ n ]" := (inv_factorial n). *)
+  
+  
+(* Section PolynomialModel. *)
+(*   Open Scope fun_scope. *)
+(*   Context `{AbstractFunction }. *)
+(*   Context `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}. *)
+(*   Context `{normed : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}. *)
+(*   Notation "| x |" := (norm x) (at level 10). *)
+(*   Notation "y \_ i" := (tuple_nth i y 0) (at level 1). *)
+
+(*   Definition in_box {d} (c : A{d;0%nat})  r   (x : A{d;0%nat}) := forall i, | x\_i - c\_i | <= r. *)
+
+(*   Notation "x \in B( c , r )" := (in_box c r x) (at level 4). *)
+(*   Context {d : nat} (f : A{d;d})  (y0 : A{d;0%nat}) (r : A 0) (dom_f :forall x,  x \in B(y0,r) -> x \in_dom f). *)
+(*    Context (r_nonneg : 0 <= r). *)
+(*    Lemma int_dom_D n  x (Hx : x \in B(y0, r)) : x \in_dom (IVP_D f n). *)
+(*   Proof. *)
+(*     apply dom_D. *)
+(*     apply dom_f. *)
+(*     exact Hx. *)
+(*   Qed. *)
+
+(*   Lemma y0_in_dom : y0 \in_dom f. *)
+(*   Proof. *)
+(*     apply dom_f. *)
+(*     intros i. *)
+(*     setoid_replace (y0\_i - y0\_i) with (0 : A 0). *)
+(*     rewrite (proj2 (norm_zero 0));auto;reflexivity. *)
+(*     unfold minus. *)
+(*     rewrite addI;reflexivity. *)
+(*   Qed. *)
+
+(*   Context (bound : nat -> (A 0)) (bound_pos : forall n, 0 <= bound n /\ not (bound n == 0)) (bound_spec : forall n x (Hx : x \in B(y0, r)),  ![n] ** ((IVP_D f n) @ (x;(int_dom_D n x Hx)))  \in B(0,(bound n))). *)
+
+(*   (* Definition IVP_solution_approx  (n : nat): AbstractPolynomialModel (A := A 0) (d:=d). *) *)
+(*   (* Proof. *) *)
+(*   (*   constructor. *) *)
+(*   (*   apply (ivp_taylor_poly f y0 y0_in_dom n). *) *)
+(*   (*   destruct (bound_pos 1). *) *)
+(*   (*   apply (r *  inv H8). *) *)
+(*   (*   apply  *) *)
+(*   (* Definition T_y (i n : nat) H := ![n] * ((nth_derivative y n) @ (0;H)\_i). *) *)
+
+(*   (* Definition taylor_polynomial  *) *)
+(*   (* Context (y_dom : forall x, x \in B(0, r) -> x \in_dom y). *) *)
+(*   (* Context (taylor_theorem : forall n t i x (domx : x \in B(0,r)), | [y](t;Dy)\_i - ![n]* [n_derivative y n](0;y_dom domx) | <= ). *) *)
+(* End PolynomialModel. *)

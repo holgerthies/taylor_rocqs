@@ -2,6 +2,6 @@
 algebra.v
 powerseries.v
 polynomial.v
-polyapprox.v
+ode.v
 symbolic.v
 intervalpoly.v

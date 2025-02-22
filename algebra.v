@@ -94,7 +94,7 @@ Proof.
    exists (exist _ x H).
    apply ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
    reflexivity.
- Qed.
+Defined.
 
   Definition seq_to_tuple  {T : Type} {def : T} (f : nat -> T) d : {t : @tuple d T | forall i, i < d -> tuple_nth i t def = (f i)}. 
   Proof.
@@ -108,7 +108,7 @@ Proof.
     rewrite tuple_nth_cons_hd;simpl;auto.
      rewrite tuple_nth_cons_tl.
      rewrite e;auto;lia.
-   Qed.
+   Defined.
   
  Lemma eqlistA_nth_ext {A} {A_setoid : Setoid A} l1 l2 d1 d2 : (eqlistA SetoidClass.equiv l1 l2) <-> (length l1 = length l2 /\ forall n, n < length l1 -> nth n l1 d1 == nth n l2 d2).
  Proof.
@@ -292,6 +292,7 @@ Section Norm.
 
 
 End Norm.
+Notation "|| x ||" := (norm x) (at level 2).
 Section DifferentialAlgebra.
   Context {K V : Type} .
   
@@ -306,7 +307,7 @@ Section DifferentialAlgebra.
 
 End DifferentialAlgebra.
 
-Infix "[*]" := smult (at level 2, left associativity).
+Local Infix "[*]" := smult (at level 2, left associativity).
 
 
   Lemma ComSemiRingTheory `{A_comSemiRing : comSemiRing } : semi_ring_theory 0 1 add mul equiv.
@@ -500,7 +501,7 @@ Proof.
   setoid_replace (ntimes (S n) 1) with (0 + ntimes (S n) 1) at 1 by ring.
   apply le_plus_compat.
   apply le_0_1.
-Qed.
+Defined.
 End OrderTheory.
 
 Section Vectors.
@@ -623,7 +624,7 @@ Class CompositionalDiffAlgebra := {
 
 End PartialDiffAlgebra.
 
-Notation "D[ i ] f" := (pdiff i f) (at level 50, left associativity).
+Notation "D[ i ] f" := (pdiff i f) (at level 50, left associativity) : diff_scope.
 
 Infix "\o" := composition (at level 2).
 
@@ -708,7 +709,7 @@ Section Evaluation.
 End Evaluation.
 Section CInfinity.
 
-  Context `{CompositionalDiffAlgebra} `{HasEvaluation (A := A) (H := H)} `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}.
+  Context `{CompositionalDiffAlgebra} `{HasEvaluation (A := A) (H := H)}. 
   Definition in_domaint  {m n :nat} (f : @tuple m (A n)) (x : @tuple n (A 0)) := forall i, (i < m) -> in_domain (tuple_nth i f 0) x.
 
   Lemma in_domaint_cons {m n :nat} (hd : A n) (tl : @tuple m (A n)) (x : @tuple n (A 0)) : in_domaint (tuple_cons hd tl) x <-> (in_domain hd x) /\ (in_domaint tl x).
@@ -717,18 +718,18 @@ Section CInfinity.
     - intros.
       rewrite <-(tuple_nth_cons_hd hd tl 0).
       split.
-      apply H6;lia.
+      apply H5;lia.
 
       unfold in_domaint.
       intros.
       rewrite <-(tuple_nth_cons_tl i hd tl 0).
-      apply H6;lia.
+      apply H5;lia.
    - intros [].
      unfold in_domaint;intros.
      destruct i.
      rewrite tuple_nth_cons_hd;auto.
      rewrite tuple_nth_cons_tl;auto.
-     apply H7;lia.
+     apply H6;lia.
   Qed.
 
   Lemma in_domaint_cons_impl {m n :nat} (hd : A n) (tl : @tuple m (A n)) f (x : @tuple n (A 0)) : f = tuple_cons hd tl -> in_domaint f x -> (in_domain hd x) /\ (in_domaint tl x).
@@ -742,9 +743,9 @@ Section CInfinity.
     apply (tuple_cons (eval _ _ (proj1 (in_domaint_cons_impl _ _ _ _ P' P))) (IHm _ (proj2 (in_domaint_cons_impl _ _ _ _ P' P)))).
   Defined.
 
-  Notation "[ f ] ( x ; p )" := (evalt f x p) (at level 10).  
-  Notation "x \in_dom f" := (in_domaint f x) (at level 10).
-  Notation "A [ n ; m ]" := (@tuple n (A m)) (at level 10).
+  Local Notation "[ f ] ( x ; p )" := (evalt f x p) (at level 10).
+  Local Notation "x \in_dom f" := (in_domaint f x) (at level 10).
+  Local Notation "A [ n ; m ]" := (@tuple n (A m)) (at level 10).
 
   Lemma evalt_dom_proof_irrelev m n (f : @tuple m (A n)) x P1 P2 : [f](x;P1) == [f](x;P2).
   Proof.
@@ -805,15 +806,16 @@ Section CInfinity.
       rewrite tuple_nth_cons_hd;reflexivity.
     - rewrite !tuple_nth_cons_tl.
       assert (i < m) by lia.
-      rewrite (IHm _ _ _ H6).
+      rewrite (IHm _ _ _ H5).
       apply eval_proper; try reflexivity.
       rewrite P'.
       rewrite tuple_nth_cons_tl;reflexivity.
     Qed.
   (* Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))} *)
-
+ Open Scope diff_scope.
   Class AbstractFunction := {
       dom_id {m} (n : nat): forall x, in_domain (comp1 (m :=m) n) x; 
+      eval_id {m} n : forall x H, (n < m) -> (eval (comp1 (m := m) n) x H) == tuple_nth n x 0;
       dom_plus {n} (f g : A n) x : in_domain f x -> in_domain g x -> in_domain (f+g) x;
       dom_mult {n} (f g : A n) x : in_domain f x -> in_domain g x -> in_domain (f*g) x;
       dom_diff {n} (f : A n) x i : in_domain f x -> in_domain (D[i] f) x;
@@ -822,11 +824,13 @@ Section CInfinity.
     }.
 
 End CInfinity.
-  Notation "[ f ] ( x ; p )" := (evalt f x p) (at level 10).  
-  Notation "x \in_dom f" := (in_domaint f x) (at level 10).
-  Notation "A [ n ; m ]" := (@tuple n (A m)) (at level 10).
+  Declare Scope fun_scope.
+  Notation "x \in_dom f" := (in_domaint f x) (at level 5) : fun_scope.
+  Notation " f @ ( x ; p )" := (evalt f x p) (at level 5):fun_scope.  
+  Notation "A { n ; m }" := (@tuple n (A m)) (at level 5) : fun_scope.
 Section AbstractFunctionTheory.
   Context `{AbstractFunction}.
+  Local Open Scope fun_scope.
   Lemma dom_sum {n} (fs : nat -> A n) x d : (forall i, (i <= d)%nat -> in_domain (fs i) x) -> in_domain (sum fs (S d)) x. 
   Proof.
     intros.
@@ -846,7 +850,7 @@ Section AbstractFunctionTheory.
     rewrite <-eq0 ,<-eq1;apply H6;auto.
     rewrite eq0 ,eq1;apply H6;auto.
    Defined.
-    Lemma meval_proper {n m} : forall (f1 : A[n;m])  f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> ([f1](x1;P1)) == [f2](x2;P2).  
+    Lemma meval_proper {n m} : forall (f1 : A{n;m})  f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> (f1 @ (x1;P1)) == f2 @ (x2;P2).  
     Proof.
       intros.
       apply (tuple_nth_ext' _ _ 0 0).
@@ -855,4 +859,16 @@ Section AbstractFunctionTheory.
       apply eval_proper;auto.
       rewrite H6;reflexivity.
    Qed.
+
+      
 End AbstractFunctionTheory.
+
+Section Reals.
+
+  Context `{R : Type}.
+  Context `{R_order : TotallyOrderedField R}.
+  (* Definition is_fast_cauchy (f : nat -> R) := forall n m, norm (f n - f m) <=   *)
+  (* Class RealType { *)
+  (*     forall n,  *)
+  (*   } *)
+End Reals.
