@@ -316,8 +316,40 @@ Section TaylorSequence.
        rewrite app_nth2; rewrite ivp_taylor_poly_length;try lia.
        rewrite Nat.sub_diag;simpl nth;reflexivity.
    Qed.
+  
 End TaylorSequence.
 
+Section Bounds.
+  Open Scope fun_scope.
+  Context `{AbstractFunction }.
+  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+  Context {d : nat} (f : A{d;d})  (y0 : A{d;0%nat}) (dom_f : y0 \in_dom f).
+  Context `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}.
+  Context `{normed : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}.
+  Add Ring TRing: (ComRingTheory (A := (A {d;0%nat}))).
+  Lemma ivp_poly_diff n (t : A {d;0%nat}) : eval_poly (ivp_taylor_poly f y0 dom_f (S n)) t  == eval_poly (ivp_taylor_poly f y0 dom_f n) t + ivp_solution_taylor f y0 dom_f (S n) * npow t (S n).
+  Proof.
+    induction n.
+    simpl eval_poly.
+    simpl npow.
+    ring_simplify;reflexivity.
+    rewrite eval_eval2 at 1.
+    simpl eval_poly2 at 1.
+    rewrite eval_poly2_app1.
+    rewrite app_length.
+    rewrite ivp_taylor_poly_length.
+    simpl length.
+    ring_simplify.
+    replace (S n + 1)%nat with (S (S n)) by lia.
+    apply ring_eq_plus_eq; [reflexivity|].
+    rewrite eval_poly2_app1.
+    rewrite <-eval_eval2.
+    rewrite IHn.
+    ring_simplify.
+    rewrite ivp_taylor_poly_length.
+    reflexivity.
+  Qed.
+End Bounds.
 Section IVP_Record.
   Open Scope fun_scope.
   Context `{AbstractFunction }.
@@ -331,6 +363,7 @@ Section IVP_Record.
   Definition IVP_taylor {d} (ivp : @IVP d) := ivp_taylor_poly ivp.(f) ivp.(y0) ivp.(in_dom). 
 
 End IVP_Record.
+
   (* Notation "![ n ]" := (inv_factorial n). *)
   
   

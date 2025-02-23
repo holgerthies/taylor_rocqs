@@ -53,13 +53,6 @@ Defined.
    intros [x P] [y P'] [z P''];simpl;apply eqlistA_equiv;apply setoid_equiv.
  Defined.
 
-Definition tuple_map {n A B} (f : A -> B) (x : @tuple n A) : @tuple n B.
-Proof.
-  induction n.
-  apply nil_tuple.
-  destruct (destruct_tuple x) as [hd [tl P]].
-  apply (tuple_cons (f hd) (IHn tl)).
- Defined.
 
  Lemma tuple_nth_cons_hd {T m} (hd : T) (t : (@tuple m T)) d : (tuple_nth 0 (tuple_cons hd t) d) = hd.
  Proof.
@@ -96,6 +89,13 @@ Proof.
    reflexivity.
 Defined.
 
+Definition tuple_map {n A B} (f : A -> B) (x : @tuple n A) : @tuple n B.
+Proof.
+  induction n.
+  apply nil_tuple.
+  destruct (destruct_tuple_cons x) as [hd [tl P]].
+  apply (tuple_cons (f hd) (IHn tl)).
+ Defined.
   Definition seq_to_tuple  {T : Type} {def : T} (f : nat -> T) d : {t : @tuple d T | forall i, i < d -> tuple_nth i t def = (f i)}. 
   Proof.
     revert f.
@@ -191,6 +191,47 @@ Defined.
     injection H;intros -> ->;split;auto.
     apply ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat;auto.
   Qed.
+  Lemma tuple_cons_equiv {n A} {A_setoid : Setoid A} (a0 b0 : A ) (a b : @tuple n A) : (tuple_cons a0 a == tuple_cons b0 b) -> (a0 == b0) /\ (a == b).
+  Proof.
+    intros.
+    split.
+    - replace a0 with (tuple_nth 0 (tuple_cons a0 a) a0) by apply tuple_nth_cons_hd.
+      replace b0 with (tuple_nth 0 (tuple_cons b0 a) a0) by apply tuple_nth_cons_hd.
+      rewrite H.
+      rewrite !tuple_nth_cons_hd;reflexivity.
+   - apply (tuple_nth_ext' _ _ a0 a0).
+     intros.
+     rewrite <-(tuple_nth_cons_tl _ a0).
+     rewrite <-(tuple_nth_cons_tl _ b0 b).
+     rewrite H.
+     rewrite tuple_nth_cons_tl.
+     reflexivity.
+  Qed.
+
+#[global] Instance tuple_map_proper {n A B} {A_setoid : Setoid A} {B_setoid : Setoid B}: forall f, Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) (@tuple_map n A B f).
+Proof.
+  intros f fp a b Heq.
+  induction n.
+  simpl;auto.
+  simpl.
+  destruct (destruct_tuple_cons a) as [hd [tl Pa]].
+  destruct (destruct_tuple_cons b) as [hd' [tl' Pb]].
+  enough (hd == hd' /\ tl == tl') as [-> P0] by (apply tuple_cons_proper;try apply IHn; try reflexivity;auto).
+  apply tuple_cons_equiv.
+  rewrite <-Pa, <-Pb;auto.
+Defined.
+
+Lemma tuple_map_nth {n A B}  (f : A -> B) (t : @tuple n A) i d d': i < n -> tuple_nth i (tuple_map f t) d = f (tuple_nth i t d').
+Proof.
+  revert i.
+  induction n; intros; try lia.
+  simpl.
+  destruct (destruct_tuple_cons t) as [hd [tl ->]].
+  destruct i.
+  rewrite !tuple_nth_cons_hd;auto.
+  rewrite !tuple_nth_cons_tl.
+  apply IHn;lia.
+Qed.
 Section AlgebraicStructures.
   Context {A : Type} `{Setoid A}.
   Class RawRing := {
@@ -514,12 +555,12 @@ Proof.
   - apply (tuple_cons 0 zero0).
   - apply (tuple_cons 1 one0).
   - intros.
-    destruct (destruct_tuple X) as [hd0 [tl0 _]].
-    destruct (destruct_tuple X0) as [hd1 [tl1 _]].
+    destruct (destruct_tuple_cons X) as [hd0 [tl0 _]].
+    destruct (destruct_tuple_cons X0) as [hd1 [tl1 _]].
     apply (tuple_cons (hd0+hd1) (add1 tl0 tl1)).
   - intros.
-    destruct (destruct_tuple X) as [hd0 [tl0 _]].
-    destruct (destruct_tuple X0) as [hd1 [tl1 _]].
+    destruct (destruct_tuple_cons X) as [hd0 [tl0 _]].
+    destruct (destruct_tuple_cons X0) as [hd1 [tl1 _]].
     apply (tuple_cons (hd0*hd1) (mul2 tl0 tl1)).
 Defined.
 
@@ -528,6 +569,61 @@ Proof.
   constructor;try reflexivity.
 Admitted.
 
+Lemma vec_plus_spec {m n}  (x y : @tuple m (A n)) : forall i, tuple_nth i (x+y) 0 == tuple_nth i x 0 + tuple_nth i y 0.
+Proof.
+  induction m;intros.
+  simpl.
+  destruct i;rewrite !tuple_nth_nil;rewrite add0;reflexivity.
+  unfold add at 1.
+  simpl.
+  destruct VectorRawRing.
+  destruct (destruct_tuple_cons x) as [hd [tl0 ->]].
+  destruct (destruct_tuple_cons y) as [hd1 [tl1 ->]].
+  destruct i.
+  rewrite !tuple_nth_cons_hd;reflexivity.
+  rewrite !tuple_nth_cons_tl.
+  rewrite IHm.
+  reflexivity.
+Qed.
+
+Lemma vec0_cons {m n} : (0 : (@tuple (S m) (A n))) = (tuple_cons 0 (0 : @tuple m (A n))).
+Proof.
+  simpl.
+  unfold zero.
+  destruct VectorRawRing.
+  reflexivity.
+Qed.
+
+Lemma vec0 {m n} : forall i,  tuple_nth i (0 : (@tuple m (A n))) 0 == 0.
+Proof.
+  induction m.
+  intros.
+  simpl.
+  destruct i;reflexivity.
+  intros.
+  rewrite vec0_cons.
+  destruct i.
+  rewrite tuple_nth_cons_hd.
+  reflexivity.
+  rewrite tuple_nth_cons_tl.
+  apply IHm.
+Qed.
+
+#[global] Instance  VectorRing {m n} {A_comRing : comRing (A := (A n))}:  comRing (A := (@tuple m (A n))).  
+Proof.
+   exists  (tuple_map opp).
+
+   apply tuple_map_proper.
+   apply A_comRing.
+   intros.
+   apply (tuple_nth_ext' _ _ 0 0).
+   intros.
+   rewrite vec_plus_spec.
+   rewrite (tuple_map_nth _ _ _ _ 0);auto.
+   rewrite addI.
+   rewrite vec0.
+   reflexivity.
+Defined.
  Definition pdiff_tuple {m n} (i : nat) (y : @tuple m (A n))  :  @tuple m (A n).
  Proof.
    induction m.
