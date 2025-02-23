@@ -185,18 +185,7 @@ Open Scope fun_scope.
   Proof.
     apply [[];[inject_Q (-1#1)]].
   Defined.
-
-  Definition sin_cos_ivp : (IVP (d := 2) (A := (@mpoly (CRcarrier CRealConstructive)))).
-    constructor.
-    apply (tuple_cons (comp1 1) (tuple_cons minus1_poly nil_tuple)).
-    apply (tuple_cons 0%CReal (tuple_cons 1%CReal nil_tuple)).
-  Defined.
-
-  Lemma sin_cos_dom_cond : sin_cos_ivp.(y0) \in_dom sin_cos_ivp.(f).
-  Proof.
-  Admitted.
-
-  Definition sin_cos_taylor := ivp_taylor_poly sin_cos_ivp.(f) sin_cos_ivp.(y0) sin_cos_dom_cond.
+  Definition sin_cos_taylor  := IVP_taylor (A := @mpoly (CRcarrier CRealConstructive)) sin_cos_ivp.
 
   Definition eval_tuple_poly {d} (p : (@poly (@mpoly (CRcarrier CRealConstructive)) {d;0%nat})) (t : CReal)  : list Q.
   Proof.
@@ -210,27 +199,7 @@ Open Scope fun_scope.
 
   Eval vm_compute in  (eval_tuple_poly (sin_cos_taylor 7) (inject_Q ( 4 # 10))).
    
-  Set Printing Implicit.
-  Check (exp_series).
-
   
-  Definition eval1 := (p11 @ ((tuple_cons 2%CReal nil_tuple);(poly_dom (tuple_cons 2%CReal nil_tuple)))).
-
-  Definition seq_tuple {d} (t : @tuple d (CRcarrier CRealConstructive)) (n : nat) : list Q.
-  Proof.
-    destruct t.
-    apply (map (fun a => seq a 10) x).
-  Defined.
-
-kDefinition approx_eval {d} (p :  @mpoly (CRcarrier CRealConstructive) d) (x : @tuple d CReal) n := seq (eval_tuple p x) n.
-Definition approx_evalt {d} (p :  @mpoly (@tuple d (@mpoly (CRcarrier CRealConstructive) 0)) 1) (x : @tuple d CReal) n  := tuple_map (fun t => seq t n) (eval_poly p x).
-
-Definition T2 : (@mpoly (@tuple 1 (@mpoly (CRcarrier CRealConstructive) 0)) 1).
-Proof.
-  apply (exp_series 1).
-Defined.
-Compute T2.
-Eval native_compute in (proj1_sig (approx_evalt T2 (tuple_cons 0%CReal nil_tuple) 0)).
 
 
 

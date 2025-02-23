@@ -321,10 +321,14 @@ End TaylorSequence.
 Section IVP_Record.
   Open Scope fun_scope.
   Context `{AbstractFunction }.
+  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
   Record IVP {d} := {
       f : A{d;d};
-      y0 : A{d;0%nat}
+      y0 : A{d;0%nat};
+      in_dom : y0 \in_dom f
     }.
+
+  Definition IVP_taylor {d} (ivp : @IVP d) := ivp_taylor_poly ivp.(f) ivp.(y0) ivp.(in_dom). 
 
 End IVP_Record.
   (* Notation "![ n ]" := (inv_factorial n). *)

@@ -1122,7 +1122,7 @@ Section MultiPolyComposition.
   Proof.
     induction n.
     exists [];simpl;reflexivity.
-    destruct (destruct_tuple ps) as [hd [tl P]].
+    destruct (destruct_tuple_cons ps) as [hd [tl P]].
     specialize (IHn tl).
     apply (tuple_cons (eval_tuple hd xs) IHn).
   Defined.
@@ -1197,9 +1197,6 @@ Section MultiPolyComposition.
   Qed.
   Require Import ProofIrrelevance.
   Require Import ProofIrrelevanceFacts.
-  Lemma destruct_tuple_cons {A n} (a : A) (x : @tuple n A): destruct_tuple (tuple_cons a x) = existT _ a (exist _ x (proj1_sig_tuple_cons a x)) .
-  Proof.
-  Admitted.
 
   Lemma mpoly_composition_spec {n m} (p : @mpoly R n) (qs : @tuple n (@mpoly R m)) xs : eval_tuple (mpoly_composition p qs) xs == eval_tuple p (eval_tuple_rec qs xs). 
   Proof.
@@ -1213,7 +1210,6 @@ Section MultiPolyComposition.
     + 
       simpl.
       destruct (destruct_tuple qs) as [q0 [qt P]] eqn:E.
-      rewrite destruct_tuple_cons.
 
   Admitted.
 
@@ -1222,8 +1218,9 @@ End MultiPolyComposition.
 
 
 (* Infix "\o" := mpoly_composition (at level 2). *)
-Notation "t[ x ; y ; .. ; z ]" := (tuple_cons x (tuple_cons y .. (tuple_cons z nil_tuple) ..)).
+Notation "t( x ; y ; .. ; z )" := (tuple_cons x (tuple_cons y .. (tuple_cons z nil_tuple) ..)).
 
+Notation "t( x )" := (tuple_cons x nil_tuple).
 Section DifferentialRing.
   Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
 
@@ -1578,10 +1575,10 @@ Defined.
     revert m.
     induction n;intros.
     destruct m.
-    apply 1.
+    apply 0.
     apply [0;1].
     destruct m.
-    apply 1.
+    apply 0.
     apply [IHn m].
  Defined.
 
@@ -1592,6 +1589,52 @@ Defined.
   Lemma poly_composition_mult_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x*y) z == (mpoly_composition x z) * (mpoly_composition y z).
   Admitted.
 
+  Lemma poly_id_spec {m} hd (tl : tuple m) :   ([0; 1] : mpoly (S m)) .[ tuple_cons hd tl] == hd. 
+    simpl.
+    destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
+    unfold eval_mpoly.
+    simpl.
+    rewrite mul0,add0,mul1,addC,add0.
+    rewrite const_to_mpoly_eval.
+    rewrite proj1_sig_tuple_cons in P0.
+    injection P0; intros _ ->;reflexivity.
+  Qed.
+
+  Lemma eval_tuple_emb {m} (p : mpoly m) hd (tl : tuple m) : eval_tuple ([p] : mpoly (S m)) (tuple_cons hd tl) == eval_tuple p tl.
+  Proof.
+    simpl.
+    destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
+    setoid_replace t0 with tl.
+    simpl.
+    setoid_replace (p + const_to_mpoly m h0 * 0) with p.
+    reflexivity.
+    rewrite mul0.
+    rewrite add0;reflexivity.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    destruct t0; destruct tl.
+    simpl in *.
+    injection P0.
+    intros -> _.
+    reflexivity.
+  Qed.
+
+  Lemma poly_comp1_eval {m} :forall x n,  (@poly_comp1 m n) .[ x] == tuple_nth n x 0.
+  Proof.
+    generalize dependent m.
+    induction n;intros.
+    - simpl;destruct m.
+      simpl.
+      rewrite tuple_nth_nil;reflexivity.
+      destruct (destruct_tuple_cons x) as [hd [tl P]].
+      rewrite P.
+      rewrite poly_id_spec.
+      rewrite tuple_nth_cons_hd;reflexivity.
+    - simpl;destruct m.
+      simpl.
+      rewrite tuple_nth_nil;reflexivity.
+   Admitted.
+  
   Definition mpoly_comp'  {n m} := mpoly_composition (n := n) (m := (S m)).
 
   #[global] Instance mpoly_composition_proper {n m}: (Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (mpoly_composition (n := n) (m := m))).
@@ -1623,11 +1666,41 @@ Section Evaluation.
      rewrite H0, H1.
      reflexivity.
   Defined.
+  Lemma const_in_dom m c x: in_domain (const_to_mpoly m c) x.
+  Proof.
+    simpl;auto.
+  Qed.
 
+  Lemma eval_tuple_rec_spec {n m} g x Px : eval_tuple_rec g x == evalt (n:=n) (m:=m) g x Px.
+  Proof.
+      induction m.
+      simpl;reflexivity.
+      simpl eval_tuple_rec.
+      simpl evalt.
+      destruct (destruct_tuple_cons g) as [hd [tl P]].
+      rewrite (IHm _ (proj2 (in_domaint_cons_impl hd tl g x P Px))).
+      reflexivity.
+   Qed.
   #[global] Instance poly_function : AbstractFunction (A := mpoly).
   Proof.
-    constructor;intros;simpl;try reflexivity.
- Admitted.
+     exists const_to_mpoly const_in_dom; intros; try reflexivity.
+    - intros; simpl;apply const_to_mpoly_eval.
+    - simpl.
+      apply poly_comp1_eval.
+    - intros i Hi;simpl;auto.
+    - apply (tuple_nth_ext' _ _ 0 0).
+      intros.
+      rewrite !(evalt_spec _ _ H0).
+      rewrite tuple_nth_multicomposition;try lia.
+      unfold eval,poly_eval, algebra.composition, mpoly_comp_diff_algebra.
+      unfold mpoly_comp'.
+      rewrite mpoly_composition_spec.
+      setoid_replace (eval_tuple_rec g x) with (evalt g x Px).
+      reflexivity.
+      induction n.
+      simpl;reflexivity.
+      apply eval_tuple_rec_spec.
+Defined.
 
 End Evaluation.
 
@@ -1762,4 +1835,3 @@ End Evaluation.
 (*    rewrite smult1;reflexivity. *)
 (*  Qed. *)
 (* End DifferentialAlgebra. *)
-

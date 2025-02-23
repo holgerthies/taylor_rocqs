@@ -1,71 +1,65 @@
-Require Import algebra ode.
+Require Import algebra ode polynomial.
 Require Import Psatz.
 
 Section IVP_Examples.
   Open Scope fun_scope.
   Context `{AbstractFunction }.
-
+  Context `{comRing (A := A 0) (H := (H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
   (* one-dimensional examples *)
 
-  Definition x : A{1;1%nat}.
-  Proof.
-    apply (tuple_cons (comp1 0) nil_tuple).
-  Defined.
-
+  Notation "\x_ i" := (comp1 i) (at level 2).
   Definition exp_ivp : (IVP  (d := 1) (A := A)).
   Proof.
-    constructor.
-    apply x.
-    apply (tuple_cons 1 nil_tuple).
-  Defined.
-
-  Lemma exp_ivp_dom_cond : exp_ivp.(y0) \in_dom exp_ivp.(f).
-  Proof.
+    exists t(\x_0) t(1).
     intros n P.
     replace n with 0%nat by lia.
     simpl f.
-    unfold x.
     rewrite tuple_nth_cons_hd.
     apply dom_id.
   Defined.
 
-  Definition exp_taylor := ivp_taylor_poly exp_ivp.(f) exp_ivp.(y0) exp_ivp_dom_cond.
+
   Definition tan_ivp : (IVP  (d := 1) (A := A)).
   Proof.
-    constructor.
-    apply (x * x + 1).
-    apply (tuple_cons 0 nil_tuple).
-  Defined.
-
-  Lemma tan_ivp_dom_cond : tan_ivp.(y0) \in_dom tan_ivp.(f).
-  Proof.
+    exists t(1 [+] \x_0*\x_0 ) t(0).
     intros n P.
-  Admitted.
-  Definition tan_taylor := ivp_taylor_poly tan_ivp.(f) tan_ivp.(y0) tan_ivp_dom_cond.
-  (* Definition eval_vec1 {d} (f : A{d;1%nat}) (x : A 0) (Hx : forall i, i < d -> in_domain (tuple_nth i f 0) (tuple_cons x nil_tuple))  : A{d;0%nat}. *)
-  (* Proof. *)
-  (*   apply (f @ (_; Hx)). *)
-  (* Defined. *)
-  
+    replace n with 0%nat by lia.
+    simpl f.
+    rewrite tuple_nth_cons_hd.
+    apply dom_plus.
+    apply const_dom.
+    apply dom_mult;apply dom_id.
+  Defined.
+
   (* two-dimensional examples *)
-  Definition test : A {2; 2%nat}.
-
+  Lemma in_dom2  f0 f1 t0 t1: t(t0;t1) \in_dom (t(f0;f1) : A{2;2}) <-> in_domain f0 t(t0;t1) /\ in_domain f1 t(t0;t1).
   Proof.
-    apply (tuple_cons (comp1 1) (tuple_cons (comp1 0) nil_tuple)).
-  Defined.
+    replace f0 with (tuple_nth 0 t(f0;f1) 0) at 1 by auto.
+    replace f1 with (tuple_nth 1 t(f0;f1) 0) at 3 by auto.
+    split;intros.
+    split;apply H7;lia.
+    destruct H7.
+    intros i Hi.
+    assert (i = 0 \/ i = 1)%nat by lia.
+    destruct H9;rewrite H9;auto.
+  Qed.   
+
   Definition sin_cos_ivp : (IVP (d := 2) (A := A)).
-    constructor.
-    apply (tuple_cons (comp1 1) (tuple_cons ((comp1 0)) nil_tuple)).
-    apply (tuple_cons 0 (tuple_cons 1 nil_tuple)).
+    exists t(\x_1;(opp 1) [*] \x_0) t(0;1).
+    apply in_dom2.
+    split; [|apply dom_mult;try apply const_dom ];try apply dom_id.
   Defined.
 
-  Lemma sin_cos_dom_cond : sin_cos_ivp.(y0) \in_dom sin_cos_ivp.(f).
-  Proof.
-  Admitted.
-
-  Definition sin_cos_taylor := ivp_taylor_poly sin_cos_ivp.(f) sin_cos_ivp.(y0) sin_cos_dom_cond.
-  
+  Definition vdp_ivp (mu : A 0) : (IVP (d := 2) (A := A)).
+    exists t(\x_1;mu [*] (1 [+] ((opp 1) [*] \x_0 *\x_0)) * \x_1 + (opp 1) [*] \x_0) t(0;1).
+    apply in_dom2.
+    split; try apply dom_id.
+    apply dom_plus; apply dom_mult;try apply dom_id; try apply const_dom.
+    apply dom_mult; try apply const_dom.
+    apply dom_plus; try apply dom_mult;try apply dom_id; try apply const_dom.
+    apply dom_mult;apply dom_id.
+  Defined.
 End IVP_Examples.
 (* Require Import Psatz. *)
 (* Require Import List. *)

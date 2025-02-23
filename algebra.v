@@ -293,21 +293,21 @@ Section Norm.
 
 End Norm.
 Notation "|| x ||" := (norm x) (at level 2).
-Section DifferentialAlgebra.
-  Context {K V : Type} .
+(* Section DifferentialAlgebra. *)
+(*   Context {K V : Type} . *)
   
-  Class differentialAlgebra `{K_field : Field (A := K)} `{R_differentialRing : (differentialRing (A := V))} := {
-      smult : K -> V -> V;
-      smult1 : forall v, smult one v == v;
-      smult_proper :> Proper (equiv ==> equiv ==> equiv) smult;
-      smult_plus_distr : forall a u v, smult a (u+v) == smult a u + smult a v;
-      splus_mult_dist : forall a b v, smult (a+b) v == smult a v + smult b v;
-      smult_mult_compat : forall a b v, smult a (smult b v) == smult (a*b) v
-    }. 
+(*   Class differentialAlgebra `{K_field : Field (A := K)} `{R_differentialRing : (differentialRing (A := V))} := { *)
+(*       smult : K -> V -> V; *)
+(*       smult1 : forall v, smult one v == v; *)
+(*       smult_proper :> Proper (equiv ==> equiv ==> equiv) smult; *)
+(*       smult_plus_distr : forall a u v, smult a (u+v) == smult a u + smult a v; *)
+(*       splus_mult_dist : forall a b v, smult (a+b) v == smult a v + smult b v; *)
+(*       smult_mult_compat : forall a b v, smult a (smult b v) == smult (a*b) v *)
+(*     }.  *)
 
-End DifferentialAlgebra.
+(* End DifferentialAlgebra. *)
 
-Local Infix "[*]" := smult (at level 2, left associativity).
+(* Local Infix "[*]" := smult (at level 2, left associativity). *)
 
 
   Lemma ComSemiRingTheory `{A_comSemiRing : comSemiRing } : semi_ring_theory 0 1 add mul equiv.
@@ -410,26 +410,26 @@ Section RingTheory.
    Qed.
 End RingTheory.
 
-Section DifferentialAlgebraTheory.
-  Context {K V : Type}  `{DA : differentialAlgebra (K:=K) (V := V)}.
-  Add Ring RRing: (ComSemiRingTheory (A:=V)).
-  Add Ring RRing: (ComRingTheory (A:=K)).
-  Lemma smult_zero  a : a [*] 0 == 0.
-  Proof.
-    enough (0 [*] 0 == 0).
-    rewrite <-H1.
-    rewrite smult_mult_compat.
-    setoid_replace (a*0) with (0 : K) by ring;auto.
-    reflexivity.
-    pose proof (smult1 0).
-    rewrite <- H1 at 2.
-    setoid_replace (1 : K) with (0+1 : K) by ring.
-    rewrite splus_mult_dist.
-    rewrite smult1.
-    rewrite add0;reflexivity.
-  Qed.
+(* Section DifferentialAlgebraTheory. *)
+(*   Context {K V : Type}  `{DA : differentialAlgebra (K:=K) (V := V)}. *)
+(*   Add Ring RRing: (ComSemiRingTheory (A:=V)). *)
+(*   Add Ring RRing: (ComRingTheory (A:=K)). *)
+(*   Lemma smult_zero  a : a [*] 0 == 0. *)
+(*   Proof. *)
+(*     enough (0 [*] 0 == 0). *)
+(*     rewrite <-H1. *)
+(*     rewrite smult_mult_compat. *)
+(*     setoid_replace (a*0) with (0 : K) by ring;auto. *)
+(*     reflexivity. *)
+(*     pose proof (smult1 0). *)
+(*     rewrite <- H1 at 2. *)
+(*     setoid_replace (1 : K) with (0+1 : K) by ring. *)
+(*     rewrite splus_mult_dist. *)
+(*     rewrite smult1. *)
+(*     rewrite add0;reflexivity. *)
+(*   Qed. *)
 
-End DifferentialAlgebraTheory.
+(* End DifferentialAlgebraTheory. *)
 
 Section OrderTheory.
 Context {A : Type} `{TotallyOrderedField A}.
@@ -703,7 +703,7 @@ Section Evaluation.
       in_domain {n} (f : A n) (x : @tuple n (A 0)):  Prop;
       eval {n} (f : A n) x (P : in_domain f x) :  (A 0);
       in_domain_proper {n} :> Proper (equiv ==> equiv ==> equiv) (@in_domain n);
-      eval_proper {n} : forall f1 f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> @eval n f1 x1 P1 == @eval n f2 x2 P2  
+      eval_proper {n} : forall f1 f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> @eval n f1 x1 P1 == @eval n f2 x2 P2;
     }.
 
 End Evaluation.
@@ -814,6 +814,9 @@ Section CInfinity.
   (* Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))} *)
  Open Scope diff_scope.
   Class AbstractFunction := {
+      const {m} (c : A 0): A m;
+      const_dom {m} : forall c x, in_domain (const (m := m) c) x;
+      const_eval {m} : forall c x, eval (const (m := m) c) x (const_dom (m:=m) c x ) == c;
       dom_id {m} (n : nat): forall x, in_domain (comp1 (m :=m) n) x; 
       eval_id {m} n : forall x H, (n < m) -> (eval (comp1 (m := m) n) x H) == tuple_nth n x 0;
       dom_plus {n} (f g : A n) x : in_domain f x -> in_domain g x -> in_domain (f+g) x;
@@ -860,8 +863,13 @@ Section AbstractFunctionTheory.
       rewrite H6;reflexivity.
    Qed.
 
-      
+    Definition scalar_multf {n} (x : A 0) (f : A n) := const x * f.
+    Definition scalar_addf {n} (x : A 0) (f : A n) := const x + f.
+
 End AbstractFunctionTheory.
+
+Infix "[*]" := scalar_multf (at level 2, left associativity). 
+Infix "[+]" := scalar_addf (at level 2, left associativity). 
 
 Section Reals.
 
