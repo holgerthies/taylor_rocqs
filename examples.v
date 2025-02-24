@@ -1,6 +1,6 @@
 Require Import algebra ode polynomial.
 Require Import Psatz.
-
+Require Import tuple.
 Section IVP_Examples.
   Open Scope fun_scope.
   Context `{AbstractFunction }.

@@ -10,6 +10,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import Classical.
 
+Require Import tuple.
 
 
  Open Scope diff_scope.

@@ -6,6 +6,7 @@ Require Import algebra.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
+Require Import tuple.
 
  Instance seq_A_setoid {A} {A_setoid : Setoid A} : Setoid (nat -> A).
  Proof.

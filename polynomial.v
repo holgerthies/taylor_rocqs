@@ -5,6 +5,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import algebra.
 Require Import List.
+Require Import tuple.
 Import ListNotations.
  #[global] Instance list_A_setoid {A} {A_setoid : Setoid A} : Setoid (list A).
  Proof.
@@ -1218,9 +1219,6 @@ End MultiPolyComposition.
 
 
 (* Infix "\o" := mpoly_composition (at level 2). *)
-Notation "t( x ; y ; .. ; z )" := (tuple_cons x (tuple_cons y .. (tuple_cons z nil_tuple) ..)).
-
-Notation "t( x )" := (tuple_cons x nil_tuple).
 Section DifferentialRing.
   Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
 
