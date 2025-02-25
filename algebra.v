@@ -8,25 +8,31 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Classical.
 Require Import tuple.
 Declare Scope algebra_scope.
+Open Scope algebra_scope.
 Declare Scope fun_scope.
 
-Section AlgebraicStructures.
-  Context {A : Type} `{Setoid A}.
-  Class RawRing := {
+Class RawRing  {A : Type} `{Setoid A}:= {
       zero : A;
       one : A;
       add : A -> A -> A;
       mul : A -> A -> A;
 
-    }.
+ }.
+
 
   Definition sum `{A_Rawring : RawRing } (f : nat -> A) n := (fold_right add zero (map f (seq 0 n))).
-  Class comSemiRing `{R_rawRing : RawRing}   := {
 
-      add_proper :> Proper (equiv ==> equiv ==> equiv) add;
-      mul_proper :> Proper (equiv ==> equiv ==> equiv) mul;
-      zero_proper :> equiv zero zero;
-      one_proper :> equiv one one;
+ Infix "+" := add : algebra_scope.
+ Infix "*" := mul : algebra_scope.
+ Notation "1" := one : algebra_scope.
+ Notation "0" := zero : algebra_scope.
+
+Class SemiRing `{R_rawRing : RawRing}   := {
+
+      add_proper :: Proper (equiv ==> equiv ==> equiv) add;
+      mul_proper :: Proper (equiv ==> equiv ==> equiv) mul;
+      zero_proper :: 0 == 0;
+      one_proper :: 1 == 1;
       addA : forall a b c, add (add a b) c == add a (add b c);
       addC : forall a b, add a b == add b a;
       add0 : forall a, add a zero == a; 
@@ -37,72 +43,65 @@ Section AlgebraicStructures.
       distrL : forall a b c, mul a (add b c) == add (mul a b) (mul a c)
     }.
 
-  Class comRing `{R_semiRing : comSemiRing} := {
-      opp : A -> A;
-      opp_proper :> Proper (equiv ==> equiv) opp;
-      addI : forall a, add a (opp a) == zero;
-  }.
+Class Ring `{R_semiRing : SemiRing} := {
+    opp : A -> A;
+    opp_proper :> Proper (equiv ==> equiv) opp;
+    addI : forall a, add a (opp a) == zero;
+}.
 
-  Class Field `{R_Ring : comRing} := {
+Definition minus  `{Ring} (x y : A)  := add x (opp y).
+
+ #[global] Instance minus_proper `{Ring} : Proper (equiv ==> equiv ==> equiv) minus.
+  Proof.
+    intros a b P0 c d P1.
+    unfold minus.
+    rewrite P0,P1;reflexivity.
+Defined.
+
+Notation "- x" := opp : algebra_scope.
+Infix "-" := minus : algebra_scope.
+
+Class Field `{A_Ring : Ring} := {
       inv : forall {x}, (not (x == zero)) -> A;
       mulI : forall x (p : (not (x == zero))), mul (inv p) x == one;
       distinct_0_1 : (not (zero == one))
     }.
 
-  Class differentialRing `{R_semiRing : comSemiRing} :=
-    {
-    derivation : A -> A;
-    derivation_plus : forall r1 r2, derivation (add r1 r2) == add (derivation r1) (derivation r2);
-    derivation_mult : forall r1 r2, derivation (mul r1 r2) == add (mul r2 (derivation r1)) (mul r1  (derivation r2));
-    derivation_proper :> Proper (equiv ==> equiv) derivation;
-    }.
 
-Class PartialDifferentialRing  `{R_semiRing : comSemiRing}:= {
+Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
     pdiff : nat -> A -> A;
     pdiff_plus : forall  d r1 r2, pdiff d (add r1 r2) == add (pdiff d r1) (pdiff d r2);
     pdiff_mult : forall d r1 r2, pdiff  d (mul r1 r2) == add (mul r2 (pdiff d r1)) (mul r1  (pdiff d r2));
     pdiff_comm : forall d1 d2 r, pdiff d1 (pdiff d2 r) == pdiff d2 (pdiff d1 r);
     pdiff_proper :> forall n, Proper (equiv ==> equiv) (pdiff n);
-  }.
+}.
 
-  Class TotalOrder := {
+Notation "D[ i ] f" := (pdiff i f) (at level 4, left associativity) : algebra_scope.
+
+
+Class TotalOrder {A} `{Setoid A}:= {
       le : A -> A -> Prop;
-      le_proper :> Proper (equiv ==> equiv ==> equiv) le;
+      le_proper :: Proper (equiv ==> equiv ==> equiv) le;
       le_refl : forall x, le x x;
       le_anti_sym : forall x y, le x y -> le y x -> x == y;
       le_trans : forall x y z, le x y -> le y z -> le x z;
       le_total : forall x y, le x y \/ le y x
-    }.
-    
-  Class TotallyOrderedField `{R_Field : Field} `{R_TotalOrder : TotalOrder} := {
+ }.
+
+   Infix "<=" := le.
+
+  Class TotallyOrderedField `{R_Field :Field} `{R_TotalOrder : TotalOrder (A := A) (H:=H)} := {
       le_plus_compat : forall x y z, le x y -> le (add x z) (add y z);
       mul_pos_pos : forall x y, le zero x -> le zero y -> le zero (mul x y)
     }.
 
-  Definition minus  `{R_comRing : comRing} (x y : A)  := add x (opp y).
-  #[global] Instance minus_proper `{R_comRing : comRing} : Proper (equiv ==> equiv ==> equiv) minus.
-  Proof.
-    intros a b P0 c d P1.
-    unfold minus.
-    rewrite P0,P1;reflexivity.
-  Defined.
-End AlgebraicStructures. 
-
-Infix "+" := add.
-Infix "*" := mul.
-Notation "- x" := (opp  x). 
-Infix "-" := minus.
-Infix "<=" := le.
-Notation "0" := zero.
-Notation "1" := one.
-Notation "p ^'" := (derivation p) (at level 2, left associativity).
 Section Norm.
   Context `{A: Type} `{B : Type}.
-  Context `{semiRingA : comSemiRing A}.
+  Context `{semiRingA : SemiRing A}.
   Context `{TotallyOrderedFieldB : TotallyOrderedField B}.
   Class NormedSemiRing := {
     norm : A -> B ;
-    norm_proper :> Proper (SetoidClass.equiv ==> SetoidClass.equiv) norm;
+    norm_proper :: Proper (SetoidClass.equiv ==> SetoidClass.equiv) norm;
     norm_nonneg : forall x, 0 <= norm x;
     norm_zero : forall x,  norm x == 0 <-> x == 0;
     norm_triangle : forall x y, norm (x+y) <= norm x + norm y;
@@ -111,25 +110,10 @@ Section Norm.
 
 
 End Norm.
+
 Notation "|| x ||" := (norm x) (at level 2).
-(* Section DifferentialAlgebra. *)
-(*   Context {K V : Type} . *)
-  
-(*   Class differentialAlgebra `{K_field : Field (A := K)} `{R_differentialRing : (differentialRing (A := V))} := { *)
-(*       smult : K -> V -> V; *)
-(*       smult1 : forall v, smult one v == v; *)
-(*       smult_proper :> Proper (equiv ==> equiv ==> equiv) smult; *)
-(*       smult_plus_distr : forall a u v, smult a (u+v) == smult a u + smult a v; *)
-(*       splus_mult_dist : forall a b v, smult (a+b) v == smult a v + smult b v; *)
-(*       smult_mult_compat : forall a b v, smult a (smult b v) == smult (a*b) v *)
-(*     }.  *)
 
-(* End DifferentialAlgebra. *)
-
-(* Local Infix "[*]" := smult (at level 2, left associativity). *)
-
-
-  Lemma ComSemiRingTheory `{A_comSemiRing : comSemiRing } : semi_ring_theory 0 1 add mul equiv.
+Lemma ComSemiRingTheory `{A_comSemiRing : SemiRing } : semi_ring_theory 0 1 add mul equiv.
   Proof.
     constructor.
     intro; rewrite addC; apply add0.
@@ -144,10 +128,10 @@ Notation "|| x ||" := (norm x) (at level 2).
     rewrite (mulC n p).
     rewrite (mulC m p).
     apply distrL.
-  Qed.
+Qed.
 
 Section RingTheory.
-  Context `{A_Ring : comRing }.
+  Context `{A_Ring : Ring }.
   Add Ring ARing : ComSemiRingTheory.
 
  Fixpoint ntimes (n : nat) x := 
@@ -229,26 +213,6 @@ Section RingTheory.
    Qed.
 End RingTheory.
 
-(* Section DifferentialAlgebraTheory. *)
-(*   Context {K V : Type}  `{DA : differentialAlgebra (K:=K) (V := V)}. *)
-(*   Add Ring RRing: (ComSemiRingTheory (A:=V)). *)
-(*   Add Ring RRing: (ComRingTheory (A:=K)). *)
-(*   Lemma smult_zero  a : a [*] 0 == 0. *)
-(*   Proof. *)
-(*     enough (0 [*] 0 == 0). *)
-(*     rewrite <-H1. *)
-(*     rewrite smult_mult_compat. *)
-(*     setoid_replace (a*0) with (0 : K) by ring;auto. *)
-(*     reflexivity. *)
-(*     pose proof (smult1 0). *)
-(*     rewrite <- H1 at 2. *)
-(*     setoid_replace (1 : K) with (0+1 : K) by ring. *)
-(*     rewrite splus_mult_dist. *)
-(*     rewrite smult1. *)
-(*     rewrite add0;reflexivity. *)
-(*   Qed. *)
-
-(* End DifferentialAlgebraTheory. *)
 
 Section OrderTheory.
 Context {A : Type} `{TotallyOrderedField A}.
@@ -261,7 +225,7 @@ Proof.
   rewrite !(addC c).
   apply le_plus_compat;auto.
 Qed.
-Lemma le_iff_le0 x y: x <= y <-> 0 <= (y-x). 
+Lemma le_iff_le0 (x y : A) : (x <= y) <-> (0 <= (y - x)).
 Proof.
   split;intros.
   setoid_replace 0 with (x-x) by ring.
@@ -323,11 +287,10 @@ Proof.
 Defined.
 End OrderTheory.
 
-Section Vectors.
-
-Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : nat), (RawRing (A:=(A n))) } `{forall (n : nat), (comSemiRing (A:=(A n))) }  `{forall (n : nat), (PartialDifferentialRing (A:=(A n))) }.
-#[global] Instance  VectorRawRing {m n} :  RawRing (A := (@tuple m (A n))).  
-Proof.
+Section VectorRawRing.
+  Context `{RawRing}.
+  #[global] Instance  VectorRawRing m  :  RawRing (A := A^m).  
+  Proof.
   induction m;[constructor;intros; apply nil_tuple|].
   destruct IHm; constructor.
   - apply (tuple_cons 0 zero0).
@@ -340,40 +303,26 @@ Proof.
     destruct (destruct_tuple_cons X) as [hd0 [tl0 _]].
     destruct (destruct_tuple_cons X0) as [hd1 [tl1 _]].
     apply (tuple_cons (hd0*hd1) (mul2 tl0 tl1)).
-Defined.
+  Defined.
 
-#[global] Instance  VectorSemiRing {m n} :  comSemiRing (A := (@tuple m (A n))).  
-Proof.
-  constructor;try reflexivity.
-Admitted.
-
-Lemma vec_plus_spec {m n}  (x y : @tuple m (A n)) : forall i, tuple_nth i (x+y) 0 == tuple_nth i x 0 + tuple_nth i y 0.
-Proof.
-  induction m;intros.
-  simpl.
-  destruct i;rewrite !tuple_nth_nil;rewrite add0;reflexivity.
-  unfold add at 1.
-  simpl.
-  destruct VectorRawRing.
-  destruct (destruct_tuple_cons x) as [hd [tl0 ->]].
-  destruct (destruct_tuple_cons y) as [hd1 [tl1 ->]].
-  destruct i.
-  rewrite !tuple_nth_cons_hd;reflexivity.
-  rewrite !tuple_nth_cons_tl.
-  rewrite IHm.
-  reflexivity.
-Qed.
-
-Lemma vec0_cons {m n} : (0 : (@tuple (S m) (A n))) = (tuple_cons 0 (0 : @tuple m (A n))).
-Proof.
+  Lemma vec0_cons {m} : (0 : A^(S m)) = (tuple_cons 0 (0 : A^m)).
+  Proof.
   simpl.
   unfold zero.
   destruct VectorRawRing.
   reflexivity.
-Qed.
+  Qed.
 
-Lemma vec0 {m n} : forall i,  tuple_nth i (0 : (@tuple m (A n))) 0 == 0.
-Proof.
+  Lemma vec1_cons {m} : (1 : A^(S m)) = (tuple_cons 1 (1 : A^m)).
+  Proof.
+  simpl.
+  unfold one.
+  destruct VectorRawRing.
+  reflexivity.
+  Qed.
+
+  Lemma vec0_nth {m} : forall i,  tuple_nth i (0 : A^m) 0 = 0.
+  Proof.
   induction m.
   intros.
   simpl.
@@ -385,85 +334,106 @@ Proof.
   reflexivity.
   rewrite tuple_nth_cons_tl.
   apply IHm.
-Qed.
-
-#[global] Instance  VectorRing {m n} {A_comRing : comRing (A := (A n))}:  comRing (A := (@tuple m (A n))).  
-Proof.
-   exists  (tuple_map opp).
-
-   apply tuple_map_proper.
-   apply A_comRing.
-   intros.
-   apply (tuple_nth_ext' _ _ 0 0).
-   intros.
-   rewrite vec_plus_spec.
-   rewrite (tuple_map_nth _ _ _ _ 0);auto.
-   rewrite addI.
-   rewrite vec0.
-   reflexivity.
-Defined.
- Definition pdiff_tuple {m n} (i : nat) (y : @tuple m (A n))  :  @tuple m (A n).
- Proof.
-   induction m.
-   apply nil_tuple.
-  destruct (destruct_tuple y) as [hd [tl P]].
-   apply (tuple_cons (pdiff i hd) (IHm tl)).
- Defined.
-
-  #[global] Instance  VectorPDiffRing {m n} :  PartialDifferentialRing (A := (@tuple m (A n))).  
-  Proof.
-    exists pdiff_tuple. 
-  Admitted.
-    
- Lemma derive_tuple_cons {m n} x (y : @tuple m (A n)) i : pdiff_tuple i (tuple_cons x y) = tuple_cons (pdiff i x) (pdiff_tuple i y).
- Proof.
-   induction m.
-   destruct y;apply ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat;auto.
-   simpl.
-   destruct (destruct_tuple (tuple_cons x y)) as [hd [tl P]].
-   rewrite proj1_sig_tuple_cons in P.
-   injection P;intros.
-   rewrite H4.
-   f_equal;auto.
-   enough (y = tl) as -> by auto.
-   apply eq_sig_hprop;auto.
-   intros.
-   apply proof_irrelevance. 
- Qed.
-
- Lemma tuple_nth_pdiff {m n} (i : nat) (y : @tuple m (A n)) j: (j < m)%nat -> tuple_nth j (pdiff i y) 0 = pdiff i (tuple_nth j y 0).
- Proof.
- Admitted.
-  Definition scalar_mult {n m} (x : (A n)) (y : @tuple m (A n)) : @tuple m (A n). 
-  Proof.
-    induction m.
-    apply nil_tuple.
-    destruct (destruct_tuple_cons y) as [hd [tl ->]].
-    apply (tuple_cons (x * hd) (IHm tl)).
-  Defined.
-
-  Lemma scalar_mult_spec {n m} x y : forall i, tuple_nth i (@scalar_mult n m x y) 0 == x * (tuple_nth i y 0).
-  Proof.
-    intros.
-    revert i.
-    induction m;intros.
-    simpl.
-    rewrite tuple_nth_nil.
-    rewrite mul0;destruct i; simpl;reflexivity.
-    simpl.
-    destruct (destruct_tuple_cons y) as [hd [tl ->]].
-    destruct i.
-    rewrite !tuple_nth_cons_hd;reflexivity.
-    rewrite !tuple_nth_cons_tl.
-    apply IHm.
   Qed.
 
-  #[global] Instance scalar_mult_proper { n m } : Proper (equiv ==> equiv ==> equiv) (@scalar_mult n m).
+  Lemma vec1_nth {m} : forall i,  (i < m) -> tuple_nth i (1 : A^m) 0 = 1.
+  Proof.
+  induction m; try lia.
+  intros.
+  rewrite vec1_cons.
+  destruct i.
+  rewrite tuple_nth_cons_hd.
+  reflexivity.
+  rewrite tuple_nth_cons_tl.
+  apply IHm;lia.
+  Qed.
+
+  Lemma vec_plus_spec {m}  (x y : A^m) : forall i, i < m -> tuple_nth i (x+y) 0 == tuple_nth i x 0 + tuple_nth i y 0.
+Proof.
+  induction m;try lia.
+  intros.
+  unfold add at 1.
+  simpl.
+  destruct VectorRawRing.
+  destruct (destruct_tuple_cons x) as [hd [tl0 ->]].
+  destruct (destruct_tuple_cons y) as [hd1 [tl1 ->]].
+  destruct i.
+  rewrite !tuple_nth_cons_hd;reflexivity.
+  rewrite !tuple_nth_cons_tl.
+  rewrite IHm;try lia.
+  reflexivity.
+  Qed.
+
+  Lemma vec_mult_spec {m}  (x y : A^m) : forall i, i < m -> tuple_nth i (x*y) 0 == tuple_nth i x 0 * tuple_nth i y 0.
+Proof.
+  induction m;try lia.
+  intros.
+  unfold mul at 1.
+  simpl.
+  destruct VectorRawRing.
+  destruct (destruct_tuple_cons x) as [hd [tl0 ->]].
+  destruct (destruct_tuple_cons y) as [hd1 [tl1 ->]].
+  destruct i.
+  rewrite !tuple_nth_cons_hd;reflexivity.
+  rewrite !tuple_nth_cons_tl.
+  rewrite IHm;try lia.
+  reflexivity.
+  Qed.
+
+  Definition scalar_mult {m} (x : A) (y : A^m) := tuple_map (mul x) y. 
+
+  Lemma scalar_mult_spec {m} x y : forall i, i<m -> tuple_nth i (@scalar_mult m x y) 0 == x * (tuple_nth i y 0).
+  Proof.
+    intros.
+    unfold scalar_mult.
+    rewrite (tuple_map_nth _ _ _ _ 0);auto.
+    reflexivity.
+  Qed.
+
+End VectorRawRing. 
+
+Section VectorSemiRing.
+  Context `{SemiRing}.
+  #[global] Instance VectorSemiRing {m} :  SemiRing (A := A^m).  
+  Proof.
+  constructor;intros;try reflexivity; try apply (tuple_nth_ext' _ _ 0 0);intros.
+  - intros a b Heq c d Heq'.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    rewrite !vec_plus_spec;auto.
+    rewrite Heq, Heq';reflexivity.
+  - intros a b Heq c d Heq'.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    rewrite !vec_mult_spec;auto.
+    rewrite Heq, Heq';reflexivity.
+  - rewrite !vec_plus_spec;auto.
+    rewrite addA;reflexivity.
+  - rewrite !vec_plus_spec;auto.
+    rewrite addC;reflexivity.
+  - rewrite !vec_plus_spec;auto.
+    rewrite vec0_nth.
+    rewrite add0;reflexivity.
+  - rewrite !vec_mult_spec;auto.
+    rewrite mulA;reflexivity.
+  - rewrite !vec_mult_spec;auto.
+    rewrite mulC;reflexivity.
+  - rewrite !vec_mult_spec;auto.
+    rewrite vec0_nth.
+    rewrite mul0;reflexivity.
+  - rewrite !vec_mult_spec;auto.
+    rewrite vec1_nth;auto.
+    rewrite mul1;reflexivity.
+  - rewrite !vec_mult_spec, !vec_plus_spec, !vec_mult_spec;auto.
+    rewrite distrL;reflexivity.
+  Defined.
+
+  #[global] Instance scalar_mult_proper {m } : Proper (equiv ==> equiv ==> equiv) (scalar_mult (m := m)).
   Proof.
     intros a b Heq c d Heq'.
     apply (tuple_nth_ext' _ _ 0 0).
     intros.
-    rewrite !scalar_mult_spec.
+    rewrite !scalar_mult_spec;auto.
     rewrite Heq.
      unfold SetoidClass.equiv in Heq'.
      simpl in Heq'.
@@ -471,22 +441,85 @@ Defined.
      simpl in *.
      rewrite (eqlistA_nth_ext _ _ 0 0) in Heq';auto.
     destruct Heq'.
-    rewrite H5;try lia.
+    rewrite H3;try lia.
     reflexivity.
  Defined.
-End Vectors.
-
+  Lemma tuple_nth_sum {m} (f: nat -> A^m) d i : i < m -> tuple_nth i (sum f d) 0 == sum (fun x => (tuple_nth i (f x) 0)) d.
+Proof.
+  intros.
+  induction d.
+  unfold sum;simpl;rewrite vec0_nth;reflexivity.
+  rewrite !sum_S.
+  rewrite vec_plus_spec;auto.
+  rewrite IHd.
+  reflexivity.
+  Qed.
+End VectorSemiRing.
 
 Notation "x ** y" := (scalar_mult x y) (at level 2).
 
+Section VectorRing.
+  Context `{Ring}.
+  
+  #[global] Instance  VectorRing {m}:  Ring (A := A^m).  
+  Proof.
+   exists  (tuple_map opp).
+   apply tuple_map_proper.
+   apply H0.
+   intros.
+   apply (tuple_nth_ext' _ _ 0 0).
+   intros.
+   rewrite vec_plus_spec;auto.
+   rewrite (tuple_map_nth _ _ _ _ 0);auto.
+   rewrite addI.
+   rewrite vec0_nth.
+   reflexivity.
+  Defined.
+End VectorRing.
+
+Section VectorDiffRing.
+  Context `{PartialDifferentialRing}.
+  
+ Definition pdiff_tuple {m} (i : nat) (y : A^m)  :  A^m := tuple_map (pdiff i) y.
+
+ Lemma pdiff_tuple_nth {m}  (x : A^m) n : forall i, i < m -> tuple_nth i (pdiff_tuple n x) 0 == pdiff n (tuple_nth i x 0).
+ Proof.
+   intros.
+   unfold pdiff_tuple.
+   rewrite (tuple_map_nth _ _ _ _ 0);auto.
+   reflexivity.
+ Defined.
+
+  #[global] Instance  VectorPDiffRing {m} :  PartialDifferentialRing (A := A^m).  
+  Proof.
+    exists pdiff_tuple;intros; try (apply (tuple_nth_ext' _ _ 0 0);intros;rewrite !pdiff_tuple_nth;auto).
+    - rewrite !vec_plus_spec;auto.
+      rewrite pdiff_plus, !pdiff_tuple_nth;auto.
+      reflexivity.
+    - rewrite !vec_mult_spec, !vec_plus_spec, !vec_mult_spec;auto.
+      rewrite pdiff_mult, !pdiff_tuple_nth;auto.
+      reflexivity.
+    - rewrite pdiff_comm.
+      reflexivity.
+   - apply tuple_map_proper;apply H0.
+  Defined.
+
+End VectorDiffRing.
+
+
+Section Composition.
+  Context `{SemiRing}.
+End Composition.
+Notation "A { n ; m }" := ((A n)^m) (at level 5) : fun_scope.
+
 Section PartialDiffAlgebra.
 
-Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : nat), (RawRing (A:=(A n))) } `{forall (n : nat), (comSemiRing (A:=(A n))) }  `{forall (n : nat), (PartialDifferentialRing (A:=(A n))) }.
+Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : nat), (RawRing (A:=(A n))) } `{forall (n : nat), (SemiRing (A:=(A n))) }  `{forall (n : nat), (PartialDifferentialRing (A:=(A n))) }.
 
 Class CompositionalDiffAlgebra := {
-    composition : forall {m n}, A m -> @tuple m (A (S n)) ->  (A (S n));
+    composition : forall {m n}, A m -> (A (S n))^m ->  (A (S n));
     comp1 {m} (n : nat) : A m;
-    composition_proper {m n}:> Proper (equiv ==> equiv ==> equiv) (@composition m n);
+    composition_proper {m n}:: Proper (equiv ==> equiv ==> equiv) (@composition m n);
     composition_id {m n} i (x : @tuple m (A (S n))) : composition (comp1 i) x == tuple_nth i x 0;
     composition_plus_comp : forall {m n} x y (z :@tuple m (A (S n))) , composition (x+y) z == (composition x z) + (composition y z);
     composition_mult_comp : forall {m n} x y (z :@tuple m (A (S n))) , composition (x*y) z == (composition x z) * (composition y z);
@@ -497,14 +530,13 @@ Class CompositionalDiffAlgebra := {
 
 End PartialDiffAlgebra.
 
-Notation "D[ i ] f" := (pdiff i f) (at level 50, left associativity) : diff_scope.
 
-Infix "\o" := composition (at level 2).
+Infix "\o1" := composition (at level 2).
 
 Section PartialDiffAlgebraTheory.
 
 Context `{CompositionalDiffAlgebra} .
-Lemma composition_sum_comp {m n} (f : nat -> A m) (g : @tuple m (A (S n))) i : (sum f (S i)) \o g == (sum (fun i => (f i) \o g) (S i)). 
+Lemma composition_sum_comp {m n} (f : nat -> A m) (g : (A (S n))^m) i : (sum f (S i)) \o1 g == (sum (fun i => (f i) \o1 g) (S i)). 
 Proof.
   induction i.
   unfold sum; simpl.
@@ -514,16 +546,16 @@ Proof.
   rewrite IHi.
   reflexivity.
 Qed.
-  Definition multi_composition {n m r} (ps : (@tuple r (A n))) (qs : @tuple n (A (S m))) : (@tuple r (A (S m))).
+  Definition multi_composition {n m r} (ps : (A n)^r) (qs : (A (S m))^n) : (A (S m))^r.
 Proof.
   induction r.
   apply nil_tuple.
   destruct (destruct_tuple ps) as [hd [tl P]].
-  apply (tuple_cons (hd \o qs) (IHr tl)).
+  apply (tuple_cons (hd \o1 qs) (IHr tl)).
 Defined.
 
 
- Lemma tuple_nth_multicomposition {n m r} i d (ps : (@tuple r (A n))) (qs : @tuple n (A (S m))) : (i < r)%nat -> tuple_nth i (multi_composition ps qs) d = (tuple_nth i ps 0) \o qs.
+ Lemma tuple_nth_multicomposition {n m r} i d (ps : (A n)^r) (qs : (A (S m))^n) : (i < r)%nat -> tuple_nth i (multi_composition ps qs) d = (tuple_nth i ps 0) \o1 qs.
  Proof.
    revert i.
   induction r;intros; try lia.
@@ -541,35 +573,28 @@ Defined.
   destruct tl; simpl;auto.
  Qed.
 
- Lemma multicomposition_chain_rule {n m r} (f : @tuple r (A n)) (g : @tuple n (A (S m))) i j : (j < r)%nat ->  tuple_nth j (pdiff i (multi_composition f g)) 0 == (sum (fun k => (pdiff i (tuple_nth k g zero)) * composition (pdiff k (tuple_nth j f 0)) g) n).
+
+ Lemma multicomposition_chain_rule {n m r} (f : (A n)^r) (g : (A (S m))^n) i : D[i] (multi_composition f g) == (sum (fun k => (D[i] (tuple_nth k g zero)) ** (multi_composition (D[k] f) g)) n).
  Proof.
    intros.
-   rewrite tuple_nth_pdiff;auto.
+   apply (tuple_nth_ext' _ _ 0 0).
+   intros.
+   simpl.
+   rewrite pdiff_tuple_nth;auto.
    rewrite tuple_nth_multicomposition;auto.
    rewrite pdiff_chain.
-   apply sum_ext; intros;reflexivity.
+   rewrite tuple_nth_sum;auto.
+   apply sum_ext; intros.
+   rewrite scalar_mult_spec;auto.
+   rewrite tuple_nth_multicomposition;auto.
+   rewrite pdiff_tuple_nth;auto.
+   reflexivity.
  Qed.
 End PartialDiffAlgebraTheory.
 
 
-Infix "\o\" := multi_composition (at level 2).
-Section Interval.
-  Context `{K : Type}.
-  Context `{ofieldK : TotallyOrderedField K}.
-  Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_rawRing := R_rawRing) (R_rawRing0 := R_rawRing) (R_TotalOrder := R_TotalOrder))}.
+Infix "\o" := multi_composition (at level 2).
 
-  Add Ring TRing: ComRingTheory.
-  Definition cinterval := (K * K)%type.
-  Definition in_cinterval x i := (normK.(norm) (x-(fst i))) <= snd i.
-  Definition in_cintervalt {n} (x : @tuple n K) (i : @tuple n cinterval) : Prop.
-  Proof.
-    induction n.
-    apply True.
-    destruct (destruct_tuple x) as [x0 [xt P1]].
-    destruct (destruct_tuple i) as [i0 [it P2]].
-    apply ((in_cinterval x0 i0) /\ (IHn xt it)).
-  Defined.
-End Interval.
 Section Evaluation.
   Context {A: nat -> Type} `{forall (n : nat), (Setoid (A n)) }.
   Class HasEvaluation := {
@@ -626,45 +651,6 @@ Section CInfinity.
     apply proof_irrelevance.
   Qed.
 
-   (* Lemma evalt_cons  {m n} hd {tl : @tuple m (A n)} {x : @tuple n (A 0)} P Q0 Q : [(tuple_cons hd tl)](x; P) == tuple_cons (eval hd x Q0) ([tl](x;Q)). *)
-   (* Proof. *)
-   (*   apply (tuple_nth_ext' _ _ 0 0). *)
-   (*   intros. *)
-   (*   simpl. *)
-   (*   destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P']]. *)
-   (*   intros. *)
-   (*   destruct i. *)
-   (*   rewrite !tuple_nth_cons_hd. *)
-   (*   apply eval_proper;try reflexivity. *)
-   (*   apply tuple_cons_ext in P'. *)
-   (*   destruct P'. *)
-   (*   rewrite H7;reflexivity. *)
-   (*   rewrite !tuple_nth_cons_tl. *)
-   (*   induction m;try lia. *)
-     
-   (*   admit. *)
-   (*   rewrite  *)
-   (*   rewrite H6. *)
-   (*   replace Q0 with (proj1 (in_domaint_cons_impl _ _ _ P)); try apply proof_irrelevance. *)
-   (*   replace Q with (proj2 (in_domaint_cons_impl _ _ _ P)); try apply proof_irrelevance. *)
-   (*   clear Q0 Q. *)
-   (*   simpl. *)
-   (*   destruct tl. *)
-   (*   simpl. *)
-   (*   simpl. *)
-   (*   intros. *)
-   (*   destruct i. *)
-   (*   destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P']]. *)
-   (*   rewrite !tuple_nth_cons_hd. *)
-
-   (*   simpl. *)
-   (*   replace  tl with tl'. *)
-   (*   reflexivity. *)
-   (*   pose proof (in_domaint_cons hd tl x). *)
-   (*   destruct H6. *)
-   (*   specialize (H6 P). *)
-   (*   destruct H6. *)
-   (*   apply tuple_equi *)
    Lemma evalt_spec {m n} {f : @tuple m (A n)} {x : @tuple n (A 0)} (P : in_domaint f x)  i (lt : i < m): tuple_nth i (evalt _ _ P) 0 == eval _ _ (P i lt).  
   Proof.
     generalize dependent i.
@@ -685,7 +671,6 @@ Section CInfinity.
       rewrite tuple_nth_cons_tl;reflexivity.
     Qed.
   (* Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))} *)
- Open Scope diff_scope.
   Class AbstractFunction := {
       const {m} (c : A 0): A m;
       const_dom {m} : forall c x, in_domain (const (m := m) c) x;
@@ -695,15 +680,15 @@ Section CInfinity.
       dom_plus {n} (f g : A n) x : in_domain f x -> in_domain g x -> in_domain (f+g) x;
       dom_mult {n} (f g : A n) x : in_domain f x -> in_domain g x -> in_domain (f*g) x;
       dom_diff {n} (f : A n) x i : in_domain f x -> in_domain (D[i] f) x;
-      dom_composition {r m n} (f : A[r;n]) (g : A[n;(S m)]) x P gx : [g](x;P) == gx -> (gx \in_dom f) -> (x \in_dom (f \o\ g));
-      eval_composition_compat {r m n : nat} (f : A[r;n]) (g : A[n;(S m)]) x (Px : (x \in_dom g)) (Py : ([g](x;Px) \in_dom f)) (Pz : x \in_dom (f \o\ g)) : [f \o\ g](x;Pz)  == [f]([g](x;Px);Py)
+      dom_composition {r m n} (f : A[r;n]) (g : A[n;(S m)]) x P gx : [g](x;P) == gx -> (gx \in_dom f) -> (x \in_dom (f \o g));
+      eval_composition_compat {r m n : nat} (f : A[r;n]) (g : A[n;(S m)]) x (Px : (x \in_dom g)) (Py : ([g](x;Px) \in_dom f)) (Pz : x \in_dom (f \o g)) : [f \o g](x;Pz)  == [f]([g](x;Px);Py)
     }.
 
 End CInfinity.
   Notation "x \in_dom f" := (in_domaint f x) (at level 5) : fun_scope.
   Notation " f @ ( x ; p )" := (evalt f x p) (at level 5):fun_scope.  
-  Notation "A { n ; m }" := (@tuple n (A m)) (at level 5) : fun_scope.
 Section AbstractFunctionTheory.
+
   Context `{AbstractFunction}.
   Local Open Scope fun_scope.
   Lemma dom_sum {n} (fs : nat -> A n) x d : (forall i, (i <= d)%nat -> in_domain (fs i) x) -> in_domain (sum fs (S d)) x. 
@@ -740,15 +725,68 @@ Section AbstractFunctionTheory.
 
 End AbstractFunctionTheory.
 
-Infix "[*]" := scalar_multf (at level 2, left associativity). 
-Infix "[+]" := scalar_addf (at level 2, left associativity). 
+Infix "[*]" := scalar_multf (at level 2).
+Infix "[+]" := scalar_addf (at level 2).
 
-Section Reals.
 
-  Context `{R : Type}.
-  Context `{R_order : TotallyOrderedField R}.
-  (* Definition is_fast_cauchy (f : nat -> R) := forall n m, norm (f n - f m) <=   *)
-  (* Class RealType { *)
-  (*     forall n,  *)
-  (*   } *)
-End Reals.
+(* Section Interval. *)
+(*   Context `{K : Type}. *)
+(*   Context `{ofieldK : TotallyOrderedField K}. *)
+(*   Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_rawRing := R_rawRing) (R_rawRing0 := R_rawRing) (R_TotalOrder := R_TotalOrder))}. *)
+
+(*   Add Ring TRing: ComRingTheory. *)
+(*   Definition cinterval := (K * K)%type. *)
+(*   Definition in_cinterval x i := (normK.(norm) (x-(fst i))) <= snd i. *)
+(*   Definition in_cintervalt {n} (x : @tuple n K) (i : @tuple n cinterval) : Prop. *)
+(*   Proof. *)
+(*     induction n. *)
+(*     apply True. *)
+(*     destruct (destruct_tuple x) as [x0 [xt P1]]. *)
+(*     destruct (destruct_tuple i) as [i0 [it P2]]. *)
+(*     apply ((in_cinterval x0 i0) /\ (IHn xt it)). *)
+(*   Defined. *)
+(* End Interval. *)
+  (* Class differentialRing `{R_semiRing : comSemiRing} := *)
+  (*   { *)
+  (*   derivation : A -> A; *)
+  (*   derivation_plus : forall r1 r2, derivation (add r1 r2) == add (derivation r1) (derivation r2); *)
+  (*   derivation_mult : forall r1 r2, derivation (mul r1 r2) == add (mul r2 (derivation r1)) (mul r1  (derivation r2)); *)
+  (*   derivation_proper :> Proper (equiv ==> equiv) derivation; *)
+  (*   }. *)
+
+(* Section DifferentialAlgebra. *)
+(*   Context {K V : Type} . *)
+  
+(*   Class differentialAlgebra `{K_field : Field (A := K)} `{R_differentialRing : (differentialRing (A := V))} := { *)
+(*       smult : K -> V -> V; *)
+(*       smult1 : forall v, smult one v == v; *)
+(*       smult_proper :> Proper (equiv ==> equiv ==> equiv) smult; *)
+(*       smult_plus_distr : forall a u v, smult a (u+v) == smult a u + smult a v; *)
+(*       splus_mult_dist : forall a b v, smult (a+b) v == smult a v + smult b v; *)
+(*       smult_mult_compat : forall a b v, smult a (smult b v) == smult (a*b) v *)
+(*     }.  *)
+
+(* End DifferentialAlgebra. *)
+
+(* Local Infix "[*]" := smult (at level 2, left associativity). *)
+
+(* Section DifferentialAlgebraTheory. *)
+(*   Context {K V : Type}  `{DA : differentialAlgebra (K:=K) (V := V)}. *)
+(*   Add Ring RRing: (ComSemiRingTheory (A:=V)). *)
+(*   Add Ring RRing: (ComRingTheory (A:=K)). *)
+(*   Lemma smult_zero  a : a [*] 0 == 0. *)
+(*   Proof. *)
+(*     enough (0 [*] 0 == 0). *)
+(*     rewrite <-H1. *)
+(*     rewrite smult_mult_compat. *)
+(*     setoid_replace (a*0) with (0 : K) by ring;auto. *)
+(*     reflexivity. *)
+(*     pose proof (smult1 0). *)
+(*     rewrite <- H1 at 2. *)
+(*     setoid_replace (1 : K) with (0+1 : K) by ring. *)
+(*     rewrite splus_mult_dist. *)
+(*     rewrite smult1. *)
+(*     rewrite add0;reflexivity. *)
+(*   Qed. *)
+
+(* End DifferentialAlgebraTheory. *)

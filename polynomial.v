@@ -64,7 +64,7 @@ Import ListNotations.
   Defined.
   End RawPolynomial.
   Section Polynomial.
-  Context `{A_comRing : comSemiRing}.
+  Context `{A_semiRing : SemiRing}.
 
 
 
@@ -1009,7 +1009,7 @@ Qed.
    Qed.
 
 
-  #[global] Instance poly_comSemiRing : comSemiRing (A := poly).
+  #[global] Instance poly_SemiRing : SemiRing (A := poly).
   Proof.
 
   constructor;intros; try (simpl;apply (nth_ext_A _ _ 0 0);[intros;rewrite !length_sum_coefficients;simpl;lia|intros;rewrite !sum_coefficient_nth;destruct n; simpl;ring]); try (simpl;reflexivity).
@@ -1025,10 +1025,10 @@ Qed.
 End Polynomial.
 
 Section MultiRawPoly.
-  Context `{R : Type} `{R_setoid : Setoid R} `{R_rawRing : RawRing (A:=R)}.
+  Context `{R_rawRing : RawRing }.
   Fixpoint mpoly n :=
     match n with
-    | 0 => R
+    | 0 => A
     | (S n) => @poly (mpoly n)
     end.
 
@@ -1036,7 +1036,7 @@ Section MultiRawPoly.
   Proof.
     intros.
     induction n.
-    apply R_setoid.
+    apply H.
     apply list_A_setoid.
   Defined.
 
@@ -1046,6 +1046,7 @@ Section MultiRawPoly.
     apply R_rawRing.
     apply poly_rawRing.
   Defined.
+
   Fixpoint const_to_mpoly n x : (mpoly n) := 
     match n with
     | 0 => x
@@ -1053,34 +1054,35 @@ Section MultiRawPoly.
    end.
   Definition eval_mpoly {n} (p : mpoly (S n)) x := eval_poly p (const_to_mpoly n x).
   End MultiRawPoly.
+
   Section MultiPoly.
-  Context `{R : Type} `{R_semiRing : comSemiRing (A:=R)}.
-  #[global] Instance mpoly_comSemiRing n:  comSemiRing (A := (mpoly n)).
+  Context `{R_semiRing : SemiRing}.
+  #[global] Instance mpoly_SemiRing n:  SemiRing (A := (mpoly n)).
   Proof.
     intros.
     induction n.
     apply R_semiRing.
-    apply poly_comSemiRing.
+    apply poly_SemiRing.
   Defined.
 
 End MultiPoly.
 Section Composition.
 
-  Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
+  Context `{R_semiRing : SemiRing }.
 
-  Definition to_poly_poly (p : @poly R) : (@poly (@poly R)).
+  Definition to_poly_poly (p : @poly A) : (@poly (@poly A)).
   Proof.
     induction p.
     apply [].
     apply ([a] :: IHp).
   Defined.
-  Instance poly_setoid : Setoid (@poly R).
+  Instance poly_setoid : Setoid (@poly A).
   Proof. apply list_A_setoid. Defined.
-  Instance ppoly_setoid : Setoid (@poly (@poly R)).
+  Instance ppoly_setoid : Setoid (@poly (@poly A)).
   Proof. apply list_A_setoid. Defined.
 
 
-  Definition composition (p1 p2 : @poly R) : @poly R.
+  Definition composition (p1 p2 : @poly A) : @poly A.
   Proof.
     pose proof (to_poly_poly p1).
     apply (eval_poly X p2).
@@ -1088,7 +1090,8 @@ Section Composition.
 
 End Composition.  
 
- Notation "p .{ x }" := (eval_mpoly  p x) (at level 2, left associativity).
+ Notation "p .{ x }" := (eval_mpoly  p x) (at level 3, left associativity).
+
 Definition eval_tuple {R} `{R_rawRing : RawRing (A:=R)} {n} (p : @mpoly R n) (t : @tuple n R) : R. 
 Proof.
    induction n.
@@ -1098,11 +1101,11 @@ Proof.
    apply (IHn p0 tl).
 Defined.
 
- Notation "p .[ x ]" := (eval_tuple  p x) (at level 2, left associativity).
+ Notation "p .[ x ]" := (eval_tuple  p x) (at level 3, left associativity).
 
 Section MultiPolyComposition.
-  Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
-  Definition to_mmpoly {n} m (p : @mpoly R n) : (@mpoly (@mpoly R m ) n).
+  Context `{R_semiRing : SemiRing }.
+  Definition to_mmpoly {n} m (p : @mpoly A n) : (@mpoly (@mpoly A m ) n).
   Proof.
     induction n.
     apply (const_to_mpoly m p).
@@ -1112,14 +1115,14 @@ Section MultiPolyComposition.
     apply ((IHn a) :: IHp).
   Defined.
 
-  Definition mpoly_composition {n m} (p : @mpoly R n) (qs : @tuple n (@mpoly R m)) : (@mpoly R m).
+  Definition mpoly_composition {n m} (p : @mpoly A n) (qs : @tuple n (@mpoly A m)) : (@mpoly A m).
   Proof.
     pose proof (to_mmpoly m p).
     apply (eval_tuple (n:=n) X qs).
   Defined.
 
 
-  Definition eval_tuple_rec {n m} (ps : @tuple n (@mpoly R m)) (xs : @tuple m R) : @tuple n R.
+  Definition eval_tuple_rec {n m} (ps : @tuple n (@mpoly A m)) (xs : @tuple m A) : @tuple n A.
   Proof.
     induction n.
     exists [];simpl;reflexivity.
@@ -1146,7 +1149,7 @@ Section MultiPolyComposition.
     induction n;simpl;reflexivity.
   Defined.
 
-  Lemma mpoly_add_spec {n} (p1 p2 : (@mpoly R n)) x : (p1 + p2).[x] == p1.[x]+p2.[x].
+  Lemma mpoly_add_spec {n} (p1 p2 : (@mpoly A n)) x : (p1 + p2).[x] == p1.[x]+p2.[x].
   Proof.
     revert x.
     induction n;intros;simpl; try ring.
@@ -1158,7 +1161,7 @@ Section MultiPolyComposition.
     apply add_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
   Qed.
 
-  Lemma mpoly_mul_spec {n} (p1 p2 : (@mpoly R n)) x : (p1 * p2).[x] == p1.[x]*p2.[x].
+  Lemma mpoly_mul_spec {n} (p1 p2 : (@mpoly A n)) x : (p1 * p2).[x] == p1.[x]*p2.[x].
   Proof.
     revert x.
     induction n;intros;simpl; try ring.
@@ -1170,7 +1173,7 @@ Section MultiPolyComposition.
   Qed.
 
 
-  Lemma zero_poly_eval {n} (x : @tuple n R)  : 0.[x] == 0.
+  Lemma zero_poly_eval {n} (x : @tuple n A)  : 0.[x] == 0.
   Proof.
     revert x.
     induction n;intros;simpl; try ring.
@@ -1178,7 +1181,7 @@ Section MultiPolyComposition.
     rewrite IHn;ring.
   Qed.
 
-  Lemma const_to_mpoly_eval (n :nat) (a : R) x : (const_to_mpoly n a).[x] == a.
+  Lemma const_to_mpoly_eval (n :nat) (a : A) x : (const_to_mpoly n a).[x] == a.
   Proof.
     revert a x.
     induction n;intros;simpl;try ring.
@@ -1191,7 +1194,7 @@ Section MultiPolyComposition.
     rewrite zero_poly_eval;ring.
   Qed.
 
-  Lemma proj1_sig_tuple_cons {A n} (a : A) (x : @tuple n A): proj1_sig (tuple_cons a x) = a :: proj1_sig x.
+  Lemma proj1_sig_tuple_cons {R n} (a : R) (x : @tuple n R): proj1_sig (tuple_cons a x) = a :: proj1_sig x.
   Proof.
     destruct x.
     simpl;auto.
@@ -1199,7 +1202,7 @@ Section MultiPolyComposition.
   Require Import ProofIrrelevance.
   Require Import ProofIrrelevanceFacts.
 
-  Lemma mpoly_composition_spec {n m} (p : @mpoly R n) (qs : @tuple n (@mpoly R m)) xs : eval_tuple (mpoly_composition p qs) xs == eval_tuple p (eval_tuple_rec qs xs). 
+  Lemma mpoly_composition_spec {n m} (p : @mpoly A n) (qs : @tuple n (@mpoly A m)) xs : eval_tuple (mpoly_composition p qs) xs == eval_tuple p (eval_tuple_rec qs xs). 
   Proof.
   induction n.
   - simpl.
@@ -1220,18 +1223,18 @@ End MultiPolyComposition.
 
 (* Infix "\o" := mpoly_composition (at level 2). *)
 Section DifferentialRing.
-  Context `{R : Type}  `{R_semiRing : comSemiRing (A:=R)}.
+  Context `{R_semiRing : SemiRing }.
 
   Add Ring RRing: ComSemiRingTheory.
-  Add Ring PRing: (ComSemiRingTheory (A := @poly R)).
+  Add Ring PRing: (ComSemiRingTheory (A := @poly A)).
 
-  Lemma derive_poly_length (a : (@poly R)) : length (derive_poly a) = (length a - 1)%nat.
+  Lemma derive_poly_length (a : (@poly A)) : length (derive_poly a) = (length a - 1)%nat.
   Proof.
     unfold derive_poly; simpl.
     destruct (poly_deriv_exists a);simpl.
     lia.
   Qed.
-  Lemma derive_poly_nth (a : @poly R) (n : nat) : nth n (derive_poly a) 0  == ntimes (S n) (nth (S n) a 0).
+  Lemma derive_poly_nth (a : @poly A) (n : nat) : nth n (derive_poly a) 0  == ntimes (S n) (nth (S n) a 0).
   Proof.
     unfold derive_poly; simpl.
     destruct (poly_deriv_exists a);simpl.
@@ -1331,7 +1334,7 @@ Section DifferentialRing.
     apply eqlistA_nil.
     apply (nth_ext_A _ _ 0 0).
     unfold mult_polyf.
-    destruct (derive_poly (r :: r0 :: b)) eqn:E.
+    destruct (derive_poly (a0 :: a1 :: b)) eqn:E.
     apply length_zero_iff_nil in E;rewrite derive_poly_length in E; simpl in E;lia.
     rewrite <-E; clear E.
     rewrite derive_poly_length.
@@ -1411,21 +1414,21 @@ Section DifferentialRing.
   Lemma poly_product_rule a b :  derive_poly (mult_polyf a b) == sum_polyf (mult_polyf a (derive_poly b)) (mult_polyf b (derive_poly a)).
   Proof.
     revert b.
-    induction a.
+    induction a as [|a0 a].
     - intros;simpl.
       unfold derive_poly.
       simpl.
       rewrite mult_polyf_nil1;auto.
-    - intros;destruct a0.
+    - intros;destruct a as [| r a].
       rewrite poly_scalar_mult_deriv, derive_const, mult_polyf_nil1,sum_poly0;auto;reflexivity.
-      destruct b.
+      destruct b as [|r0 b].
       rewrite  derive_nil,mult_polyf_nil1, mult_polyf_nil2, derive_nil, sum_poly0;auto;reflexivity.
-      destruct b.
+      destruct b as [|r1 b].
       {
         rewrite mult_poly_sym, derive_const.
         rewrite poly_scalar_mult_deriv, mult_polyf_nil1, sum_poly_sym, sum_poly0;auto;reflexivity.
       }
-      destruct a0.
+      destruct a as [| a1 a].
       {
         remember (r0 :: r1 :: b) as p1.
         rewrite derive_poly_cons.
@@ -1462,25 +1465,25 @@ Section DifferentialRing.
         ring.
       }
       remember (r1 :: b) as b1.
-      remember (r2 :: a0) as a1.
+      remember (a1:: a) as a1'.
       rewrite mult_poly_cons.
       rewrite poly_sum_rule.
       rewrite sum_coefficients_proper; [|apply poly_scalar_mult_deriv | reflexivity].
       rewrite mult_polyf_shift_switch.
       rewrite IHa.
-            pose proof (mult_poly_cons a (r :: a1)).
+            pose proof (mult_poly_cons a0 (r :: a1')).
 
       rewrite (sum_poly1_proper (mult_polyf (r0::b1) _ )); try apply H0.
 
       rewrite sum_poly_assoc.
       apply sum_coefficients_proper; try reflexivity.
-      rewrite (derive_poly_const_independent a).
+      rewrite (derive_poly_const_independent a0).
       rewrite sum_poly1_proper; [| apply mult_poly2_proper;try apply derive_poly_cons].
-      rewrite (sum_poly2_proper (mult_polyf (0 :: r :: a1) _)); [| apply mult_poly2_proper;try apply derive_poly_cons].
+      rewrite (sum_poly2_proper (mult_polyf (0 :: r :: a1') _)); [| apply mult_poly2_proper;try apply derive_poly_cons].
       rewrite sum_poly1_proper; [| apply mult_poly_distr].
       rewrite !mult_poly_distr.
       rewrite <-(sum_poly_assoc (mult_polyf (0 :: _) _)).
-      rewrite (sum_poly1_proper (mult_polyf (r0 :: b1) _));try apply (sum_poly_sym _ (mult_polyf (r0 :: b1) (r :: a1))).
+      rewrite (sum_poly1_proper (mult_polyf (r0 :: b1) _));try apply (sum_poly_sym _ (mult_polyf (r0 :: b1) (r :: a1'))).
       rewrite !sum_poly_assoc.
       apply sum_coefficients_proper.
       rewrite mult_poly_sym;reflexivity.
@@ -1490,30 +1493,32 @@ Section DifferentialRing.
       apply length_zero_iff_nil in E; rewrite derive_poly_length in E;simpl in E;lia.
       clear E.
       rewrite <-mult_polyf_shift_switch;reflexivity.
-      rewrite Heqa1.
-      destruct (derive_poly (r :: r2 :: a0)) eqn:E.
+      rewrite Heqa1'.
+      destruct (derive_poly (r :: a1 :: a)) eqn:E.
       apply length_zero_iff_nil in E; rewrite derive_poly_length in E;simpl in E;lia.
       rewrite mult_polyf_shift_switch;reflexivity.
   Qed.
 
-  #[global] Instance differentialRingPoly : differentialRing (A := poly).
-  Proof.
-    exists (derive_poly);intros; [apply poly_sum_rule| |].
-    simpl (_ + _).
-    rewrite sum_poly_sym.
-    apply poly_product_rule.
-    apply derive_poly_proper.
-  Defined.
-End DifferentialRing.
+(*   #[global] Instance differentialRingPoly : differentialRing (A := poly). *)
+(*   Proof. *)
+(*     exists (derive_poly);intros; [apply poly_sum_rule| |]. *)
+(*     simpl (_ + _). *)
+(*     rewrite sum_poly_sym. *)
+(*     apply poly_product_rule. *)
+(*     apply derive_poly_proper. *)
+(*   Defined. *)
+ End DifferentialRing.
 
 Section PartialDiffAlgebra.
-  Context `{A_semiRing : comSemiRing}.
+
+  Context `{SemiRing}.
   Add Ring ARing: ComSemiRingTheory.
   Definition poly_pdiff {n} (d : nat) (p : (@mpoly A n )) : (@mpoly A n).
   Proof.
     revert dependent n.
     induction d;intros.
     destruct n.
+    simpl.
     apply 0.
     apply (derive_poly p).
     destruct n.
@@ -1529,10 +1534,12 @@ Section PartialDiffAlgebra.
   #[global] Instance mpoly_pdiff_proper : forall n d, Proper (SetoidClass.equiv ==> SetoidClass.equiv)  (@poly_pdiff n d).
   Proof.
     intros.
-    intros a b H0.
-    induction d;destruct n;simpl;try ring.
-    rewrite H0;reflexivity.
+    intros a b H'.
+    induction d;destruct n;try (simpl;ring).
+    rewrite H';reflexivity.
     apply (nth_ext_A _ _ 0 0).
+    unfold poly_pdiff.
+    simpl.
     rewrite !map_length.
  Admitted.
   Lemma poly_pdiff_mult m : forall (p : (mpoly m)) q n, poly_pdiff n (p * q) == q * poly_pdiff n p + p * poly_pdiff n q.
@@ -1545,14 +1552,16 @@ Section PartialDiffAlgebra.
     exists poly_pdiff.
     - intros.
       revert n r1 r2.
-      induction d;intros; destruct n;simpl;try ring.
+      induction d;intros; destruct n;try (simpl;ring).
       apply poly_sum_rule.
       apply (nth_ext_A _ _ 0 0).
+      simpl.
       rewrite map_length,!length_sum_coefficients, !map_length;auto.
       intros.
       rewrite (nth_indep _ _ (poly_pdiff d zero));auto.
-      rewrite map_nth.
-      rewrite sum_coefficient_nth.
+      simpl.
+      rewrite !map_nth.
+      rewrite !sum_coefficient_nth.
       assert (forall r, nth n0 (map (@poly_pdiff n d) r) 0 = poly_pdiff d (nth n0 r 0)).
       {
         intros.
@@ -1560,8 +1569,8 @@ Section PartialDiffAlgebra.
         rewrite map_nth.
         rewrite poly_pdiff0;auto.
       }
-      rewrite !H1.
-      rewrite sum_coefficient_nth.
+      simpl.
+      rewrite !H2.
       apply IHd.
   - intros; apply poly_pdiff_mult.
   - intros; apply poly_pdiff_switch.
@@ -1587,7 +1596,7 @@ Defined.
   Lemma poly_composition_mult_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x*y) z == (mpoly_composition x z) * (mpoly_composition y z).
   Admitted.
 
-  Lemma poly_id_spec {m} hd (tl : tuple m) :   ([0; 1] : mpoly (S m)) .[ tuple_cons hd tl] == hd. 
+  Lemma poly_id_spec {m} hd (tl : A^m) :   ([0; 1] : mpoly (S m)) .[ tuple_cons hd tl] == hd. 
     simpl.
     destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
     unfold eval_mpoly.
@@ -1598,7 +1607,7 @@ Defined.
     injection P0; intros _ ->;reflexivity.
   Qed.
 
-  Lemma eval_tuple_emb {m} (p : mpoly m) hd (tl : tuple m) : eval_tuple ([p] : mpoly (S m)) (tuple_cons hd tl) == eval_tuple p tl.
+  Lemma eval_tuple_emb {m} (p : mpoly m) hd (tl : A^m) : eval_tuple ([p] : mpoly (S m)) (tuple_cons hd tl) == eval_tuple p tl.
   Proof.
     simpl.
     destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
@@ -1653,7 +1662,7 @@ Defined.
 End PartialDiffAlgebra.
 
 Section Evaluation.
-  Context `{A_semiRing : comSemiRing}.
+  Context `{A_semiRing : SemiRing}.
   Add Ring ARing: ComSemiRingTheory.
   #[global] Instance poly_eval : HasEvaluation (A := mpoly).
   Proof.

@@ -19,7 +19,7 @@ Require Import tuple.
    rewrite H1;apply H2.
  Defined.
 Section Powerseries.
-Context `{A_comRing : comSemiRing}.
+Context `{A_semiRing : SemiRing}.
 Add Ring ARing: ComSemiRingTheory.
 Definition ps := nat -> A.
 Definition derive_ps (a : ps) : ps := fun n => (ntimes (n+1) (a (n+1)%nat)).
@@ -187,11 +187,11 @@ Qed.
         apply convolution_coeff_proper;try reflexivity.
 
    Qed.
-  #[global] Instance ps_comSemiRing :  comSemiRing (A := ps).
+  #[global] Instance ps_SemiRing :  SemiRing (A := ps).
   Proof.
   constructor; intros.
   - intros a b H0 c d H1 n.
-    apply A_comRing;auto.
+    apply A_semiRing;auto.
   - intros a b H0 c d H1 n.
     apply convolution_coeff_proper;auto.    
   - intros n;simpl;unfold zero_ps;ring.
@@ -316,22 +316,12 @@ Qed.
  (*      apply length_zero_iff_nil in E; rewrite derive_poly_length in E;simpl in E;lia. *)
  (*      rewrite mult_polyf_shift_switch;reflexivity. *)
   Admitted.
-  #[global] Instance differentialRingPs : differentialRing (A := ps).
-  Proof.
-    exists (derive_ps).
-    - intros a b n.
-      simpl.
-      unfold derive_ps, sum_ps.
-      rewrite ntimes_plus;ring.
-   - intros a b n.
-     admit.
-  Admitted.
   
     
 End Powerseries.
 
 Section MultiPowerseries.
-  Context `{A_comRing : comSemiRing}.
+  Context `{A_comRing : SemiRing}.
 
   Add Ring ARing : ComSemiRingTheory.
   Fixpoint mps n :=
@@ -355,11 +345,11 @@ Section MultiPowerseries.
     apply ps_rawRing.
   Defined.
 
-  #[global] Instance mps_comSemiRing n : comSemiRing (A := mps n).
+  #[global] Instance mps_SemiRing n : SemiRing (A := mps n).
   Proof.
     induction n.
     apply A_comRing.
-    apply ps_comSemiRing.
+    apply ps_SemiRing.
   Defined.
 
    Fixpoint const_to_mps n x : (mps n) := 

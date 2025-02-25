@@ -7,7 +7,7 @@ Require Import List.
 Require Import ZArith.
 Import ListNotations.
 
- Definition tuple n {A} := {t : list A | length t = n}.
+ Definition tuple n A := {t : list A | length t = n}.
  Definition destruct_tuple {n} {A}  (t : @tuple (S n) A)  : {h : A & {t0 : @tuple n A | proj1_sig t = h :: (proj1_sig t0)}}.   
  Proof.
    destruct t.
@@ -234,7 +234,9 @@ Proof.
   apply IHn;lia.
 Qed.
 
+Notation "A ^ d" := (tuple d A).
 Notation "t( x ; y ; .. ; z )" := (tuple_cons x (tuple_cons y .. (tuple_cons z nil_tuple) ..)).
 
 Notation "t( x )" := (tuple_cons x nil_tuple).
 Notation "t()" := nil_tuple.
+
