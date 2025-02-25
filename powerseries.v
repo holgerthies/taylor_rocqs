@@ -193,9 +193,7 @@ Qed.
   - intros a b H0 c d H1 n.
     apply A_semiRing;auto.
   - intros a b H0 c d H1 n.
-    apply convolution_coeff_proper;auto.    
-  - intros n;simpl;unfold zero_ps;ring.
-  - intros n;simpl;unfold one_ps;ring.
+    apply convolution_coeff_proper;auto.
   - intros n; simpl; unfold sum_ps;ring.
   - intros n; simpl; unfold sum_ps;ring.
   - intros n; simpl; unfold sum_ps, zero_ps;ring.

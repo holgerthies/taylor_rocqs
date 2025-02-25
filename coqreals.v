@@ -5,6 +5,7 @@ Require Import ode.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import QArith.
+Require Import tuple.
 
 Require Import Psatz.
 Require Import List.
@@ -36,9 +37,12 @@ Proof.
   contradict Hp.
   apply CRltForget;auto.
 Defined.
-
-  (* Context (neq_apart : forall x y,(not (CReq R x y)) -> (CRapart R x y)). *)
-  #[global] Instance R_rawRing : @RawRing (CRcarrier R).
+  #[global] Instance R_setoid : @Setoid (CRcarrier R).
+  Proof.
+    exists (CReq R).
+    apply CReq_rel.
+  Defined.
+  #[global] Instance R_rawRing : (@RawRing (CRcarrier R) _).
   Proof.
     constructor.
     apply 0.
@@ -47,13 +51,8 @@ Defined.
     apply CRmult.
 Defined.
 
-  #[global] Instance R_setoid : @Setoid (CRcarrier R).
-  Proof.
-    exists (CReq R).
-    apply CReq_rel.
-  Defined.
 
-  #[global] Instance R_comSemiRing : comSemiRing (A := (CRcarrier R)).
+  #[global] Instance R_comSemiRing : SemiRing (A := (CRcarrier R)).
   Proof.
     constructor; try reflexivity.
     apply CRplus_morph_Proper.
@@ -68,7 +67,7 @@ Defined.
     apply CRmult_plus_distr_l.
  Defined.
 
-  #[global] Instance R_comRing : comRing (A := (CRcarrier R)).
+  #[global] Instance R_comRing : Ring (A := (CRcarrier R)).
   Proof.
     exists (CRopp R).
     apply CRopp_morph_Proper.
@@ -162,9 +161,9 @@ Defined.
     lia.
   Defined.
 
-  Open Scope diff_scope.
+  Open Scope algebra_scope.
 
-  Lemma y_in_dom {d} (f : (@tuple d (mpoly d))) y0 : in_domaint f y0.
+  Lemma y_in_dom {d} (f : ((mpoly d)^d)) y0 : in_domaint f y0.
   Proof.
     intros n P.
     simpl;auto.
@@ -187,7 +186,9 @@ Open Scope fun_scope.
   Defined.
   Definition sin_cos_taylor  := IVP_taylor (A := @mpoly (CRcarrier CRealConstructive)) sin_cos_ivp.
 
-  Definition eval_tuple_poly {d} (p : (@poly (@mpoly (CRcarrier CRealConstructive)) {d;0%nat})) (t : CReal)  : list Q.
+  Definition vdp_taylor  := IVP_taylor (A := @mpoly (CRcarrier CRealConstructive)) (vdp_ivp (inject_Q (1 # 10))).
+
+  Definition eval_tuple_poly {d} (p : (@poly (tuple d (@mpoly (CRcarrier CRealConstructive) 0)))) (t : CReal)  : list Q.
   Proof.
     pose proof (seq_to_tuple (fun n => t) d (def := t)).
     destruct X.
@@ -197,7 +198,7 @@ Open Scope fun_scope.
   Defined.
 
 
-  Eval vm_compute in  (eval_tuple_poly (sin_cos_taylor 7) (inject_Q ( 4 # 10))).
+  Eval vm_compute in  (eval_tuple_poly (sin_cos_taylor 5) (inject_Q ( 4 # 10))).
    
   
 

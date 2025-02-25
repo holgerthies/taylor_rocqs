@@ -4,7 +4,7 @@ Require Import tuple.
 Section IVP_Examples.
   Open Scope fun_scope.
   Context `{AbstractFunction }.
-  Context `{comRing (A := A 0) (H := (H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
+  Context `{Ring (A := A 0) (H := (H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
   (* one-dimensional examples *)
 
@@ -33,7 +33,7 @@ Section IVP_Examples.
   Defined.
 
   (* two-dimensional examples *)
-  Lemma in_dom2  f0 f1 t0 t1: t(t0;t1) \in_dom (t(f0;f1) : A{2;2}) <-> in_domain f0 t(t0;t1) /\ in_domain f1 t(t0;t1).
+  Lemma in_dom2  f0 f1 t0 t1: t(t0;t1) \in_dom (t(f0;f1) : (A 2)^2) <-> in_domain f0 t(t0;t1) /\ in_domain f1 t(t0;t1).
   Proof.
     replace f0 with (tuple_nth 0 t(f0;f1) 0) at 1 by auto.
     replace f1 with (tuple_nth 1 t(f0;f1) 0) at 3 by auto.

@@ -31,8 +31,6 @@ Class SemiRing `{R_rawRing : RawRing}   := {
 
       add_proper :: Proper (equiv ==> equiv ==> equiv) add;
       mul_proper :: Proper (equiv ==> equiv ==> equiv) mul;
-      zero_proper :: 0 == 0;
-      one_proper :: 1 == 1;
       addA : forall a b c, add (add a b) c == add a (add b c);
       addC : forall a b, add a b == add b a;
       add0 : forall a, add a zero == a; 
@@ -45,7 +43,7 @@ Class SemiRing `{R_rawRing : RawRing}   := {
 
 Class Ring `{R_semiRing : SemiRing} := {
     opp : A -> A;
-    opp_proper :> Proper (equiv ==> equiv) opp;
+    opp_proper :: Proper (equiv ==> equiv) opp;
     addI : forall a, add a (opp a) == zero;
 }.
 
@@ -58,7 +56,7 @@ Definition minus  `{Ring} (x y : A)  := add x (opp y).
     rewrite P0,P1;reflexivity.
 Defined.
 
-Notation "- x" := opp : algebra_scope.
+Notation "- x" := (opp x) : algebra_scope.
 Infix "-" := minus : algebra_scope.
 
 Class Field `{A_Ring : Ring} := {
@@ -73,10 +71,18 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
     pdiff_plus : forall  d r1 r2, pdiff d (add r1 r2) == add (pdiff d r1) (pdiff d r2);
     pdiff_mult : forall d r1 r2, pdiff  d (mul r1 r2) == add (mul r2 (pdiff d r1)) (mul r1  (pdiff d r2));
     pdiff_comm : forall d1 d2 r, pdiff d1 (pdiff d2 r) == pdiff d2 (pdiff d1 r);
-    pdiff_proper :> forall n, Proper (equiv ==> equiv) (pdiff n);
+    pdiff_proper :: forall n, Proper (equiv ==> equiv) (pdiff n);
 }.
 
-Notation "D[ i ] f" := (pdiff i f) (at level 4, left associativity) : algebra_scope.
+ Definition nth_derivative  `{PartialDifferentialRing }  (i : nat) (y : A) (n : nat) :  A.
+ Proof.
+   induction n.
+   apply y.
+   apply (pdiff i IHn).
+ Defined.
+
+Notation "D[ i ] f" := (pdiff i f) (at level 4) : algebra_scope.
+(* Notation "D[ i ]n f" := (nth_derivative i f n) (at level 4) : algebra_scope. *)
 
 
 Class TotalOrder {A} `{Setoid A}:= {
@@ -510,7 +516,6 @@ End VectorDiffRing.
 Section Composition.
   Context `{SemiRing}.
 End Composition.
-Notation "A { n ; m }" := ((A n)^m) (at level 5) : fun_scope.
 
 Section PartialDiffAlgebra.
 
@@ -574,6 +579,18 @@ Defined.
  Qed.
 
 
+Lemma multi_composition_sum_comp {m n r} (f : nat -> (A n)^r) (g : (A (S m))^n) i : multi_composition (sum f (S i)) g == (sum (fun i => (multi_composition (f i)  g)) (S i)). 
+Proof.
+  apply (tuple_nth_ext' _ _ 0 0).
+  intros.
+  rewrite tuple_nth_multicomposition;auto.
+  rewrite !tuple_nth_sum;auto.
+  rewrite composition_sum_comp.
+  apply sum_ext.
+  intros.
+  rewrite tuple_nth_multicomposition;auto.
+  reflexivity.
+Qed.
  Lemma multicomposition_chain_rule {n m r} (f : (A n)^r) (g : (A (S m))^n) i : D[i] (multi_composition f g) == (sum (fun k => (D[i] (tuple_nth k g zero)) ** (multi_composition (D[k] f) g)) n).
  Proof.
    intros.
@@ -600,7 +617,7 @@ Section Evaluation.
   Class HasEvaluation := {
       in_domain {n} (f : A n) (x : @tuple n (A 0)):  Prop;
       eval {n} (f : A n) x (P : in_domain f x) :  (A 0);
-      in_domain_proper {n} :> Proper (equiv ==> equiv ==> equiv) (@in_domain n);
+      in_domain_proper {n} :: Proper (equiv ==> equiv ==> equiv) (@in_domain n);
       eval_proper {n} : forall f1 f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> @eval n f1 x1 P1 == @eval n f2 x2 P2;
     }.
 
@@ -710,7 +727,7 @@ Section AbstractFunctionTheory.
     rewrite <-eq0 ,<-eq1;apply H6;auto.
     rewrite eq0 ,eq1;apply H6;auto.
    Defined.
-    Lemma meval_proper {n m} : forall (f1 : A{n;m})  f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> (f1 @ (x1;P1)) == f2 @ (x2;P2).  
+    Lemma meval_proper {n m} : forall (f1 : (A n)^m)  f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> (f1 @ (x1;P1)) == f2 @ (x2;P2).  
     Proof.
       intros.
       apply (tuple_nth_ext' _ _ 0 0).
