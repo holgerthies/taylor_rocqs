@@ -209,6 +209,12 @@ Proof.
      reflexivity.
   Qed.
 
+  Lemma tuple_cons_equiv_equiv {n A} {A_setoid : Setoid A} (a0 b0 : A ) (a b : @tuple n A) : (a0 == b0) -> (a == b) -> (tuple_cons a0 a == tuple_cons b0 b).
+  Proof.
+    intros.
+    rewrite H, H0.
+     reflexivity.
+  Qed.
 #[global] Instance tuple_map_proper {n A B} {A_setoid : Setoid A} {B_setoid : Setoid B}: forall f, Proper (equiv ==> equiv) f -> Proper (equiv ==> equiv) (@tuple_map n A B f).
 Proof.
   intros f fp a b Heq.

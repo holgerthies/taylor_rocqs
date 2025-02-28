@@ -3,13 +3,13 @@ Require Import List.
 Require Import ZArith.
 Import ListNotations.
 Require Import algebra.
+Require Import functions.
 Require Import polynomial.
 Require Import powerseries.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import Classical.
-
 Require Import tuple.
 
 
@@ -204,27 +204,28 @@ Section TaylorSequence.
   Lemma dom_D : forall n, y0 \in_dom (IVP_D f n).
   Proof.
     intros.
-    induction n;intros i Hi;rewrite IVP_D_nth;auto;[apply dom_id|].
+    induction n;intros i Hi;rewrite (dom_change_f _ _ _ (IVP_D_nth _ _  _ Hi));auto;[apply dom_id|].
     simpl.
     destruct d; try lia.
     apply dom_sum;intros.
     apply dom_mult.
     apply dom_f;lia.
     apply dom_diff.
-    rewrite <- IVP_D_nth;try lia.
+    rewrite <-(dom_change_f _ _ _ (IVP_D_nth _ _  _ Hi)).
     apply IHn;lia.
   Qed.
 
   Definition ivp_solution_taylor (n : nat) : (A 0)^d  := ![n] ** ((IVP_D f n) @ (y0; (dom_D n))).
 
-  Definition is_IVP_solution y (Hy : 0 \in_dom y) := is_IVP_solution_series f y  /\ y @ (0;Hy) == y0.
+  Definition is_IVP_solution (y : (A 1)^d) (Hy : (0 : (A 0)^1) \in_dom y) := is_IVP_solution_series f y  /\ y @ (0;Hy) == y0.
 
-  Lemma  is_IVP_solution_deriv_dom {y Hy}: is_IVP_solution y Hy -> forall n, 0 \in_dom (nth_derivative 0 y n). 
+  Lemma  is_IVP_solution_deriv_dom {y Hy}: is_IVP_solution y Hy -> forall n, (0 : (A 0)^1) \in_dom (nth_derivative 0 y n). 
   Proof.
     intros.
     induction n;[apply Hy|].
     intros i Hi.
-    rewrite (tuple_nth_nth_derivative_S i n y 0);auto.
+    pose proof (tuple_nth_nth_derivative_S i n y 0 Hi).
+    rewrite (dom_change_f  (0 : (A 0)^1) _ _ H7).
     apply dom_diff.
     apply IHn;auto.
   Qed.
@@ -237,13 +238,14 @@ Section TaylorSequence.
     intros.
     rewrite scalar_mult_spec;auto.
     rewrite mulC, mul1.
-    rewrite (evalt_spec _ _ H6).
-    assert (in_domain (IVP_Di f 0 i) y0).
+    simpl.
+    rewrite (evalt_spec _ _ _ _ H6).
+    assert (y0 \in_dom (IVP_Di f 0 i)).
     {
-      pose proof (dom_D 0 i H6).
-      rewrite IVP_D_nth in H7;auto.
+      rewrite <-(dom_change_f  _ _ _ (IVP_D_nth _ _ _ H6)).
+      apply dom_D;auto.
     }
-    rewrite (algebra.eval_proper  _ (IVP_Di f 0 i) y0 y0 _ H7);try reflexivity.
+    rewrite (functions.eval_proper  _ (IVP_Di f 0 i) y0 y0 _ H7);try reflexivity.
     simpl;rewrite eval_id;auto;reflexivity.
     rewrite id_nth;auto.
     simpl;reflexivity.
@@ -255,7 +257,7 @@ Section TaylorSequence.
     setoid_replace (((IVP_D f n) @ (y0; dom_D n))) with ((nth_derivative 0 y n) @ (0; is_IVP_solution_deriv_dom S n));try reflexivity.
     destruct S.
     pose proof (IVP_D_spec _ n _ i).
-    assert (0 \in_dom (IVP_D f n) \o y).
+    assert ((0 : (A 0)^1) \in_dom (IVP_D f n) \o y).
     {
       apply (dom_composition _ y 0 Hy _ e).
       apply dom_D.
@@ -266,7 +268,7 @@ Section TaylorSequence.
       rewrite e.
       apply dom_D.
     }
-    rewrite (eval_composition_compat  _ _ _ Hy H8).
+    rewrite (eval_composition_compat  _ _ _ Hy H8 H7).
     apply meval_proper;try rewrite e;reflexivity.
   Qed.
 

@@ -1,6 +1,8 @@
-Require Import algebra ode polynomial.
-Require Import Psatz.
+Require Import algebra ode polynomial functions.
+Require Import Psatz. 
 Require Import tuple.
+Require Import Setoid.
+Require Import Coq.Classes.SetoidClass.
 Section IVP_Examples.
   Open Scope fun_scope.
   Context `{AbstractFunction }.
@@ -33,16 +35,17 @@ Section IVP_Examples.
   Defined.
 
   (* two-dimensional examples *)
-  Lemma in_dom2  f0 f1 t0 t1: t(t0;t1) \in_dom (t(f0;f1) : (A 2)^2) <-> in_domain f0 t(t0;t1) /\ in_domain f1 t(t0;t1).
+  Lemma in_dom2  f0 f1 t0 t1: t(t0;t1) \in_dom (t(f0;f1) : (A 2)^2) <->   t(t0;t1) \in_dom f0 /\ t(t0;t1) \in_dom f1.
   Proof.
-    replace f0 with (tuple_nth 0 t(f0;f1) 0) at 1 by auto.
-    replace f1 with (tuple_nth 1 t(f0;f1) 0) at 3 by auto.
+    assert (f0 == (tuple_nth 0 t(f0;f1) 0)) by (simpl;reflexivity).
+    assert (f1 == (tuple_nth 1 t(f0;f1) 0)) by (simpl;reflexivity).
     split;intros.
-    split;apply H7;lia.
-    destruct H7.
+    split;[rewrite (dom_change_f  _ _ _ H7)|rewrite (dom_change_f  _ _ _ H8)];apply H9;lia.
     intros i Hi.
     assert (i = 0 \/ i = 1)%nat by lia.
-    destruct H9;rewrite H9;auto.
+    destruct H10;rewrite H10;auto.
+    rewrite <-(dom_change_f  _ _ _ H7);apply H9.
+    rewrite <-(dom_change_f  _ _ _ H8);apply H9.
   Qed.   
 
   Definition sin_cos_ivp : (IVP (d := 2) (A := A)).

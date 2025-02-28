@@ -4,6 +4,7 @@ Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import algebra.
+Require Import functions.
 Require Import List.
 Require Import tuple.
 Import ListNotations.
@@ -16,11 +17,6 @@ Import ListNotations.
 
  Section RawPolynomial.
   Context `{A_rawRing : RawRing}.
-  Fixpoint npow (x : A) (n : nat) : A :=
-    match n with
-    | O => 1
-    | S m => x * (npow x m)
-    end.
 
   Definition poly := list A.
   
@@ -1199,8 +1195,6 @@ Section MultiPolyComposition.
     destruct x.
     simpl;auto.
   Qed.
-  Require Import ProofIrrelevance.
-  Require Import ProofIrrelevanceFacts.
 
   Lemma mpoly_composition_spec {n m} (p : @mpoly A n) (qs : @tuple n (@mpoly A m)) xs : eval_tuple (mpoly_composition p qs) xs == eval_tuple p (eval_tuple_rec qs xs). 
   Proof.
@@ -1515,7 +1509,7 @@ Section PartialDiffAlgebra.
   Add Ring ARing: ComSemiRingTheory.
   Definition poly_pdiff {n} (d : nat) (p : (@mpoly A n )) : (@mpoly A n).
   Proof.
-    revert dependent n.
+    generalize dependent n.
     induction d;intros.
     destruct n.
     simpl.
@@ -1660,52 +1654,63 @@ Defined.
    - intros;apply mpoly_pdiff_chain.
   Defined. 
 End PartialDiffAlgebra.
-
+Notation "A {x ^ d }" := (@mpoly A d) (at level 2).
 Section Evaluation.
   Context `{A_semiRing : SemiRing}.
   Add Ring ARing: ComSemiRingTheory.
-  #[global] Instance poly_eval : HasEvaluation (A := mpoly).
+  #[global] Instance poly_eval {n} : HasEvaluation (A := (mpoly n)) (B := A^n) (C:=A).
   Proof.
-    exists (fun n f x => True) (fun n f x H => eval_tuple (R := A) f x).
-    - intros n a b Heq c d Heq'.
-      reflexivity.
-   - intros.
+  exists (fun p x => True) (fun p x H => eval_tuple p x).
+   - intros a b Heq d e Heq'.
+     simpl;split;auto.
+   - simpl.
+     intros.
      rewrite H0, H1.
      reflexivity.
   Defined.
-  Lemma const_in_dom m c x: in_domain (const_to_mpoly m c) x.
+
+
+  Lemma poly_total {n } (p : A{x^n}) (x : A^n) : (in_domain  p x).
   Proof.
     simpl;auto.
   Qed.
 
-  Lemma eval_tuple_rec_spec {n m} g x Px : eval_tuple_rec g x == evalt (n:=n) (m:=m) g x Px.
+  Lemma mpoly_total {n m} (p : A{x^n}^m) (x : A^n) : (in_domain (HasEvaluation := HasMultiEval) p x).
   Proof.
+    intros i Hi; simpl;auto.
+  Qed.
+
+
+  Lemma eval_tuple_rec_spec {n m} (g : A{x^n}^m) x Px : eval_tuple_rec g x == g @ (x;Px).
+  Proof.
+      Opaque SetoidClass.equiv.
+      simpl.
       induction m.
-      simpl;reflexivity.
-      simpl eval_tuple_rec.
-      simpl evalt.
-      destruct (destruct_tuple_cons g) as [hd [tl P]].
-      rewrite (IHm _ (proj2 (in_domaint_cons_impl hd tl g x P Px))).
-      reflexivity.
-   Qed.
+      simpl; reflexivity.
+      simpl.
+      destruct (destruct_tuple_cons g) as [hd [tl ->]].
+      rewrite (IHm tl (mpoly_total _ _)).
+      apply tuple_cons_equiv_equiv; try reflexivity.
+      apply meval_proper;reflexivity.
+  Qed.
   #[global] Instance poly_function : AbstractFunction (A := mpoly).
   Proof.
-     exists const_to_mpoly const_in_dom; intros; try reflexivity.
+     exists const_to_mpoly (fun m c x => (@poly_total m (const_to_mpoly m c ) x)); intros; try reflexivity.
     - intros; simpl;apply const_to_mpoly_eval.
     - simpl.
       apply poly_comp1_eval.
     - intros i Hi;simpl;auto.
     - apply (tuple_nth_ext' _ _ 0 0).
       intros.
-      rewrite !(evalt_spec _ _ H0).
-      rewrite tuple_nth_multicomposition;try lia.
+      simpl eval.
+      rewrite !(evalt_spec _ _ _ _ H0).
+      unfold eval, poly_eval, algebra.composition, mpoly_comp_diff_algebra.
+      rewrite (tuple_nth_multicomposition i 0 f g);auto.
       unfold eval,poly_eval, algebra.composition, mpoly_comp_diff_algebra.
       unfold mpoly_comp'.
       rewrite mpoly_composition_spec.
       setoid_replace (eval_tuple_rec g x) with (evalt g x Px).
       reflexivity.
-      induction n.
-      simpl;reflexivity.
       apply eval_tuple_rec_spec.
 Defined.
 

@@ -1,6 +1,7 @@
 -R . TR
 tuple.v
 algebra.v
+functions.v
 powerseries.v
 polynomial.v
 ode.v

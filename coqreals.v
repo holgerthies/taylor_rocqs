@@ -1,6 +1,7 @@
 Require Import Coq.Reals.Abstract.ConstructiveReals.
 Require Import algebra.
 Require Import polynomial.
+Require Import functions.
 Require Import ode.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
@@ -162,12 +163,14 @@ Defined.
   Defined.
 
   Open Scope algebra_scope.
+  Open Scope fun_scope.
 
-  Lemma y_in_dom {d} (f : ((mpoly d)^d)) y0 : in_domaint f y0.
+  Lemma y_in_dom {d} (f : ((mpoly d)^d)) (y0 : (mpoly 0)^d) :  y0 \in_dom f.
   Proof.
     intros n P.
     simpl;auto.
   Defined.
+
   Definition PIVP_T {d} (f : @tuple d (mpoly d)) y0 := ivp_taylor_poly f y0 (y_in_dom f y0).
  Definition exp_series := PIVP_T (tuple_cons p1 nil_tuple) (tuple_cons 1 nil_tuple). 
 End ConstructiveReals.
@@ -184,9 +187,12 @@ Open Scope fun_scope.
   Proof.
     apply [[];[inject_Q (-1#1)]].
   Defined.
-  Definition sin_cos_taylor  := IVP_taylor (A := @mpoly (CRcarrier CRealConstructive)) sin_cos_ivp.
 
-  Definition vdp_taylor  := IVP_taylor (A := @mpoly (CRcarrier CRealConstructive)) (vdp_ivp (inject_Q (1 # 10))).
+  
+  Definition RQ := CRcarrier CRealConstructive.
+  Definition sin_cos_taylor  := IVP_taylor (A := @mpoly RQ ) sin_cos_ivp.
+
+  Definition vdp_taylor  := IVP_taylor (A := @mpoly RQ) (vdp_ivp (inject_Q (1 # 10))).
 
   Definition eval_tuple_poly {d} (p : (@poly (tuple d (@mpoly (CRcarrier CRealConstructive) 0)))) (t : CReal)  : list Q.
   Proof.
@@ -197,8 +203,30 @@ Open Scope fun_scope.
     apply (map (fun a => seq a 10) x0).
   Defined.
 
+  Definition t0 := (t(inject_Q 3;inject_Q 1) : (tuple 2 RQ)).
+  Definition t1 := (t(inject_Q 3;inject_Q 1;inject_Q 2) : (tuple 3 RQ)).
+  Definition poly2 := const_to_mpoly 3 (inject_Q 3).
+  Check poly2.
+  Definition ppoly2 : (tuple 3 CReal {x^3}) := t(poly2;poly2;poly2).
+  Lemma a : t0  \in_dom minus1_poly. 
+  Proof.
+    apply poly_total.
+  Qed.
 
-  Eval vm_compute in  (eval_tuple_poly (sin_cos_taylor 5) (inject_Q ( 4 # 10))).
+  Definition eval1 := (minus1_poly @ (t0;a)).
+  Definition eval_s := (sin_cos_ivp (A:=@mpoly RQ)).(f) @ (sin_cos_ivp.(y0);sin_cos_ivp.(in_dom)).
+  Eval vm_compute in  (eval_tuple_poly (vdp_taylor 5) (inject_Q ( 2 # 10))).
+  Lemma ab : t1  \in_dom ppoly2.
+  Proof.
+    apply poly_total.
+  Qed.
+  Definition eval0 := poly2 @ (t1;ab).
+
+  
+  Definition eval_s := (sin_cos_ivp (A:=@mpoly RQ)).(f) @ (sin_cos_ivp.(y0);sin_cos_ivp.(in_dom)).
+  Definition eval_t := (tan_ivp (A:=@mpoly RQ)).(f) @ (tan_ivp.(y0);tan_ivp.(in_dom)).
+  Definition eval1 := (minus1_poly @ (t0;a)).
+  Definition aa := (tuple_nth 0%nat eval_t (inject_Q 0)).
    
   
 
