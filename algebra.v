@@ -86,6 +86,53 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    apply (pdiff i IHn).
  Defined.
 
+ Lemma nth_derivative_S `{PartialDifferentialRing } i (f : A) n : (nth_derivative i f (S n)) == (nth_derivative i (pdiff i f) n).
+ Proof.
+   induction n.
+   simpl;reflexivity.
+   simpl.
+   rewrite IHn;reflexivity.
+ Qed.
+
+  #[global] Instance nth_derivative_proper `{PartialDifferentialRing } i n : Proper (equiv ==> equiv) (fun f => nth_derivative i f n ).
+  Proof.
+    intros a b eq.
+    induction n.
+    simpl;rewrite eq;reflexivity.
+    simpl.
+    rewrite IHn.
+    reflexivity.
+  Defined.
+
+ Lemma nth_derivative_plus `{PartialDifferentialRing } (f g : A) i n:  (nth_derivative i (f + g) n) == (nth_derivative i f n) + (nth_derivative i g n).
+ Proof.
+   intros.
+   induction n.
+   simpl;reflexivity.
+   simpl.
+   rewrite IHn.
+   rewrite pdiff_plus.
+   reflexivity.
+ Qed.
+
+ Lemma nth_derivative_twice `{PartialDifferentialRing } i (f : A) n1 n2 : (nth_derivative i (nth_derivative i f n1) n2) == (nth_derivative i f (n1+n2)).
+ Proof.
+   induction n2.
+   replace (n1+0)%nat with n1 by lia.
+   simpl;reflexivity.
+   simpl.
+   rewrite IHn2.
+   replace (n1 + S n2)%nat with (S n1 + n2)%nat by lia.
+   simpl.
+   reflexivity.
+ Qed.
+ Lemma nth_derivative_S_prod1 `{PartialDifferentialRing } (f g : A) i n:  (nth_derivative i (f * g) (S n)) == (nth_derivative i (g * (pdiff i f) ) n) + (nth_derivative i (f* (pdiff i g) ) n).
+ Proof.
+   rewrite nth_derivative_S.  
+   rewrite nth_derivative_proper; try apply (pdiff_mult).
+   rewrite nth_derivative_plus.
+   reflexivity.
+ Qed.
 Notation "D[ i ] f" := (pdiff i f) (at level 4) : algebra_scope.
 (* Notation "D[ i ]n f" := (nth_derivative i f n) (at level 4) : algebra_scope. *)
 
@@ -116,7 +163,7 @@ Section Norm.
     norm_nonneg : forall x, 0 <= norm x;
     norm_zero : forall x,  norm x == 0 <-> x == 0;
     norm_triangle : forall x y, norm (x+y) <= norm x + norm y;
-    norm_mult : forall x y, norm (x*y) = norm x * norm y;
+    norm_mult : forall x y, norm (x*y) <= norm x * norm y;
   }.
 
 
@@ -167,6 +214,17 @@ Section RingTheory.
     rewrite IHn;ring.
   Qed.
 
+ Lemma ntimes_twice : forall (n :nat) x, (ntimes (2*n) x) == (1+1) * (ntimes n x). 
+ Proof.
+   intros.
+   induction n.
+   simpl.
+   ring.
+   replace (2 * S n)%nat with (S ( S (2 * n))) by lia.
+   simpl.
+   rewrite IHn.
+   ring.
+ Qed.
 
   #[global] Instance ntimes_proper n : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (ntimes n)).
   Proof.
@@ -177,6 +235,27 @@ Section RingTheory.
     rewrite IHn, H0.
     ring.
   Defined.
+
+  #[global] Instance npow_proper n : (Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun x => npow x n)).
+  Proof.
+    intros a b H0.
+    induction n.
+    simpl;ring.
+    simpl.
+    rewrite IHn, H0.
+    ring.
+  Defined.
+ Lemma npow_plus x n m: npow x (n+m) == npow x n * npow x m. 
+ Proof.
+   induction m.
+   replace (n+0)%nat with n by lia.
+   simpl.
+   ring.
+   replace (n + S m)%nat with (S (n+m)) by lia.
+   simpl npow.
+   rewrite IHm.
+   ring.
+ Qed.
   Lemma ComRingTheory  : ring_theory 0 1 add mul minus opp  equiv.
   Proof.
 
@@ -284,6 +363,13 @@ Proof.
   apply le_0_1.
 Qed.
 
+ Lemma lt_0_2 : 0 <= (1+1).
+ Proof.
+   setoid_replace (1+1) with (ntimes 2 1).
+   apply le_0_n.
+   simpl.
+   ring.
+ Qed.
 Lemma char0 : forall n, not ((ntimes (S n) 1) == 0).
 Proof.
   intros.

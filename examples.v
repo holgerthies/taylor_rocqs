@@ -5,7 +5,7 @@ Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
 Section IVP_Examples.
   Open Scope fun_scope.
-  Context `{AbstractFunction }.
+  Context `{AbstractFunctionSpace }.
   Context `{Ring (A := A 0) (H := (H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
   (* one-dimensional examples *)

@@ -1660,13 +1660,17 @@ Section Evaluation.
   Add Ring ARing: ComSemiRingTheory.
   #[global] Instance poly_eval {n} : HasEvaluation (A := (mpoly n)) (B := A^n) (C:=A).
   Proof.
-  exists (fun p x => True) (fun p x H => eval_tuple p x).
+  exists (fun p x => True) (fun p x H => eval_tuple p x); try (intros;auto).
    - intros a b Heq d e Heq'.
      simpl;split;auto.
    - simpl.
      intros.
      rewrite H0, H1.
      reflexivity.
+   - simpl.
+     apply mpoly_add_spec.
+    - simpl.
+      apply mpoly_mul_spec.
   Defined.
 
 
@@ -1693,7 +1697,7 @@ Section Evaluation.
       apply tuple_cons_equiv_equiv; try reflexivity.
       apply meval_proper;reflexivity.
   Qed.
-  #[global] Instance poly_function : AbstractFunction (A := mpoly).
+  #[global] Instance poly_function : AbstractFunctionSpace (A := mpoly).
   Proof.
      exists const_to_mpoly (fun m c x => (@poly_total m (const_to_mpoly m c ) x)); intros; try reflexivity.
     - intros; simpl;apply const_to_mpoly_eval.

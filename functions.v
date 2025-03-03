@@ -13,13 +13,30 @@ Section Evaluation.
       eval f x (P : in_domain f x) :  C;
       in_domain_proper  :: Proper (equiv ==> equiv ==> equiv) in_domain;
       eval_proper  : forall f1 f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> eval f1 x1 P1 == eval f2 x2 P2;
+      dom_plus (f g : A) (x : B) : in_domain f x -> in_domain g x  -> in_domain (f+g) x;
+      eval_plus_compat (f g : A) (x : B) P1 P2 P3: eval (f + g) x P3  == eval f x P1 +  eval g x P2;
+      dom_mult  (f g : A) (x : B) : in_domain f x -> in_domain g x -> in_domain (f*g) x;
+      eval_mult_compat (f g : A) (x : B) P1 P2 P3: eval (f * g) x P3  == eval f x P1 * eval g x P2;
     }.
 
 End Evaluation.
 
 Section MultiEvaluation.
   Context {A B C : Type} `{SemiRing A} `{SemiRing B} `{SemiRing C}.
-  Context `{HasEvaluation (A:=A) (B := B) (C:=C) (H := H) (H1 := H1) (H3 := H3)}.
+  Context `{HasEvaluation (A := A) (B := B) (C := C) (H := H) (H1 := H1) (H3 := H3) (R_rawRing := R_rawRing) (R_rawRing1 := R_rawRing1) }.
+
+ Lemma eval_change_f  (f g : A) (x0 : B) P :  (f == g) -> exists P', eval f x0 P == eval g x0 P'. 
+ Proof.
+   intros.
+   assert (in_domain g x0).
+   {
+     apply (in_domain_proper (A:=A) (B:=B) f g H6 x0 x0 );auto.
+     reflexivity.
+   }
+   exists H7.
+   apply eval_proper;auto.
+   reflexivity.
+ Qed.
   Definition in_domaint {d}  (f : A^d) (x : B) := forall i, i< d ->  in_domain (tuple_nth i f 0) x.
 
   Lemma in_domaint_cons {d}  (hd : A) (tl : A^d) (x : B) : in_domaint (tuple_cons hd tl) x <-> (in_domain hd x) /\ (in_domaint tl x).
@@ -178,11 +195,52 @@ Definition evalt {d}  (f : A^d) (x : B) (P : in_domaint f x) : C^d.
       rewrite H6;reflexivity.
    Defined.
 
+    Lemma meval_mult_compat {n} (f : A^n) (g : A^n) (x : B) P1 P2 P3: evalt (f * g) x P3  == evalt f x P1 * evalt  g x P2.
+    Proof.
+      apply (tuple_nth_ext' _ _ 0 0).
+      intros.
+      rewrite vec_mult_spec;auto.
+      simpl.
+      rewrite !(evalt_spec _ _ _ _ H6).
+      pose proof (vec_mult_spec f g i H6).
+      assert (in_domain ((tuple_nth i f 0) * (tuple_nth i g 0)) x).
+      {
+        apply dom_mult;auto.
+      }
+      rewrite (eval_proper _ _ x x (P3 i H6) H8 H7);try reflexivity.
+      rewrite eval_mult_compat; try reflexivity.
+    Qed.
+
+    Lemma meval_plus_compat {n} (f : A^n) (g : A^n) (x : B) P1 P2 P3: evalt (f + g) x P3  == evalt f x P1 + evalt  g x P2.
+    Proof.
+      apply (tuple_nth_ext' _ _ 0 0).
+      intros.
+      rewrite vec_plus_spec;auto.
+      simpl.
+      rewrite !(evalt_spec _ _ _ _ H6).
+      pose proof (vec_plus_spec f g i H6).
+      assert (in_domain ((tuple_nth i f 0) + (tuple_nth i g 0)) x).
+      {
+        apply dom_plus;auto.
+      }
+      rewrite (eval_proper _ _ x x (P3 i H6) H8 H7);try reflexivity.
+      rewrite eval_plus_compat; try reflexivity.
+    Qed.
   #[global] Instance HasMultiEval {d} : (HasEvaluation (A := (A ^ d)) (B:=B) (C := (C^d))).
   Proof.
     exists (in_domaint ) evalt.
-    apply in_domt_proper.
-    apply meval_proper.
+    - apply in_domt_proper.
+    - apply meval_proper.
+    - intros.
+      intros i n.
+      rewrite vec_plus_spec;auto.
+      apply dom_plus;auto.
+    - apply meval_plus_compat. 
+    - intros.
+      intros i n.
+      rewrite vec_mult_spec;auto.
+      apply dom_mult;auto.
+   - apply meval_mult_compat.
   Defined.
 
  End MultiEvaluation.
@@ -231,8 +289,6 @@ Section FunctionSpace.
       const_eval {m} : forall c x,  (const (m := m) c) @ (x ;(const_dom (m:=m) c x)) == c;
       dom_id {m} (n : nat): forall (x : (A 0)^m), x \in_dom (comp1 (m :=m) n);
       eval_id {m} n : forall x H, (n < m) -> (comp1 (m := m) n) @ (x; H) == tuple_nth n x 0;
-      dom_plus {n} (f g : A n) (x : (A 0)^n) : x \in_dom f -> x \in_dom g  -> x \in_dom (f+g);
-      dom_mult {n} (f g : A n) (x : (A 0)^n) : x \in_dom f -> x \in_dom g -> x \in_dom (f*g);
       dom_diff {n} (f : A n) (x : (A 0)^n) i : x \in_dom f -> x \in_dom (D[i] f);
       dom_composition {r m n} (f : (A n)^r) (g : (A (S m))^n) (x : (A 0)^(S m)) P gx : g @ (x;P) == gx -> (gx \in_dom f) -> (x \in_dom (f \o g));
       eval_composition_compat {r m n : nat} (f : (A n)^r) (g : (A (S m))^n) (x : (A 0)^(S m)) (Px : (x \in_dom g)) (Py : (g @ (x;Px) \in_dom f)) (Pz : x \in_dom (f \o g)) : f \o g @ (x;Pz)  == f @ (g @ (x;Px);Py)
@@ -263,6 +319,18 @@ Section AbstractFunctionTheory.
       apply dom_plus;auto.
   Qed.
 
+  Lemma nth_derivative_dom {m p} (f : (A m)^p) (x0 : (A 0)^m) : forall n i, x0 \in_dom f ->  x0 \in_dom (nth_derivative i f n).
+  Proof.
+  intros.
+  induction n.
+  simpl;auto.
+  simpl.
+  intros j jle.
+  rewrite pdiff_tuple_nth;auto.
+  apply dom_diff.
+  apply IHn;auto.
+  Qed.
+  
    (* #[global] Instance in_domt_proper {n m} :Proper (equiv ==> equiv ==> equiv) (fun f x => (in_domain (A := (A n)^m) (f := f) x)). *)
    (*  Proof. *)
    (*  intros a b eq0 c d eq1. *)
@@ -366,23 +434,10 @@ Section Analytic.
 
 Context `{AbstractFunctionSpace} {d e : nat} {f : (A d)^e} {x0 : (A 0%nat)^d} {dom : x0 \in_dom f}.
 Context `{TotallyOrderedField (A := (A 0)) (H:=(H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
- Context `{normK : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}. 
-Lemma nth_derivative_dom : forall n i,  x0 \in_dom (nth_derivative i f n).
-Proof.
-  intros.
-  induction n.
-  simpl;apply dom.
-  simpl.
-  intros j Hj.
-  simpl.
-  rewrite pdiff_tuple_nth;auto.
-  apply dom_diff.
-  apply IHn;auto.
-Qed.
-
+ Context `{normK : (NormedSemiRing ((A 0)^e) (A 0)  (H0 := (H 0))  (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}. 
 Class Analytic := {
     M : (A 0);
     R : (A 0);
-    derivative_bound : forall n i, (i < d) -> norm ((nth_derivative i f n) @ (x0; (nth_derivative_dom n i))) <= M * npow R n
+    derivative_bound : forall n i, (i < d) -> norm ((nth_derivative i f n) @ (x0; (nth_derivative_dom f x0 n i dom))) <= M * npow R n
   }.
 End Analytic.
