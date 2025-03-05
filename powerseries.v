@@ -501,11 +501,21 @@ Section MultiPowerseries.
 
   Definition mps_comp1 m : nat -> (mps m).
   Proof.
-    induction m;intros n.
+    intros n.
+    revert m.
+    induction n;intros.
+    destruct m.
     apply 0.
-    destruct n.
     apply comp_one_ps.
-    apply ((fun n => match n with 0%nat => (IHm n) | _ => 0 end) : (mps (S m))).
+    destruct m.
+    apply 0.
+    apply ((fun n => match n with 0%nat => (IHn m) | _ => 0 end) : (mps (S m))).
+
+    (* induction m;intros n. *)
+    (* apply 0. *)
+    (* destruct n. *)
+    (* apply comp_one_ps. *)
+    (* apply ((fun n => match n with 0%nat => (IHm n) | _ => 0 end) : (mps (S m))). *)
   Defined.
 
   Lemma   mps_composition1 {d} m i x : multips_composition (m:=d) (mps_comp1 m i) x == tuple_nth i x 0.

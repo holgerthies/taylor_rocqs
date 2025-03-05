@@ -1027,15 +1027,131 @@ Section MultiBounds.
     Qed.
 
 
-    Lemma ps_index_comp1 {d} ix i : ps_index (d := d) ix (comp1  i) == 1.
+    Lemma ps_index_0 {d} ix :  ps_index (d := d) ix 0 ==0.
     Proof.
       induction d.
       simpl.
-      right;reflexivity.
+      reflexivity.
       simpl.
       destruct (destruct_tuple_cons ix) as [hd [tl P]].
+      apply IHd.
+    Qed.
+
+    Lemma ps_index_1 {d} ix :  ps_index (d := d) ix 1 == match (order ix) with  0 => 1 | _ => 0 end.
+    Proof.
+      induction d.
+      simpl;reflexivity.
       simpl.
+      destruct (destruct_tuple_cons ix) as [hd [tl ->]].
+      destruct hd.
+      simpl.
+      apply IHd.
+      simpl.
+      rewrite ps_index_0.
+      reflexivity.
+    Qed.
+
+    Lemma order_cons {d} hd tl : order (d:=S d) (tuple_cons hd tl) = (hd + order tl)%nat.
+    Proof.
+      simpl.
+      destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]].
+      apply tuple_cons_ext in P.
+      destruct P as [-> ->].
+      lia.
+    Qed.
+
+    Lemma order_zero_split {d} hd tl : order (d:=S d) (tuple_cons hd tl) = 0%nat -> (hd = 0%nat /\ order tl = 0%nat).
+    Proof.
+      intros.
+      rewrite order_cons in H1.
+      lia.
+    Qed.
+
+    Lemma order_zero1 {d} n : (order (d:=d) n) = 0%nat -> (forall i, i< d -> tuple_nth i n 0%nat = 0%nat).
+    Proof.
+      intros.
+      generalize dependent i.
+      induction d;intros; try lia.
+      destruct (destruct_tuple_cons n) as [hd [tl ->]].
+      apply order_zero_split in H1.
       destruct i.
+      rewrite tuple_nth_cons_hd.
+      apply H1.
+      rewrite tuple_nth_cons_tl.
+      apply IHd;try lia.
+    Qed.
+
+    Lemma order_zero {d} n : (order (d:=d) n) = 0%nat -> (forall i,  tuple_nth i n 0%nat = 0%nat).
+    Proof.
+      intros.
+      destruct (Nat.lt_ge_cases i d).
+      apply order_zero1;auto.
+      destruct n.
+      simpl.
+      rewrite nth_overflow;auto;lia.
+     Qed.
+
+    Lemma ps_index_comp1 {d} ix i :  ps_index (d := d) ix (comp1  i) == match (order ix) with
+                                                                         | 1 => match (tuple_nth i ix 0%nat) with
+                                                                               |  1 => 1 | _ => 0  end
+                                                                         | _ => 0
+                                                                          end.
+    Proof.
+      generalize dependent d.
+      induction i;intros;try (simpl;reflexivity).
+      - simpl.
+        destruct d;simpl;try reflexivity.
+        destruct (destruct_tuple_cons ix) as [hd [tl P]].
+        simpl.
+        destruct hd eqn:E.
+        simpl.
+        rewrite ps_index_0.
+        rewrite P.
+        rewrite tuple_nth_cons_hd.
+        destruct (order tl); try destruct n;try reflexivity.
+        simpl.
+        destruct n;simpl;[|rewrite ps_index_0;reflexivity].
+        rewrite P.
+        rewrite tuple_nth_cons_hd.
+        rewrite ps_index_1.
+        reflexivity.
+      - simpl.
+        destruct d; simpl; try reflexivity.
+        destruct (destruct_tuple_cons ix) as [hd [tl P]].
+        simpl.
+        destruct hd.
+        + simpl.
+          rewrite P.
+          rewrite tuple_nth_cons_tl.
+          apply IHi.
+        + rewrite ps_index_0.
+          rewrite P.
+          rewrite tuple_nth_cons_tl.
+          simpl.
+          destruct (order tl) eqn:E.
+          simpl;rewrite order_zero; try lia; destruct hd; simpl;try reflexivity.
+          destruct hd;simpl;try reflexivity.
+    Qed.
+
+    Lemma ntimes_index {d} (a : @mps A (S d)) n i : (ntimes n a) i == ntimes n (a i). 
+    Proof.
+      induction n.
+      simpl.
+      reflexivity.
+      intros .
+      simpl ntimes.
+      Transparent add.
+      simpl add.
+      unfold sum_ps.
+      rewrite IHn.
+      reflexivity.
+    Qed.
+
+    Lemma norm_zero_eq : norm 0 == 0.
+    Proof.
+        setoid_replace (norm 0) with 0 by (rewrite norm_zero;reflexivity).
+        apply reflexivity.
+     Qed.
 
     Lemma IVP_D_bound {d :nat} (a : (@mps A d)^d) (b : (@mps A 1)^1) n : mps_tuple_bound a (tuple_nth 0 b 0) -> (mps_tuple_bound (IVP_D a n) (ntimes d (tuple_nth 0 (IVP_D b n) 0))).
     Proof.
@@ -1045,9 +1161,32 @@ Section MultiBounds.
          intros i k.
          intros.
          rewrite id_nth;auto.
-         simpl.
+         rewrite ps_index_comp1.
          unfold comp_one_ps.
-         admit.
+         setoid_rewrite (ntimes_index (d := 0)).
+         destruct (order k).
+         + rewrite ntimes_zero.
+           rewrite norm_zero_eq.
+           apply le_refl.
+        +  destruct n; [|rewrite ntimes_zero, norm_zero_eq;apply le_refl].
+           destruct d; try lia.
+           simpl.
+           destruct (tuple_nth i k 0%nat).
+           simpl.
+           rewrite norm_zero_eq.
+           rewrite <-add0.
+           apply le_le_plus_le.
+           apply le_0_1.
+           apply ntimes_nonneg;apply le_0_1.
+           destruct n.
+           rewrite <-add0.
+           apply le_le_plus_le; [|apply ntimes_nonneg; apply le_0_1].
+           rewrite norm1.
+           apply le_refl.
+           rewrite <-add0.
+           apply le_le_plus_le.
+           rewrite norm_zero_eq;apply le_0_1.
+           apply ntimes_nonneg;apply le_0_1.
        - intros i k.
          intros.
          rewrite !IVP_D_nth;auto.
@@ -1076,9 +1215,9 @@ Section MultiBounds.
          intros.
          apply mps_mult_monotone.
          intros k';apply H1;auto.
-         
-       Search IVP_D.
-    Check  (IVP_D a).
+         apply mps_diff_monotone;auto.
+         apply IHn.
+     Qed.
     
      Lemma mps_mult_monotone {d} (a b : @mps A d) a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'.
   (*      apply IHd. *)

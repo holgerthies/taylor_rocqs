@@ -184,7 +184,7 @@ Proof.
    apply eq1.
    rewrite !nth_overflow;auto;lia.
  Defined.
-  Lemma tuple_cons_ext {n A} {A_setoid : Setoid A} (hd : A) (tl : @tuple n A) hd' tl': tuple_cons hd tl = tuple_cons hd' tl' -> hd = hd' /\ tl = tl'. 
+  Lemma tuple_cons_ext {n A}  (hd : A) (tl : @tuple n A) hd' tl': tuple_cons hd tl = tuple_cons hd' tl' -> hd = hd' /\ tl = tl'. 
   Proof.
     intros.
     destruct tl, tl'.
