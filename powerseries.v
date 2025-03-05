@@ -508,6 +508,17 @@ Section MultiPowerseries.
     apply ((fun n => match n with 0%nat => (IHm n) | _ => 0 end) : (mps (S m))).
   Defined.
 
+  Lemma   mps_composition1 {d} m i x : multips_composition (m:=d) (mps_comp1 m i) x == tuple_nth i x 0.
+  Admitted.
+  Lemma  mps_composition_plus :  forall (m n : nat) (x y : mps m) (z : mps (S n) ^ m),multips_composition (x + y) z == multips_composition x z + multips_composition y z.
+  Admitted.
+
+  Lemma mps_composition_mult :   forall (m n : nat) (x y : mps m) (z : mps (S n) ^ m),multips_composition (x * y) z == multips_composition x z * multips_composition y z.
+  Admitted.
+
+  Lemma mps_composition_prule :   forall (m n d : nat) (x : mps m) (y : mps (S n) ^ m),  D[ d] (multips_composition x y) ==sum (fun i : nat => D[ d] (tuple_nth i y 0) * multips_composition D[ i] x y) m.
+  Admitted.
+
   #[global] Instance multips_diffalgebra  : CompositionalDiffAlgebra.
   Proof.
     exists @multips_composition mps_comp1.
@@ -515,14 +526,26 @@ Section MultiPowerseries.
     (*   apply (const_to_mps _ X). *)
     - intros;apply multips_composition_proper.
     - intros.
-      induction m.
-      simpl;intros.
-      admit.
-      destruct i.
-      simpl mps_comp1.
-      admit.
-      admit.
-  Admitted.
+      apply mps_composition1.
+    - apply mps_composition_plus.
+    - apply mps_composition_mult.
+    - apply mps_composition_prule.
+  Defined.
+
+  Lemma mul_ps_zero {d} (a b : mps (S d)) :  ((a*b) 0%nat) == (a 0%nat) * (b 0%nat).
+  Proof.
+    simpl.
+    unfold mult_ps, powerseries.convolution_coeff;simpl.
+    rewrite add0.
+    reflexivity.
+  Qed.
+
+  Lemma mul_ps_S {d} (a b : mps (S d)) n :  (a*b) (S n) == (a 0%nat) * (b (S n)) + (((fun n => a (S n)) * b)  n).
+  Proof.
+    simpl.
+    rewrite mult_ps_S.
+    reflexivity.
+  Qed.
 End MultiPowerseries.
 
 

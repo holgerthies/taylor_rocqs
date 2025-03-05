@@ -350,8 +350,10 @@ Section Bounds.
 Context `{TotallyOrderedField}.
  Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
   Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+  
  Context {norm1 : norm 1 == 1}.
- Context {M r : A}.
+ Context {M r : A} {Mge0: 0 <= M} {rge0: 0 <= r}.
+ 
 
  Definition rising_factorial k n := [k+n-1]! * ![k-1].
  Notation "[ k ! n ]" := (rising_factorial k n).
@@ -368,8 +370,8 @@ Context `{TotallyOrderedField}.
    ring.
  Qed.
 
- Definition f_bound k := M * npow r k.
- Definition Fn_bound n k := [k+1!n]* npow M (n+1) * npow r (n + k).
+ 
+ Definition inv2  := inv_Sn 1.
 
  Notation "| a | <= b" := (forall k, norm (a k) <= b k) (at level 70).
  
@@ -425,7 +427,8 @@ Context `{TotallyOrderedField}.
     reflexivity.
   Qed.
 
-  Lemma rising_factorial_s n k : [k+1!n+1] == ntimes (k+1) 1 * [(k+2) ! n].
+  Notation "# n" := (ntimes n 1) (at level 2).
+  Lemma rising_factorial_s n k : [k+1!n+1] == #(k+1) * [(k+2) ! n].
   Proof.
     simpl.
     unfold rising_factorial.
@@ -441,7 +444,135 @@ Context `{TotallyOrderedField}.
     ring.
   Qed.
 
-  Definition DFn_bound n k :=  [(k+1)!n+1]* npow M (n+1) * npow r (n + (k + 1)).
+  Lemma rising_factorial_sk n k : [k+1!n] ==   #(k+1) *  inv_Sn (k+n) * [(k+2) ! n].
+  Proof.
+    simpl.
+    unfold rising_factorial.
+    replace (k + 1 + n - 1)%nat with (k + n)%nat by lia.
+    replace (k + 1 - 1)%nat with k by lia.
+    replace (k + 2 + n- 1)%nat with (S (k + n))%nat by lia.
+    replace (k + 2 - 1)%nat with (S k)%nat by lia.
+    replace (k + 1)%nat with (S k)%nat by lia.
+    setoid_replace (#(S k) * inv_Sn (k + n) * ([S (k + n) ]! * ![ S k])) with ([k+n]!*![k] * (#(S (k+n))  * inv_Sn (k+n)) * (#(S k) * inv_Sn k)) by (simpl;ring).
+    rewrite !inv_Sn_spec;ring.
+  Qed.
+  Lemma rising_factorial_sn n k : [S k! S n] ==   #(k+n+1) * [S k ! n].
+  Proof.
+    simpl.
+    unfold rising_factorial.
+    replace (S k + S n -1)%nat with (S (k + n))%nat by lia.
+    replace (S k + n -1)%nat with (k + n )%nat by lia.
+    replace (k+n+1)%nat with (S (k + n) )%nat by lia.
+    simpl.
+    ring.
+  Qed.
+ Lemma le_eq x y : (x == y) -> (x <= y).
+ Proof.
+   intros ->.
+   apply le_refl.
+ Qed.
+   Definition f_bound C k := C * npow r k.
+   Definition g_bound C n k := C * [(k+1)!2*n+1] * npow r k.
+   Definition fg_bound C1 C2 n k := inv_Sn (2*n+1)  *  C1*C2 *  [(k+1)!2*n+2] * npow r k.
+
+
+   Lemma f_bound_S C : (fun n => (f_bound C (S n))) == (f_bound (C*r)).
+   Proof.
+       intros n.
+       unfold f_bound.
+       simpl.
+       ring.
+   Qed.
+
+    Lemma nat_plus_compat a b: #(a+b)%nat == #a + #b.
+    Proof.
+      induction b.
+      replace (a+0)%nat with a by lia.
+      simpl.
+      ring.
+      replace (a+S b)%nat  with (S (a+b)) by lia.
+      simpl.
+      rewrite IHb.
+      ring.
+    Qed.
+
+    Lemma nat_mult_compat a b: #(a*b)%nat == #a * #b.
+    Proof.
+      induction b.
+      replace (a*0)%nat with 0%nat by lia.
+      simpl.
+      ring.
+      replace (a*S b)%nat  with (a+a*b)%nat by lia.
+      rewrite nat_plus_compat.
+      rewrite IHb.
+      simpl.
+      ring.
+    Qed.
+
+    Lemma rat_plus1 a b c : #a +  inv_Sn c * #b == #(a*(c+1) + b) * inv_Sn c.
+    Proof.
+     simpl.
+     rewrite nat_plus_compat, nat_mult_compat.
+     ring_simplify.
+     replace (c+1)%nat with (S c) by lia.
+     rewrite mulA.
+     rewrite (mulC _ (# (S c))).
+     rewrite inv_Sn_spec.
+     ring.
+   Qed.
+
+   Lemma fg_bounded (a b : @mps A 1) C1 C2 n : |a| <= f_bound C1 -> |b| <= g_bound C2 n -> |a*b| <= fg_bound C1 C2 n.
+   Proof.
+     intros.
+     pose proof (ps_mult_monotone _ _ _ _ H1 H2).
+     apply (le_trans _ _ _ (H3 _)).
+     apply le_eq.
+     clear H1 H2 H3.
+     generalize dependent C1.
+     induction k;intros.
+     - pose proof (mul_ps_zero (d:=0)  (f_bound C1) (g_bound C2 n)) as dzero.
+       rewrite dzero.
+       unfold f_bound, g_bound, fg_bound.
+       simpl.
+       ring_simplify.
+       replace  (n + (n+0)+2)%nat with (S (2*n+1))%nat by lia.
+       replace  (n + (n+0)+1)%nat with ((2*n + 1))%nat by lia.
+       rewrite rising_factorial_sn.
+       replace (0+(2*n+1)+1)%nat with (S (2*n+1)) by lia.
+       rewrite !mulA.
+       rewrite <-(mulA (inv_Sn _ )).
+       rewrite (mulC (inv_Sn _ )).
+       rewrite inv_Sn_spec.
+       ring.
+    - pose proof (mul_ps_S (d := 0)) as M0.
+      rewrite !M0.
+      pose proof (f_bound_S C1).
+      assert (g_bound C2 n == g_bound C2 n) by reflexivity.
+      pose proof (mul_proper _ _ H1 (g_bound C2 n) (g_bound C2 n) H2 k).
+      rewrite H3.
+      rewrite IHk.
+      unfold f_bound, g_bound, fg_bound.
+      Opaque Nat.mul.
+      simpl.
+      ring_simplify.
+      replace (2 * n + 2)%nat with (S (2*n +1))%nat by lia.
+      enough ([S (k+1)!2*n+1] + inv_Sn (2*n+1) * [k+1!S (2*n+1)] ==  inv_Sn (2 * n + 1) * [S (k + 1) ! S (2 * n + 1)]) by (rewrite !mulA, <-H4;ring).
+      rewrite !rising_factorial_sn.
+      replace (S (2*n+1)) with ((2*n+1)+1)%nat by lia.
+      rewrite rising_factorial_s.
+      ring_simplify.
+      replace (k+2)%nat with (S (k+1)) by lia.
+      replace (k+1 + (2*n+1)+1)%nat with (S (2*n + k +2)) by lia.
+      rewrite !mulA.
+      enough (1 + inv_Sn (2 * n + 1) * # (k + 1) ==  inv_Sn (2 * n + 1) * # (S (2 * n + k + 2))) as <- by ring.
+      setoid_replace 1 with (#1) at 1 by (simpl;ring).
+      rewrite rat_plus1.
+      replace (1*(2*n+1+1) + (k+1))%nat with (S (2*n+k+2)) by lia.
+      ring.
+   Qed.
+   Definition Fn_bound n k := npow (inv2) n * ![n] * [k+1!2*n]* npow M (n+1) * npow r (n + k).
+   Definition DFn_bound n k :=  npow (inv2) n * ![n] * [(k+1)!2*n+1]* npow M (n+1) * npow r (n + (k + 1)).
+     
    Lemma DFn_bound_spec (a : @mps A 1) n : |a| <= Fn_bound n -> |D[0] a| <= DFn_bound n.
    Proof.
    intros.
@@ -455,82 +586,550 @@ Context `{TotallyOrderedField}.
    rewrite rising_factorial_s.
    rewrite mulC.
    rewrite !mulA.
+   rewrite (mulC (npow _ _)).
+   rewrite !mulA.
+   rewrite (mulC ![n]).
+   rewrite !mulA.
    apply mul_le_compat_pos.
    apply ntimes_nonneg.
    apply le_0_1.
    rewrite <-mulA.
    replace (k+2)%nat with ((k+1)+1)%nat by lia.
-   apply H1.
+   apply (le_trans _ _ _ (H1 _)).
+   unfold Fn_bound.
+   apply le_eq.
+   ring.
  Qed.
 
-  Lemma mul_ps_zero (a b : @mps A 1) :  (a*b) 0%nat == (a 0%nat) * (b 0%nat).
+   Lemma DFn_boundg n : DFn_bound n == g_bound (npow (inv2) n * ![n] * (npow M (n+1)) * npow r (n+1) ) n. 
+   Proof.
+     intros k.
+     unfold DFn_bound, g_bound.
+     replace (n+(k+1))%nat with ((n +1) + k)%nat by lia.
+     rewrite !npow_plus.
+     ring.
+  Qed.
+
+   Lemma DFn_bound_spec' (a : @mps A 1) n : |a| <= Fn_bound n -> |D[0] a| <= g_bound (npow (inv2) n * ![n] * (npow M (n+1)) * npow r (n+1) ) n.
+   Proof.
+     intros.
+     rewrite <-(DFn_boundg n k).
+     apply DFn_bound_spec;auto.
+  Qed.
+
+  Lemma inv_Sn_unique a b : # (S a) * b == 1 <-> b == inv_Sn a.   
   Proof.
-    simpl.
-    unfold mult_ps, powerseries.convolution_coeff;simpl.
+    split; [|intros ->;apply inv_Sn_spec].
+    intros.
+    setoid_replace (inv_Sn a) with (# (S a) * b * inv_Sn a) by (rewrite H1;ring).
+    rewrite  mulA.
+    rewrite (mulC b), <-mulA.
+    rewrite inv_Sn_spec.
     ring.
   Qed.
 
-  Lemma mul_ps_S (a b : @mps A 1) n :  (a*b) (S n) == (a 0%nat) * (b (S n)) + (((fun n => a (S n)) * b)  n).
+  Lemma bound_prod  (a b : @mps A 1) n : |a| <= f_bound M -> |b| <= Fn_bound n -> |a * (D[0] b) | <= Fn_bound (n+1). 
   Proof.
+  intros H1 H2.
+   pose proof (DFn_bound_spec' b n H2).
+   pose proof (fg_bounded _ _ _ _ _ H1 H3).
+   intros k.
+   apply (le_trans _ _ _ (H4 _)).
+   apply le_eq.
+   unfold fg_bound, Fn_bound.
+   setoid_replace M with (npow M 1) at 1 by (simpl;ring).
+   rewrite !npow_plus.
+   replace (2*(n+1))%nat with (2*n+2)%nat by lia.
+   replace (n+1)%nat with (S n) by lia.
+   ring_simplify.
+   rewrite !mulA.
+   enough (npow inv2 1 * ![ S n] == inv_Sn (2*n + 1) * ![n]) as -> by ring.
+   simpl.
+   ring_simplify.
+   enough (inv2 * inv_Sn n == inv_Sn (2*n+1)) as <- by ring.
+   apply inv_Sn_unique.
+   replace (S (2*n+1)) with (2 * (S n))%nat by lia.
+   rewrite nat_mult_compat.
+   setoid_replace (#2 * # (S n) * (inv2 * inv_Sn n)) with ((#2 * inv2 ) * (# (S n) * inv_Sn n)) by ring.
+   unfold inv2.
+   rewrite !inv_Sn_spec.
+   ring.
+ Qed.
+
+  Lemma npow_mult x  y n : npow (x*y) n == npow x n * npow y n.
+  Proof.
+    induction n.
     simpl.
-    rewrite mult_ps_S.
-    reflexivity.
+    ring.
+    simpl.
+    rewrite IHn.
+    ring.
   Qed.
 
- Lemma le_eq x y : (x == y) -> (x <= y).
- Proof.
-   intros ->.
-   apply le_refl.
- Qed.
-  Lemma bound_prod  (a b : @mps A 1) n : |a| <= Fn_bound n -> |b| <= f_bound -> |(D[0] a) * b| <= Fn_bound (n+1). 
-  Proof.
-   intros.
-   pose proof (DFn_bound_spec a n H1).
-   pose proof (ps_mult_monotone _ _ _ _ H3 H2).
-   apply (le_trans _ _ _ (H4 _)).
-   induction k.
-   - rewrite mul_ps_zero.
-     unfold DFn_bound, f_bound, Fn_bound.
-     simpl.
-     assert ((n+1)%nat =  (S n)) as -> by lia.
-     replace (S n + 1)%nat with (S (S n)) by lia.
-     simpl.
-     replace (n+0)%nat with n by lia.
-     ring_simplify.
-     apply le_eq.
-     enough ([2 ! n] == [1 ! S n]) as -> by ring.
-     unfold rising_factorial.
-     replace (2 + n - 1)%nat with (1 + S n - 1)%nat by lia.
-     replace (2-1)%nat with 1%nat by lia.
-     replace (1-1)%nat with 0%nat by lia.
-     enough (![1] == ![0]) as -> by ring.
-     simpl.
-     rewrite mulC.
-     setoid_replace 1 with (ntimes (S 0) 1) at 1 by (simpl;ring).
-     apply inv_Sn_spec.
-  - rewrite mul_ps_S.
-    unfold Fn_bound.
- Lemma dBound a n : (B n a) -> forall k, (D[0] a) k <= (ntimes (n+1)%nat 1) * M * r * npow r n.
+ Lemma npow_pos : forall x n, (0 <= x) -> 0 <= npow x n.
  Proof.
    intros.
+   induction n.
+   simpl;apply le_0_1.
    simpl.
-   unfold derive_ps.
-   setoid_replace (a (n+1)%nat) with ((a (n+1)%nat) *1 ) by (rewrite mul1;reflexivity).
-   rewrite ntimes_mult.
-   apply (le_trans _ _ _  (norm_mult _ _)).
-   apply (le_trans _ _ _  (mul_le_compat_pos (norm_nonneg _ ) (norm_n_le_n _ ))).
-   rewrite mulC.
-   rewrite !mulA.
-   apply mul_le_compat_pos.
-   apply ntimes_nonneg.
-   apply le_0_1.
-   assert (npow r (S n) == r * npow r n) as <- by (simpl;reflexivity).
-   replace (n+1)%nat with (S n) by lia.
-   apply B.
-Qed.
+   apply mul_pos_pos;auto.
+ Qed.
 
+ Lemma npow_inv m n : npow #(S m) n * npow (inv_Sn m) n == 1.
+ Proof.
+   induction n.
+   simpl.
+   ring.
+   setoid_replace (npow # (S m) (S n) * npow (inv_Sn m) (S n)) with (# (S m) * inv_Sn m * ((npow (# (S m)) n) * (npow (inv_Sn m) n))) by (simpl;ring).
+   rewrite IHn.
+   ring_simplify.
+   rewrite inv_Sn_spec.
+   ring.
+ Qed.
+
+  Lemma fact_pos n : 0 <= [n]!.
+  Proof.
+    induction n.
+    simpl.
+    apply le_0_1.
+    simpl.
+    apply mul_pos_pos;try apply IHn.
+    setoid_replace (0 : A) with (0+0 ) by ring.
+    apply le_le_plus_le; [apply le_0_1|].
+    apply ntimes_nonneg;apply le_0_1.
+  Qed.
+
+    
+  Lemma inv_Sn_pos n : 0 <= inv_Sn n.
+  Proof.
+  Admitted.    
+
+  Lemma invfact_pos n : 0 <= ![n].
+  Proof.
+    induction n.
+    simpl.
+    apply le_0_1.
+    simpl.
+    apply mul_pos_pos;try apply IHn.
+    apply inv_Sn_pos.
+   Qed.
+
+  Lemma ntimes_monotone  n m: (n <= m)%nat -> (# n <= # m). 
+  Proof.
+    simpl.
+    induction m.
+    intros.
+    assert (n = 0)%nat as -> by lia.
+    apply le_refl.
+    intros.
+    assert (n <= m \/ n = S m)%nat by lia.
+    destruct H2.
+    simpl.
+    setoid_replace (#n) with (0 + #n) by ring.
+    apply le_le_plus_le.
+    apply le_0_1.
+    apply IHm;auto.
+    rewrite H2.
+    apply le_refl.
+  Qed.
+
+ Lemma Fn_bound0 : forall n, Fn_bound n 0 <= [n]! *  M * npow (#2*M*r) n.  
+ Proof.
+   intros.
+   unfold Fn_bound.
+   simpl.
+   replace (n+0)%nat with n by lia.
+   rewrite !npow_mult, npow_plus.
+   simpl.
+   ring_simplify.
+   assert (  npow inv2 n * ![ n] * [1 ! 2 * n] * npow M n * M * npow r n ==  npow M n * M * npow r n * (npow inv2 n * ![ n] * [1 ! 2 * n] )) as -> by ring.
+   rewrite !mulA.
+   apply mul_le_compat_pos;try apply npow_pos;auto.
+   apply mul_le_compat_pos;auto.
+   apply mul_le_compat_pos;try apply npow_pos;auto.
+   rewrite rising_factorial1.
+   pose proof (npow_inv 1 n).
+   rewrite (mulC [n]!).
+   setoid_replace (npow inv2 n) with (npow #2 n * npow inv2 n * npow inv2 n) by (rewrite npow_inv;ring).
+   rewrite !mulA.
+   apply mul_le_compat_pos; try (apply npow_pos;apply ntimes_nonneg;apply le_0_1).
+   rewrite <-!mulA.
+   rewrite <-npow_plus.
+   rewrite (mulC _ ![n]).
+   clear H1.
+   induction n.
+   - simpl.
+     replace (2*0)%nat with 0%nat by lia.
+     simpl;ring_simplify.
+     apply le_refl.
+  - replace (S n + S n)%nat with (S (S (n+n))) by lia.
+    replace (2*S n)%nat with (S (S (2*n))) by lia.
+    setoid_replace (![S n] * npow inv2 (S (S (n+n))) * [S(S (2 *n))]!) with (((![n] * npow inv2 (n+n) * [2*n]!)) * (inv2 * inv2 * # (S (S (2 *n))) *# (S (2 * n)) * inv_Sn n)) by (simpl;ring).
+    setoid_replace [S n]! with ([n]! * #(S n)) by (simpl;ring).
+    apply mul_le_le_compat_pos.
+    apply mul_pos_pos;try apply fact_pos.
+    apply mul_pos_pos;try apply invfact_pos;apply npow_pos;apply inv_Sn_pos.
+    apply mul_pos_pos; try apply mul_pos_pos; try apply mul_pos_pos; try apply ntimes_nonneg; try apply le_0_1; try apply inv_Sn_pos.
+    apply mul_pos_pos; apply inv_Sn_pos.
+    apply IHn.
+    replace (S (S (2 *n))) with (2*(S n))%nat by lia. 
+    rewrite nat_mult_compat.
+    rewrite <-mulA.
+    rewrite (mulC _ #2).
+    rewrite <-mulA.
+    unfold inv2.
+    rewrite inv_Sn_spec.
+    ring_simplify.
+    setoid_replace (inv_Sn 1 * #(S n) * #(S(2*n)) * inv_Sn n) with ((#(S n) * inv_Sn n) * (inv_Sn 1 * #(S(2*n)))) by ring.
+    rewrite inv_Sn_spec.
+    ring_simplify.
+
+    apply (le_trans _ (inv_Sn 1 * # (2*(S n)))).
+    apply mul_le_compat_pos;try apply inv_Sn_pos.
+    apply ntimes_monotone;lia.
+    rewrite nat_mult_compat.
+    rewrite <-mulA.
+    rewrite (mulC _ (#2)).
+    rewrite inv_Sn_spec.
+    ring_simplify.
+    apply le_refl.
+  Qed.
+End Bounds.
 Section Bounds. 
 
+Section MultiBounds.
+  Context `{TotallyOrderedField}.
+ Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
+  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+  
+ Context {norm1 : norm 1 == 1}.
+
+ Definition ps_index {d} (n : nat^d) (a : @mps A d) : A.
+ Proof.
+   induction d.
+   apply a.
+   destruct (destruct_tuple_cons n) as [hd [tl P]].
+   apply (IHd tl (a hd)).
+ Defined.
+
+
+ Definition order {d} (n : nat^d) : nat.
+ Proof.
+   induction d.      
+   apply 0%nat.
+   destruct (destruct_tuple_cons n) as [hd [tl P]].
+   apply (hd + (IHd tl))%nat.
+ Defined.
+
+ Add Ring KRing: (ComRingTheory (A := A)).
+ Definition mps_bound {d} (a : @mps A d) (b : @mps A 1):= forall n, norm (ps_index n a) <= (b (order n)). 
+ Definition mps_tuple_bound {d} {e} (a : (@mps A d)^e) (b : (@mps A 1)):= forall i n, i < e -> norm (ps_index n (tuple_nth i a 0)) <= b (order n). 
+   Notation "| a | <= b" := (mps_bound a b) (at level 70).
+   Instance ps_index_proper d n : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (@ps_index d n).
+   Proof.
+   Admitted.
+
+   Instance mps_bound_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (@mps_bound d).
+   Proof.
+   Admitted.
+   (* Lemma  index_mult {d} (a b : @mps A (S d)) (hd : nat) tl : ps_index tl ((a * b) hd) ==  ((fun (i : nat) => ps_index tl (a i)) * (fun i => ps_index tl (b i))) hd. *)
+   (* Proof. *)
+   (*   Opaque mul. *)
+   (*   induction hd. *)
+   (*   simpl. *)
+   (*   assert ((a * b) 0%nat == (a 0%nat) * (b 0%nat)). *)
+   (*   admit. *)
+   (*   rewrite H1. *)
+   (*   pose proof (mul_ps_zero (d := 0)) as M0. *)
+   (*   rewrite M0. *)
+   (*   rewrite mul_ps_zero. *)
+   (*   destruct (destruct_tuple_cons tl) as [h' [t' P']]. *)
+   (*   induction d. *)
+   (*   enough (a == (fun i => a i) /\ (b == (fun i => b i))) as [H1 H2] by apply (mul_proper _ _ H1 _ _ H2 hd). *)
+   (*   split;intros i;reflexivity. *)
+   (*   simpl. *)
+
+   (*   intros k. *)
+   (*   apply a. *)
+   (*   simpl. *)
+   (*   rewrite a. *)
+   (*   unfold mult_ps. *)
+   (*   Search  mult_psProper. *)
+   (*   rewrite H1. *)
+   (*   simpl *)
+   (*   auto. *)
+
+  Lemma mps_bound_S {d} (a : @mps A (S d)) (b : (@mps A 1)): (forall i, mps_bound (a i) (fun n => b (i+n)%nat)) <-> mps_bound a b.
+  Proof.
+    split.
+    intros H2 k.
+    simpl.
+    destruct (destruct_tuple_cons k) as [hd [tl P]].
+    specialize (H2 hd tl).
+    simpl in H2.
+    apply H2.
+    intros.
+    intros k.
+    specialize (H1 (tuple_cons i k)).
+    simpl in H1.
+    destruct (destruct_tuple_cons (tuple_cons i k)) as [i' [k' P]].
+  Admitted.
+
+   Lemma mult_ps_shift (a b : @mps A 1) i :forall n, (a * b) (i + n)%nat == ((fun j => (a (i + j)%nat)) * (fun j => (b (i + j)%nat))) n.
+   Proof.
+       intros.
+    Admitted.
+
+   Instance single_index_proper {d}  (n : nat) : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun (a : @mps A (S d)) => (a n)).
+   Proof.
+     intros a b Heq.
+     apply seq_A_setoid.
+     rewrite Heq.
+     reflexivity.
+   Defined.
+   Lemma ps_index_plus {d} (a b : @mps A d) n : ps_index n (a+b) == ps_index n a + ps_index n b. 
+   Proof.
+     induction d.
+     simpl.
+     reflexivity.
+     Opaque add.
+     simpl.
+     destruct (destruct_tuple_cons n) as [hd [tl P]].
+     enough ((a+b) hd == a hd + b hd) as ->.
+     apply IHd.
+     Transparent add.
+     simpl.
+     unfold sum_ps.
+     reflexivity.
+  Qed.
+   Lemma zero_ps_le_zero {d} : |(0 : @mps A d)|  <= zero_ps.
+   Proof.
+     simpl.
+     unfold zero_ps.
+     intros k.
+     induction d.
+     simpl.
+     setoid_replace (norm 0) with 0 by (rewrite norm_zero;reflexivity).
+     apply le_refl.
+     simpl.
+     destruct (destruct_tuple_cons k) as [hd [tl P]].
+     simpl.
+     apply IHd.
+   Qed.
+
+   Lemma mps_sum_monotone {d} (a : nat -> @mps A d) (b: nat -> @mps A 1) N : (forall n, (n < N) -> |a n| <= b n) -> |(sum a N)| <= sum b N.
+   Proof.
+     intros.
+     induction N.
+     unfold sum.
+     simpl.
+     apply zero_ps_le_zero.
+     rewrite !sum_S.
+     intros k.
+     rewrite !ps_index_plus.
+     simpl;unfold sum_ps.
+     apply (le_trans _ _ _ (norm_triangle _ _)).
+     apply le_le_plus_le.
+     apply IHN.
+     intros;apply H1;lia.
+     apply H1.
+     lia.
+   Qed.
+   Lemma mps_sum_same {d} (a : nat -> @mps A d) (b: @mps A 1) N : (forall n, (n < N) -> |a n| <= b) -> |(sum a N)| <= ntimes N b. 
+   Proof.
+     intros.
+     enough (ntimes N b == sum (fun _ => b) N) as ->.
+     apply mps_sum_monotone.
+     apply H1.
+     induction N.
+     simpl.
+     intros.
+     unfold sum.
+     simpl.
+     reflexivity.
+     rewrite !sum_S.
+     Opaque add.
+     simpl ntimes.
+     rewrite IHN.
+     rewrite addC.
+     reflexivity.
+     intros.
+     apply H1.
+     lia.
+  Qed.
+   
+  Lemma mps_mult_monotone {d} (a b : @mps A d) a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'.
+  Proof.
+     intros.
+     generalize dependent b'.
+     generalize dependent a'.
+   induction d; intros.
+   - simpl.
+     intros k.
+     simpl.
+     unfold mult_ps, powerseries.convolution_coeff.
+     simpl.
+     apply (le_trans _ _ _ (norm_mult _ _)).
+     simpl.
+     ring_simplify.
+     specialize (H1 k).
+     specialize (H2 k).
+     simpl in H1, H2.
+     apply (mul_le_le_compat_pos);try apply norm_nonneg;auto.
+   - apply mps_bound_S.
+     intros.
+     intros k.
+     rewrite  mult_ps_shift.
+     induction i.
+     + rewrite (mul_ps_zero (d:=d) a b).
+       apply IHd.
+       pose proof (proj2 (mps_bound_S a a') H1).
+       apply H3.
+       apply (proj2 (mps_bound_S b b') H2).
+     +   rewrite (mul_ps_S   a b).
+         Opaque mul.
+         pose proof (mult_ps_shift (fun j => a' (i + j)%nat) (fun j => b' (i + j)%nat) 1 (order k)).
+         simpl in H3.
+        assert (((fun j => (a' (S i+ j)%nat)) * (fun j => (b' (S i + j)%nat)))  == ((fun j => (a' (i+ S j)%nat)) * (fun j => (b' (i+ S j)%nat)))  ).
+        {
+          apply mul_proper;apply seq_A_setoid;intros j;replace (i+ S j)%nat with (S i + j)%nat by lia;reflexivity.
+        }
+        rewrite (single_index_proper (d := 0) (order k) _ _ H4).
+        rewrite <-H3.
+        setoid_rewrite (mul_ps_S (d:=0)).
+        rewrite ps_index_plus.
+        apply (le_trans _ _ _ (norm_triangle _ _ )).
+        apply le_le_plus_le;auto.
+        assert (I0 : |a 0%nat| <= a') by (apply mps_bound_S;auto).
+        assert (I1: |b (S i)| <= (fun n => b' ((S i) + n )%nat)) by (apply mps_bound_S;auto).
+        specialize (IHd (a 0%nat) (b (S i)) _ I0 _ I1 k).
+        apply (le_trans _ _ _ IHd).
+        simpl.
+     Admitted.
+  
+  Lemma mps_diff_monotone {d} (a : @mps A d) b i : (i <d) -> (|a| <= b) -> (|pdiff i a| <= pdiff 0 b).
+    generalize dependent i.
+    induction d;try lia.
+    intros.
+    intros k.
+    simpl.
+    destruct (destruct_tuple_cons k) as [hd [tl P]].
+    destruct i.
+    unfold derive_ps.
+    admit.
+    assert (i < d)%nat by lia.
+  Admitted.
+
+    Lemma IVP_Di_S {d :nat} (a : (@mps A d)^d) i n : IVP_Di a (S n) i == (sum (fun j => (tuple_nth j a 0) * (D[j] (IVP_Di a n i))) d).
+    Proof.
+      simpl;auto.
+      reflexivity.
+    Qed.
+
+
+    Lemma ps_index_comp1 {d} ix i : ps_index (d := d) ix (comp1  i) == 1.
+    Proof.
+      induction d.
+      simpl.
+      right;reflexivity.
+      simpl.
+      destruct (destruct_tuple_cons ix) as [hd [tl P]].
+      simpl.
+      destruct i.
+
+    Lemma IVP_D_bound {d :nat} (a : (@mps A d)^d) (b : (@mps A 1)^1) n : mps_tuple_bound a (tuple_nth 0 b 0) -> (mps_tuple_bound (IVP_D a n) (ntimes d (tuple_nth 0 (IVP_D b n) 0))).
+    Proof.
+       intros.
+       induction n.
+       - simpl.
+         intros i k.
+         intros.
+         rewrite id_nth;auto.
+         simpl.
+         unfold comp_one_ps.
+         admit.
+       - intros i k.
+         intros.
+         rewrite !IVP_D_nth;auto.
+         assert (0 < 1)%nat by lia.
+         pose proof (IVP_D_nth b (S n) _ H3).
+         pose proof (ntimes_proper d  _ _ H4).
+         pose proof (single_index_proper (order k) _ _ H5).
+         rewrite H6.
+         rewrite !IVP_Di_S.
+         pose proof (ntimes_proper d  _ _ (IVP_Di_S b 0 n )).
+         rewrite (single_index_proper (order k) _ _ H7).
+         enough (forall j, j < d -> |(tuple_nth j a 0) * (D[j] (IVP_Di a n i))| <= (tuple_nth 0 b 0 * D[0] (IVP_Di b n 0))).
+         {
+           pose proof (mps_sum_same (fun j => tuple_nth j a 0 * D[j] (IVP_Di a n i)) _ d H8).
+           apply (le_trans _ _ _ (H9 _)).
+           rewrite (single_index_proper (order k) _ _ (ntimes_proper d _ _ (sum_S _ _))).
+           unfold sum.
+           simpl fold_right.
+           apply le_eq.
+           apply (single_index_proper (d:=0) (order k)  ).
+           apply ntimes_proper.
+           rewrite addC.
+           rewrite add0.
+           reflexivity.
+         }
+         intros.
+         apply mps_mult_monotone.
+         intros k';apply H1;auto.
+         
+       Search IVP_D.
+    Check  (IVP_D a).
+    
+     Lemma mps_mult_monotone {d} (a b : @mps A d) a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'.
+  (*      apply IHd. *)
+  (*    apply (le_trans _ _ _ (norm_mult _ _)). *)
+  (*    pose proof (norm_triangle (ps_index k (a 0%nat * b (S i))) ((( (fun n => (a (S n))) : (@mps A (S d)) ) * b) i)). *)
+  (*  apply le_le_plus_le;auto. *)
+  (*  apply (le_trans _ _ _ (norm_mult _ _)). *)
+  (*  apply (mul_le_le_compat_pos);try apply norm_nonneg;auto. *)
+  (*  apply IHk. *)
+  (*  intros;auto. *)
+  (*    rewrite  *)
+  (*    apply H3. *)
+  (*    intros k. *)
+  (*    specialize (H1 ). *)
+  (*    intros k. *)
+
+  (*     Opaque mul. *)
+  (*     simpl. *)
+  (*      destruct (destruct_tuple_cons k) as [hd [tl P]]. *)
+       
+  (*      pose proof (ps_mult_monotone (fun n => (ps_index tl ((a*b) n)))). *)
+  (*      enough (|(a*b) hd| <= (fun k => a' (hd + k)%nat) * (fun k => b' (hd + k)%nat)). *)
+  (*      { *)
+  (*        specialize (H3 tl). *)
+  (*        simpl in H3. *)
+  (*        apply (le_trans _ _ _ H3). *)
+
+  (*      } *)
+  (*   unfold mult_ps, powerseries.convolution_coeff;simpl. *)
+  (*    replace  *)
+  (*  apply ps_mult_monotone. *)
+  (*  simpl. *)
+  (*  generalize  dependent a'. *)
+  (*  generalize  dependent a. *)
+  (*  induction k;intros. *)
+  (*  simpl. *)
+  (*  unfold mult_ps, powerseries.convolution_coeff;simpl. *)
+  (*  ring_simplify. *)
+  (*  rewrite add0. *)
+  (*  apply (le_trans _ _ _ (norm_mult _ _)). *)
+  (*  apply (mul_le_le_compat_pos);try apply norm_nonneg;auto. *)
+  (*  simpl. *)
+  (*  rewrite !mult_ps_S. *)
+  (*  apply (le_trans _ _ _ (norm_triangle _ _ )). *)
+  (*  apply le_le_plus_le;auto. *)
+  (*  apply (le_trans _ _ _ (norm_mult _ _)). *)
+  (*  apply (mul_le_le_compat_pos);try apply norm_nonneg;auto. *)
+  (*  apply IHk. *)
+  (*  intros;auto. *)
+  (* Qed. *)
+End MultiBounds.
 Context `{AbstractFunctionSpace} {d e : nat}.
 Context `{TotallyOrderedField (A := (A 0)) (H:=(H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
  Context `{normK : (NormedSemiRing ((A 0)^e) (A 0) (H := _)  (H0 := (H 0))  (R_rawRing0 := (H0 0%nat)) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }. 
@@ -543,36 +1142,6 @@ Context `{TotallyOrderedField (A := (A 0)) (H:=(H 0)) (R_rawRing := (H0 0)) (R_s
  Definition Fi_pbound M R n i k := ([n]! * [i]! * [k+2*n]! * ![2*n]) * (npow (1+1) n)* (npow M (n+2)) * (npow R (n+k +i )).
 
  Add Ring TRing: (ComRingTheory (A := (A 0))). 
-
-  Lemma ntimes_pos x n: (0 <= x) -> (0 <= ntimes n x).
-  Proof.
-    intros.
-    induction n.
-    simpl;apply le_refl.
-    simpl.
-    setoid_replace (0 : (A 0)) with (0+0 : (A 0)) by ring.
-    apply le_le_plus_le;auto.
-  Qed.
-
-  Lemma fact_pos n : 0 <= [n]!.
-  Proof.
-    induction n.
-    simpl.
-    apply le_0_1.
-    simpl.
-    apply mul_pos_pos;try apply IHn.
-    setoid_replace (0 : (A 0)) with (0+0 : (A 0)) by ring.
-    apply le_le_plus_le; [apply le_0_1|].
-    apply ntimes_pos;apply le_0_1.
-  Qed.
- Lemma npow_pos : forall x n, (0 <= x) -> 0 <= npow x n.
- Proof.
-   intros.
-   induction n.
-   simpl;apply le_0_1.
-   simpl.
-   apply mul_pos_pos;auto.
- Qed.
 
  Lemma  Fi_pbound_spec M R n i k : (Fi_bound M R 0 i) * (Fi_bound M R n k) == Fi_pbound M R n i k.
  Proof.

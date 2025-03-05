@@ -8,6 +8,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import polynomial.
 
+
 Section Symbolic.
 Context (A : Type).
 Inductive Symbolic 
