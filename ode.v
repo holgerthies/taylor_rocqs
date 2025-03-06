@@ -398,6 +398,21 @@ Context `{TotallyOrderedField}.
     apply le_refl.
   Qed.
 
+  Lemma norm_ntimes_le n x : norm (ntimes n x) <= ntimes n 1 * norm x.
+  Proof.
+    induction n.
+    simpl.
+    assert (norm 0 == 0) as -> by (apply norm_zero;reflexivity).
+    ring_simplify.
+    apply le_refl.
+    simpl.
+    apply (le_trans _ _ _ (norm_triangle _ _ )).
+    ring_simplify.
+    rewrite addC.
+    apply le_plus_compat.
+    rewrite mulC.
+    apply IHn.
+  Qed.
   Lemma ps_mult_monotone a b a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'.
   Proof.
    intros.
@@ -733,6 +748,25 @@ Context `{TotallyOrderedField}.
     apply le_refl.
   Qed.
 
+  Lemma ntimes_pos_monotone  n m x : (0 <= x) ->  (n <= m)%nat -> (ntimes n x <= ntimes m x). 
+  Proof.
+    intros.
+    setoid_replace (x) with (x*1) by ring.
+    rewrite !ntimes_mult.
+    apply mul_le_compat_pos;auto.
+    apply ntimes_monotone;auto.
+  Qed.
+
+  Lemma ntimes_monotone2  n x y :  (x <= y) -> (ntimes n x <= ntimes n y). 
+  Proof.
+    simpl.
+    intros.
+    setoid_replace (x) with (x*1) by ring.
+    setoid_replace (y) with (y*1) by ring.
+    rewrite !ntimes_mult.
+    rewrite (mulC x), (mulC y).
+    apply mul_le_compat_pos;try apply ntimes_nonneg;try apply le_0_1;auto.
+  Qed.
  Lemma Fn_bound0 : forall n, Fn_bound n 0 <= [n]! *  M * npow (#2*M*r) n.  
  Proof.
    intros.
@@ -862,18 +896,21 @@ Section MultiBounds.
   Lemma mps_bound_S {d} (a : @mps A (S d)) (b : (@mps A 1)): (forall i, mps_bound (a i) (fun n => b (i+n)%nat)) <-> mps_bound a b.
   Proof.
     split.
-    intros H2 k.
-    simpl.
-    destruct (destruct_tuple_cons k) as [hd [tl P]].
-    specialize (H2 hd tl).
-    simpl in H2.
-    apply H2.
-    intros.
-    intros k.
-    specialize (H1 (tuple_cons i k)).
-    simpl in H1.
-    destruct (destruct_tuple_cons (tuple_cons i k)) as [i' [k' P]].
-  Admitted.
+    - intros H2 k.
+      simpl.
+      destruct (destruct_tuple_cons k) as [hd [tl P]].
+      specialize (H2 hd tl).
+      simpl in H2.
+      apply H2.
+   -  intros.
+      intros k.
+      specialize (H1 (tuple_cons i k)).
+      simpl in H1.
+      destruct (destruct_tuple_cons (tuple_cons i k)) as [hd' [tl' P']].
+      apply tuple_cons_ext in P'.
+      destruct P' as [-> ->].
+      apply H1.
+  Qed.
 
    Lemma mult_ps_shift (a b : @mps A 1) i :forall n, (a * b) (i + n)%nat == ((fun j => (a (i + j)%nat)) * (fun j => (b (i + j)%nat))) n.
    Proof.
@@ -1007,18 +1044,6 @@ Section MultiBounds.
         simpl.
      Admitted.
   
-  Lemma mps_diff_monotone {d} (a : @mps A d) b i : (i <d) -> (|a| <= b) -> (|pdiff i a| <= pdiff 0 b).
-    generalize dependent i.
-    induction d;try lia.
-    intros.
-    intros k.
-    simpl.
-    destruct (destruct_tuple_cons k) as [hd [tl P]].
-    destruct i.
-    unfold derive_ps.
-    admit.
-    assert (i < d)%nat by lia.
-  Admitted.
 
     Lemma IVP_Di_S {d :nat} (a : (@mps A d)^d) i n : IVP_Di a (S n) i == (sum (fun j => (tuple_nth j a 0) * (D[j] (IVP_Di a n i))) d).
     Proof.
@@ -1147,76 +1172,147 @@ Section MultiBounds.
       reflexivity.
     Qed.
 
+    Lemma ntimes_ps_index {d} (a : @mps A d) n i : ps_index i (ntimes n a) == ntimes n (ps_index i a ). 
+    Proof.
+      induction n.
+      simpl.
+      rewrite ps_index_0.
+      reflexivity.
+      simpl.
+      rewrite ps_index_plus.
+      rewrite IHn.
+      reflexivity.
+    Qed.
     Lemma norm_zero_eq : norm 0 == 0.
     Proof.
         setoid_replace (norm 0) with 0 by (rewrite norm_zero;reflexivity).
         apply reflexivity.
      Qed.
 
-    Lemma IVP_D_bound {d :nat} (a : (@mps A d)^d) (b : (@mps A 1)^1) n : mps_tuple_bound a (tuple_nth 0 b 0) -> (mps_tuple_bound (IVP_D a n) (ntimes d (tuple_nth 0 (IVP_D b n) 0))).
+  Lemma mps_derive_monotone {d} (a : @mps A (S d)) b : |a| <= b ->  (|pdiff 0 a| <= derive_ps b).
+  Proof.
+       intros H2 k.
+       simpl.
+       destruct (destruct_tuple_cons k) as [hd [tl ->]].
+       pose proof (proj2 (mps_bound_S a b)  H2 hd).
+       unfold derive_ps.
+       rewrite ntimes_ps_index.
+       pose proof (proj2 (mps_bound_S a b) H2 (hd+1)%nat tl).
+       simpl in H3.
+       apply (le_trans _ _ _ (norm_ntimes_le _ _)).
+       setoid_replace (b (hd + order tl + 1)%nat) with (b (hd+order tl + 1)%nat * 1) by (rewrite mul1;reflexivity). 
+       rewrite ntimes_mult.
+       rewrite mulC.
+       apply (mul_le_le_compat_pos); try apply ntimes_nonneg; try apply le_0_1; try apply norm_nonneg.
+       replace (hd+order tl + 1)%nat with (hd+1 + order tl)%nat by lia.
+       apply H3.
+       apply ntimes_monotone;lia.
+ Qed.
+
+
+  Lemma mps_bound_nonneg {d} (a : @mps A (S d)) b : (|a| <= b) -> forall i, 0 <= (b i). 
+  Proof.
+    intros.
+    enough ({t : nat^(S d) | order t = i%nat}) as [t T].
+    {
+      specialize (H1 t).
+      rewrite T in H1.
+      apply (le_trans _ _ _ (norm_nonneg  _) H1).
+    }
+    clear a b H1.
+    induction d.
+    exists (tuple_cons i nil_tuple).
+    simpl;lia.
+    destruct IHd.
+    exists (tuple_cons 0%nat x).
+    rewrite order_cons.
+    lia.
+  Qed.
+  
+  Lemma mps_diff_monotone {d} (a : @mps A d) b i : (i <d) -> (|a| <= b) -> (|pdiff i a| <= pdiff 0 b).
+    generalize dependent i .
+    generalize dependent b .
+    induction d;try lia.
+    intros.
+    revert H2.
+    destruct i; [apply mps_derive_monotone|].
+    intros H2 k.
+    simpl.
+    destruct (destruct_tuple_cons k) as [hd [tl P]].
+    assert (i < d)%nat by lia.
+    pose proof (proj2 (mps_bound_S a b)  H2 hd).
+    specialize (IHd _ _ _ H3 H4 tl).
+    apply (le_trans _ _ _ IHd).
+    simpl.
+    unfold derive_ps.
+    replace (hd + (order tl +1))%nat with (hd + order tl + 1)%nat by lia.
+    apply ntimes_pos_monotone.
+    apply (mps_bound_nonneg a);auto.
+    lia.
+  Qed.
+
+    Lemma IVP_D_bound {d :nat} (a : (@mps A d)^d) (b : (@mps A 1)^1) n : mps_tuple_bound a (tuple_nth 0 b 0) -> (mps_tuple_bound (IVP_D a n) (tuple_nth 0 (IVP_D (ntimes d b) n) 0)).
     Proof.
        intros.
+       intros i.
        induction n.
        - simpl.
-         intros i k.
+         intros k.
          intros.
          rewrite id_nth;auto.
          rewrite ps_index_comp1.
          unfold comp_one_ps.
-         setoid_rewrite (ntimes_index (d := 0)).
          destruct (order k).
-         + rewrite ntimes_zero.
            rewrite norm_zero_eq.
            apply le_refl.
-        +  destruct n; [|rewrite ntimes_zero, norm_zero_eq;apply le_refl].
-           destruct d; try lia.
-           simpl.
+        +  destruct n; [|rewrite norm_zero_eq;apply le_refl].
            destruct (tuple_nth i k 0%nat).
-           simpl.
            rewrite norm_zero_eq.
-           rewrite <-add0.
-           apply le_le_plus_le.
            apply le_0_1.
-           apply ntimes_nonneg;apply le_0_1.
            destruct n.
-           rewrite <-add0.
-           apply le_le_plus_le; [|apply ntimes_nonneg; apply le_0_1].
            rewrite norm1.
            apply le_refl.
-           rewrite <-add0.
-           apply le_le_plus_le.
-           rewrite norm_zero_eq;apply le_0_1.
-           apply ntimes_nonneg;apply le_0_1.
-       - intros i k.
+           rewrite norm_zero_eq.
+           apply le_0_1.
+       - intros  k.
          intros.
          rewrite !IVP_D_nth;auto.
          assert (0 < 1)%nat by lia.
-         pose proof (IVP_D_nth b (S n) _ H3).
-         pose proof (ntimes_proper d  _ _ H4).
-         pose proof (single_index_proper (order k) _ _ H5).
-         rewrite H6.
+         pose proof (IVP_D_nth (ntimes d b) (S n) _ H3).
+         pose proof (single_index_proper (order k) _ _ H4).
+         rewrite H5.
          rewrite !IVP_Di_S.
-         pose proof (ntimes_proper d  _ _ (IVP_Di_S b 0 n )).
-         rewrite (single_index_proper (order k) _ _ H7).
-         enough (forall j, j < d -> |(tuple_nth j a 0) * (D[j] (IVP_Di a n i))| <= (tuple_nth 0 b 0 * D[0] (IVP_Di b n 0))).
+         (* pose proof (ntimes_proper d  _ _ (IVP_Di_S (ntimes d b) 0 n )). *)
+         enough (forall j, j < d -> |(tuple_nth j a 0) * (D[j] (IVP_Di a n i))| <= (tuple_nth 0 b 0 * D[0] (IVP_Di (ntimes d b) n 0))).
          {
-           pose proof (mps_sum_same (fun j => tuple_nth j a 0 * D[j] (IVP_Di a n i)) _ d H8).
-           apply (le_trans _ _ _ (H9 _)).
-           rewrite (single_index_proper (order k) _ _ (ntimes_proper d _ _ (sum_S _ _))).
+           pose proof (mps_sum_same (fun j => tuple_nth j a 0 * D[j] (IVP_Di a n i)) _ d H6).
+           apply (le_trans _ _ _ (H7 _)).
+           rewrite (single_index_proper (order k) _ _ ((IVP_Di_S _ _ _))).
            unfold sum.
+           Opaque add zero pdiff.
            simpl fold_right.
            apply le_eq.
            apply (single_index_proper (d:=0) (order k)  ).
-           apply ntimes_proper.
-           rewrite addC.
            rewrite add0.
+           setoid_rewrite  <-(ntimes_nth b);auto.
+           rewrite (mulC (ntimes _ _)).
+           rewrite <-ntimes_mult.
+           rewrite (mulC (D[0] _ )).
            reflexivity.
+           Transparent add zero pdiff.
          }
          intros.
          apply mps_mult_monotone.
          intros k';apply H1;auto.
          apply mps_diff_monotone;auto.
-         apply IHn.
+         intros i0.
+         specialize (IHn i0 H2).
+         rewrite !IVP_D_nth in IHn;auto.
+         apply (le_trans _ _ _ IHn).
+         apply le_eq.
+         apply (single_index_proper (d:=0)).
+         rewrite (IVP_D_nth (ntimes d b));auto.
+         reflexivity.
      Qed.
     
      Lemma mps_mult_monotone {d} (a b : @mps A d) a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'.

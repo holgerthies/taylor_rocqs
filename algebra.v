@@ -558,6 +558,16 @@ Notation "x ** y" := (scalar_mult x y) (at level 2).
 Section VectorRing.
   Context `{Ring}.
   
+  Lemma ntimes_nth {d} (x: A^d) n i: i<d -> ntimes n (tuple_nth i x 0) == tuple_nth i (ntimes n x) 0.
+  Proof.
+    intros.
+    induction n.
+    simpl;rewrite vec0_nth;reflexivity.
+    simpl.
+    rewrite vec_plus_spec;auto.
+    rewrite IHn.
+    reflexivity.
+  Qed.
   #[global] Instance  VectorRing {m}:  Ring (A := A^m).  
   Proof.
    exists  (tuple_map opp).
