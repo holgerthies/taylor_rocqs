@@ -1315,7 +1315,7 @@ Section MultiBounds.
          reflexivity.
      Qed.
     
-     Lemma mps_mult_monotone {d} (a b : @mps A d) a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'.
+     (* Lemma mps_mult_monotone {d} (a b : @mps A d) a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'. *)
   (*      apply IHd. *)
   (*    apply (le_trans _ _ _ (norm_mult _ _)). *)
   (*    pose proof (norm_triangle (ps_index k (a 0%nat * b (S i))) ((( (fun n => (a (S n))) : (@mps A (S d)) ) * b) i)). *)
@@ -1365,12 +1365,55 @@ Section MultiBounds.
   (*  intros;auto. *)
   (* Qed. *)
 End MultiBounds.
-Context `{AbstractFunctionSpace} {d e : nat}.
-Context `{TotallyOrderedField (A := (A 0)) (H:=(H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
- Context `{normK : (NormedSemiRing ((A 0)^e) (A 0) (H := _)  (H0 := (H 0))  (R_rawRing0 := (H0 0%nat)) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }. 
- (* Context {M R : A 0} {Mpos : 0 <= M} {Rpos : 0 <= R}. *)
 
+Section Uniqueness.
+  Context `{AbstractFunctionSpace} {d : nat}.
+  Context {f g : (A (S d))^(S d)} {y0 : (A 0)^(S d)}  {in_dom_f : y0 \in_dom f} {in_dom_g : y0 \in_dom g}.
+
+  Lemma dom_Dif : forall n i, y0 \in_dom (IVP_Di f n i).
+  Admitted.
+  Lemma dom_Dig : forall n i, y0 \in_dom (IVP_Di g n i).
+  Admitted.
+
+  Lemma Di_unique : (forall (n : nat^d) P1 P2, (derive_rec f n) @ (y0; P1)  == (derive_rec g n) @ (y0;P2)) -> forall (k : nat^d)  (n i : nat) P1 P2, (derive_rec (IVP_Di f n i) k) @ (y0; P1) == (derive_rec (IVP_Di g n i) k) @ (y0; P2).
+  Proof.
+    intros.
+    revert dependent k.
+    induction n;intros.
+    - simpl;apply functions.eval_proper; reflexivity.
+    - simpl.
+      pose proof (derive_rec_sum k (fun j : nat => tuple_nth j f 0 * D[ j] (IVP_Di f n i)) d).
+      pose proof (derive_rec_sum k (fun j : nat => tuple_nth j g 0 * D[ j] (IVP_Di g n i)) d).
+      destruct  (eval_change_f _ _ _ P1 H7) as [P1' ->].
+      destruct  (eval_change_f _ _ _ P2 H8) as [P2' ->].
+      clear P1 P2 H7 H8.
+      assert (sum (fun j=> D[ k] (tuple_nth j f 0 * D[ j] (IVP_Di f n i))) (S d) == sum (fun j => D[ j] (IVP_Di f n i) * D[ k] (tuple_nth j f 0) + tuple_nth j f 0 * D[ k] (D[ j] (IVP_Di f n i))) (S d)) by (apply sum_ext;intros;apply pdiff_mult).
+
+      assert (sum (fun j=> D[ k] (tuple_nth j g 0 * D[ j] (IVP_Di g n i))) (S d) == sum (fun j => D[ j] (IVP_Di g n i) * D[ k] (tuple_nth j g 0) + tuple_nth j g 0 * D[ k] (D[ j] (IVP_Di g n i))) (S d)) by (apply sum_ext;intros;apply pdiff_mult).
+      destruct  (eval_change_f _ _ _ P1' H7) as [P1 ->].
+      destruct  (eval_change_f _ _ _ P2' H8) as [P2 ->].
+      clear P1' P2' H7 H8.
+    Admitted.
+End Uniqueness.
+Section Analytic.
+Context `{AbstractFunctionSpace} {d : nat}.
+Context `{TotallyOrderedField (A := (A 0)) (H:=(H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
+ Context `{normK : (NormedSemiRing ((A 0)^d) (A 0) (H := _)  (H0 := (H 0))  (R_rawRing0 := (H0 0%nat)) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }. 
   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+  Context {M R : A 0} {Mpos : 0 <= M} {Rpos : 0 <= R}.
+  Context {f : (A d)^d} {y0 : (A 0)^d}  {in_dom : y0 \in_dom f}.
+  Definition derivative {e :nat} (n : nat^e) (i  : (A d)^d.
+  Proof.
+    
+  Definition to_ps {e} (g : (A e)) : @mps (A 0) e.
+  Proof.
+     revert e g.
+     induction e;intros.
+     apply g.
+     intros n.
+     
+ Context {p : (@mps (A 0) d)^e}.
+
  Definition D_bound (f : (A d)^e) x0 (B : nat -> (A 0)) := forall n i H, (i < d) -> norm ((nth_derivative i f n) @ (x0; H)) <= (B n).
  Definition D_boundi (f : (A d)^e) x0 (B : nat -> (A 0)) i := forall n H, norm ((nth_derivative i f n) @ (x0; H)) <= (B n).
  Definition Fi_bound M R n k := [n]! * [k+2*n]! * ![2*n] *  (npow (1+1) n) * (npow M (n+1)) * npow R (n+k). 

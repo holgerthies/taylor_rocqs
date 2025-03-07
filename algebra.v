@@ -46,6 +46,23 @@ Class SemiRing `{R_rawRing : RawRing}   := {
       distrL : forall a b c, mul a (add b c) == add (mul a b) (mul a c)
     }.
 
+Lemma ComSemiRingTheory `{A_comSemiRing : SemiRing } : semi_ring_theory 0 1 add mul equiv.
+  Proof.
+    constructor.
+    intro; rewrite addC; apply add0.
+    exact addC.
+    symmetry; apply addA.
+    intro; rewrite mulC; apply mul1.
+    intros;rewrite mulC;apply mul0.
+    exact mulC.
+    symmetry ; apply mulA.
+    intros m n p.
+    rewrite mulC.
+    rewrite (mulC n p).
+    rewrite (mulC m p).
+    apply distrL.
+Qed.
+
 Class Ring `{R_semiRing : SemiRing} := {
     opp : A -> A;
     opp_proper :: Proper (equiv ==> equiv) opp;
@@ -70,6 +87,41 @@ Class Field `{A_Ring : Ring} := {
       distinct_0_1 : (not (zero == one))
     }.
 
+Section Sums.
+  Context `{SemiRing}.
+  Add Ring ARing : ComSemiRingTheory.
+  Lemma sum_S_fun (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
+  Proof.
+    unfold sum.
+    simpl.
+    ring_simplify.
+    enough (map f (seq 1 n) = map (fun n => f (S n)) (seq 0 n)) as -> by reflexivity.
+    rewrite <- seq_shift.
+    rewrite map_map;auto.
+  Qed.
+
+  Lemma sum_S (f : nat -> A) n : (sum f (S n)) == add (sum f n) (f n). 
+  Proof.
+    revert f.
+    induction n;intros.
+    unfold sum; simpl;ring.
+    rewrite sum_S_fun.
+    rewrite IHn.
+    ring_simplify.
+    rewrite <- sum_S_fun.
+    ring.
+  Qed.
+
+   Lemma sum_ext f g d  : (forall n, (n < d)%nat -> (f n) == (g n)) -> sum f d == sum g d.
+   Proof.
+     intros.
+     induction d;intros.
+     unfold sum; simpl; reflexivity.
+     rewrite !sum_S.
+     rewrite IHd;[| intros; apply H1;  lia].
+     rewrite H1;try lia;reflexivity.
+   Qed.
+End Sums.
 
 Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
     pdiff : nat -> A -> A;
@@ -78,6 +130,19 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
     pdiff_comm : forall d1 d2 r, pdiff d1 (pdiff d2 r) == pdiff d2 (pdiff d1 r);
     pdiff_proper :: forall n, Proper (equiv ==> equiv) (pdiff n);
 }.
+
+ Lemma pdiff_sum  `{PartialDifferentialRing }  (i : nat) (f : nat -> A) (d : nat) :  pdiff i (sum f (S d)) == sum (fun j => (pdiff i (f j))) (S d).
+ Proof.
+   induction d.
+   unfold sum.
+   simpl.
+   rewrite !add0.
+   reflexivity.
+   rewrite !(sum_S _ (S d)).
+   rewrite !pdiff_plus.
+   rewrite IHd.
+   reflexivity.
+ Defined.
 
  Definition nth_derivative  `{PartialDifferentialRing }  (i : nat) (y : A) (n : nat) :  A.
  Proof.
@@ -133,6 +198,60 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    rewrite nth_derivative_plus.
    reflexivity.
  Qed.
+ Definition derive_rec_helper  `{PartialDifferentialRing } {d} (i : nat) (y : A) (n : nat^d) : A.
+ Proof.
+   revert i.
+   induction d;intros.
+   apply y.
+   destruct (destruct_tuple_cons n) as [hd [tl P]].
+   apply (pdiff i (IHd tl (S i))).
+ Defined.
+
+ Definition derive_rec `{PartialDifferentialRing } {d}  (y : A) (n : nat^d) := derive_rec_helper 0 y n.
+  #[global] Instance derive_helper_proper `{PartialDifferentialRing } {d} (i : nat^d) j : Proper (equiv ==> equiv) (fun f => derive_rec_helper j f i ).
+  Proof.
+    intros a b eq.
+    revert j.
+    induction d;intros;simpl.
+    rewrite eq;reflexivity.
+    destruct (destruct_tuple_cons i) as [hd [tl P]].
+    rewrite IHd.
+    reflexivity.
+  Defined.
+
+  #[global] Instance derive_rec_proper `{PartialDifferentialRing } {d} (i : nat^d) : Proper (equiv ==> equiv) (fun f => derive_rec f i ).
+  Proof.
+    unfold derive_rec.
+    apply derive_helper_proper.
+  Defined.
+
+ Lemma derive_rec_helper_plus  `{PartialDifferentialRing }  {m} (k : nat^m) a b i :  derive_rec_helper i (a+b) k == derive_rec_helper i a k + derive_rec_helper i b k.
+ Proof.
+   revert i.
+   induction m;intros;simpl;try reflexivity.
+    destruct (destruct_tuple_cons k) as [hd [tl P]].
+    rewrite IHm.
+    rewrite !pdiff_plus.
+    reflexivity.
+  Qed.
+
+ Lemma derive_rec_plus  `{PartialDifferentialRing }  {m} (k : nat^m) a b  :  derive_rec  (a+b) k == derive_rec  a k + derive_rec b k.
+ Proof.  apply derive_rec_helper_plus.  Qed.
+
+ Lemma derive_rec_sum  `{PartialDifferentialRing }  {m} (k : nat^m) (f : nat -> A) (d : nat) :  derive_rec (sum f (S d)) k == sum (fun j => (derive_rec (f j) k)) (S d).
+ Proof.
+   induction d.
+   unfold sum.
+   simpl.
+   rewrite (add0 (derive_rec (f 0%nat) k)).
+   apply derive_rec_proper.
+   rewrite add0;reflexivity.
+   rewrite !(derive_rec_proper _ _ _ (sum_S _ (S d))).
+   rewrite (sum_S _ (S d)).
+   rewrite derive_rec_plus.
+   rewrite IHd.
+   reflexivity.
+ Defined.
 Notation "D[ i ] f" := (pdiff i f) (at level 4) : algebra_scope.
 (* Notation "D[ i ]n f" := (nth_derivative i f n) (at level 4) : algebra_scope. *)
 
@@ -171,22 +290,6 @@ End Norm.
 
 Notation "|| x ||" := (norm x) (at level 2).
 
-Lemma ComSemiRingTheory `{A_comSemiRing : SemiRing } : semi_ring_theory 0 1 add mul equiv.
-  Proof.
-    constructor.
-    intro; rewrite addC; apply add0.
-    exact addC.
-    symmetry; apply addA.
-    intro; rewrite mulC; apply mul1.
-    intros;rewrite mulC;apply mul0.
-    exact mulC.
-    symmetry ; apply mulA.
-    intros m n p.
-    rewrite mulC.
-    rewrite (mulC n p).
-    rewrite (mulC m p).
-    apply distrL.
-Qed.
 
 Section RingTheory.
   Context `{A_Ring : Ring }.
@@ -270,37 +373,6 @@ Section RingTheory.
   Lemma ring_eq_mult_eq : forall x y x' y', x == x' -> y == y' -> x * y == x' * y'. 
   Proof. intros x y _ _ <- <-;ring. Qed.
 
-  Lemma sum_S_fun (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
-  Proof.
-    unfold sum.
-    simpl.
-    ring_simplify.
-    enough (map f (seq 1 n) = map (fun n => f (S n)) (seq 0 n)) as -> by reflexivity.
-    rewrite <- seq_shift.
-    rewrite map_map;auto.
-  Qed.
-
-  Lemma sum_S (f : nat -> A) n : (sum f (S n)) == add (sum f n) (f n). 
-  Proof.
-    revert f.
-    induction n;intros.
-    unfold sum; simpl;ring.
-    rewrite sum_S_fun.
-    rewrite IHn.
-    ring_simplify.
-    rewrite <- sum_S_fun.
-    ring.
-  Qed.
-
-   Lemma sum_ext f g d  : (forall n, (n < d)%nat -> (f n) == (g n)) -> sum f d == sum g d.
-   Proof.
-     intros.
-     induction d;intros.
-     unfold sum; simpl; reflexivity.
-     rewrite !sum_S.
-     rewrite IHd;[| intros; apply H0;  lia].
-     rewrite H0;try lia;reflexivity.
-   Qed.
 End RingTheory.
 
 
