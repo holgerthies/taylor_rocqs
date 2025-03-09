@@ -100,6 +100,12 @@ Section Sums.
     rewrite map_map;auto.
   Qed.
 
+  Lemma sum_1 (f : nat -> A) : (sum f 1) == (f 0%nat). 
+  Proof.
+    unfold sum;simpl;auto.
+    ring_simplify.
+    reflexivity.
+  Qed.
   Lemma sum_S (f : nat -> A) n : (sum f (S n)) == add (sum f n) (f n). 
   Proof.
     revert f.

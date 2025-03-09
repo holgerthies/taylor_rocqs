@@ -559,4 +559,6 @@ Section MultiPowerseries.
 End MultiPowerseries.
 
 
+Notation "A {{ x^ n }}" := (@mps A n) (at level 2).
+
 

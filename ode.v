@@ -227,6 +227,48 @@ End factorial.
   Qed.
 
  End factorialFacts.
+ Section FactorialOrder.
+  Context `{TotallyOrderedField}.
+ Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
+  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+
+  Add Ring TRing: (ComSemiRingTheory (A := A)). 
+  Lemma ntimes_nonneg x n: (0 <= x) -> 0 <= ntimes n x.
+  Proof.
+    intros.
+    induction n.
+    simpl;apply le_refl.
+    simpl.
+    setoid_replace 0 with (0 + 0) by ring.
+    apply le_le_plus_le;auto.
+ Qed.
+  Lemma fact_pos n : 0 <= [n]!.
+  Proof.
+    induction n.
+    simpl.
+    apply le_0_1.
+    simpl.
+    apply mul_pos_pos;try apply IHn.
+    setoid_replace (0 : A) with (0+0 ) by ring.
+    apply le_le_plus_le; [apply le_0_1|].
+    apply ntimes_nonneg;apply le_0_1.
+  Qed.
+
+    
+  Lemma inv_Sn_pos n : 0 <= inv_Sn n.
+  Proof.
+  Admitted.    
+
+  Lemma invfact_pos n : 0 <= ![n].
+  Proof.
+    induction n.
+    simpl.
+    apply le_0_1.
+    simpl.
+    apply mul_pos_pos;try apply IHn.
+    apply inv_Sn_pos.
+   Qed.
+End FactorialOrder.
 Open Scope fun_scope.
 Section TaylorSequence.
 
@@ -351,7 +393,7 @@ Context `{TotallyOrderedField}.
  Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
   Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
   
- Context {norm1 : norm 1 == 1}.
+ Context `{norm1 : norm 1 == 1}.
  Context {M r : A} {Mge0: 0 <= M} {rge0: 0 <= r}.
  
 
@@ -370,20 +412,18 @@ Context `{TotallyOrderedField}.
    ring.
  Qed.
 
+ Lemma rising_factorial0 n : [n ! 0]  == 1.
+ Proof.
+   unfold rising_factorial.
+   replace (n+0-1)%nat with (n-1)%nat by lia.
+   rewrite fact_invfact.
+   reflexivity.
+ Qed.
  
  Definition inv2  := inv_Sn 1.
 
  Notation "| a | <= b" := (forall k, norm (a k) <= b k) (at level 70).
  
-  Lemma ntimes_nonneg x n: (0 <= x) -> 0 <= ntimes n x.
-  Proof.
-    intros.
-    induction n.
-    simpl;apply le_refl.
-    simpl.
-    setoid_replace 0 with (0 + 0) by ring.
-    apply le_le_plus_le;auto.
- Qed.
 
   Lemma norm_n_le_n n : norm (ntimes n 1) <= ntimes n 1.
   Proof.
@@ -412,6 +452,13 @@ Context `{TotallyOrderedField}.
     apply le_plus_compat.
     rewrite mulC.
     apply IHn.
+  Qed.
+  Lemma norm_ntimes_le_ntimes_norm n x : norm (ntimes n x) <= ntimes n (norm x).
+  Proof.
+    apply (le_trans _ _ _ (norm_ntimes_le _ _)).
+    rewrite mulC, <-ntimes_mult.
+    rewrite mul1.
+    apply le_refl.
   Qed.
   Lemma ps_mult_monotone a b a' b' : (|a| <= a') -> |b| <= b' -> |a*b| <= a' * b'.
   Proof.
@@ -702,32 +749,6 @@ Context `{TotallyOrderedField}.
    ring.
  Qed.
 
-  Lemma fact_pos n : 0 <= [n]!.
-  Proof.
-    induction n.
-    simpl.
-    apply le_0_1.
-    simpl.
-    apply mul_pos_pos;try apply IHn.
-    setoid_replace (0 : A) with (0+0 ) by ring.
-    apply le_le_plus_le; [apply le_0_1|].
-    apply ntimes_nonneg;apply le_0_1.
-  Qed.
-
-    
-  Lemma inv_Sn_pos n : 0 <= inv_Sn n.
-  Proof.
-  Admitted.    
-
-  Lemma invfact_pos n : 0 <= ![n].
-  Proof.
-    induction n.
-    simpl.
-    apply le_0_1.
-    simpl.
-    apply mul_pos_pos;try apply IHn.
-    apply inv_Sn_pos.
-   Qed.
 
   Lemma ntimes_monotone  n m: (n <= m)%nat -> (# n <= # m). 
   Proof.
@@ -829,14 +850,33 @@ Context `{TotallyOrderedField}.
     apply le_refl.
   Qed.
 End Bounds.
-Section Bounds. 
 
-Section MultiBounds.
-  Context `{TotallyOrderedField}.
- Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
-  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
-  
- Context {norm1 : norm 1 == 1}.
+Section Multiindex.
+
+  Context `{A_comRing : SemiRing}.
+
+  #[global] Instance nat_setoid : Setoid nat.
+  Proof.
+    exists (fun x y => (x=y)).
+    constructor; intros a; intros;try auto.
+    rewrite H0, H1;auto.
+  Defined.
+
+  #[global] Instance nat_rawring : RawRing (A := nat).
+  Proof.
+    constructor.
+    apply 0%nat.
+    apply 1%nat.
+    intros a b.
+    apply (a+b)%nat.
+    intros a b.
+    apply (a*b)%nat.
+  Defined.
+
+  #[global] Instance nat_semiring : SemiRing (A := nat).
+  Proof.
+    constructor;intros;simpl;try lia;intros a b eq c d eq';lia.
+  Defined.
 
  Definition ps_index {d} (n : nat^d) (a : @mps A d) : A.
  Proof.
@@ -855,13 +895,97 @@ Section MultiBounds.
    apply (hd + (IHd tl))%nat.
  Defined.
 
+   #[global] Instance ps_index_proper d n : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (@ps_index d n).
+   Proof.
+   Admitted.
+
+    Lemma ps_index_0 {d} ix :  ps_index (d := d) ix 0 ==0.
+    Proof.
+      induction d.
+      simpl.
+      reflexivity.
+      simpl.
+      destruct (destruct_tuple_cons ix) as [hd [tl P]].
+      apply IHd.
+    Qed.
+
+    Lemma ps_index_1 {d} ix :  ps_index (d := d) ix 1 == match (order ix) with  0 => 1 | _ => 0 end.
+    Proof.
+      induction d.
+      simpl;reflexivity.
+      simpl.
+      destruct (destruct_tuple_cons ix) as [hd [tl ->]].
+      destruct hd.
+      simpl.
+      apply IHd.
+      simpl.
+      rewrite ps_index_0.
+      reflexivity.
+    Qed.
+
+    Lemma order_cons {d} hd tl : order (d:=S d) (tuple_cons hd tl) = (hd + order tl)%nat.
+    Proof.
+      simpl.
+      destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]].
+      apply tuple_cons_ext in P.
+      destruct P as [-> ->].
+      lia.
+    Qed.
+
+    Lemma order_zero_split {d} hd tl : order (d:=S d) (tuple_cons hd tl) = 0%nat -> (hd = 0%nat /\ order tl = 0%nat).
+    Proof.
+      intros.
+      rewrite order_cons in H0.
+      lia.
+    Qed.
+
+    Lemma order_zero1 {d} n : (order (d:=d) n) = 0%nat -> (forall i, i< d -> tuple_nth i n 0%nat = 0%nat).
+    Proof.
+      intros.
+      generalize dependent i.
+      induction d;intros; try lia.
+      destruct (destruct_tuple_cons n) as [hd [tl ->]].
+      apply order_zero_split in H0.
+      destruct i.
+      rewrite tuple_nth_cons_hd.
+      apply H0.
+      rewrite tuple_nth_cons_tl.
+      apply IHd;try lia.
+    Qed.
+
+    Lemma order_zero {d} n : (order (d:=d) n) = 0%nat -> (forall i,  tuple_nth i n 0%nat = 0%nat).
+    Proof.
+      intros.
+      destruct (Nat.lt_ge_cases i d).
+      apply order_zero1;auto.
+      destruct n.
+      simpl.
+      rewrite nth_overflow;auto;lia.
+     Qed.
+
+    Lemma zero_order {d} : (order (d:=d) 0) = 0%nat.
+    Proof.
+      induction d.
+      simpl;reflexivity.
+      rewrite vec0_cons.
+      rewrite order_cons.
+      rewrite IHd.
+      simpl.
+      reflexivity.
+    Qed.
+End Multiindex.
+Section MultiBounds.
+  Context `{TotallyOrderedField}.
+ Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
+  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+  
+ Context {norm1 : norm 1 == 1}.
+
+
  Add Ring KRing: (ComRingTheory (A := A)).
  Definition mps_bound {d} (a : @mps A d) (b : @mps A 1):= forall n, norm (ps_index n a) <= (b (order n)). 
  Definition mps_tuple_bound {d} {e} (a : (@mps A d)^e) (b : (@mps A 1)):= forall i n, i < e -> norm (ps_index n (tuple_nth i a 0)) <= b (order n). 
    Notation "| a | <= b" := (mps_bound a b) (at level 70).
-   Instance ps_index_proper d n : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (@ps_index d n).
-   Proof.
-   Admitted.
 
    Instance mps_bound_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (@mps_bound d).
    Proof.
@@ -1051,70 +1175,6 @@ Section MultiBounds.
       reflexivity.
     Qed.
 
-
-    Lemma ps_index_0 {d} ix :  ps_index (d := d) ix 0 ==0.
-    Proof.
-      induction d.
-      simpl.
-      reflexivity.
-      simpl.
-      destruct (destruct_tuple_cons ix) as [hd [tl P]].
-      apply IHd.
-    Qed.
-
-    Lemma ps_index_1 {d} ix :  ps_index (d := d) ix 1 == match (order ix) with  0 => 1 | _ => 0 end.
-    Proof.
-      induction d.
-      simpl;reflexivity.
-      simpl.
-      destruct (destruct_tuple_cons ix) as [hd [tl ->]].
-      destruct hd.
-      simpl.
-      apply IHd.
-      simpl.
-      rewrite ps_index_0.
-      reflexivity.
-    Qed.
-
-    Lemma order_cons {d} hd tl : order (d:=S d) (tuple_cons hd tl) = (hd + order tl)%nat.
-    Proof.
-      simpl.
-      destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]].
-      apply tuple_cons_ext in P.
-      destruct P as [-> ->].
-      lia.
-    Qed.
-
-    Lemma order_zero_split {d} hd tl : order (d:=S d) (tuple_cons hd tl) = 0%nat -> (hd = 0%nat /\ order tl = 0%nat).
-    Proof.
-      intros.
-      rewrite order_cons in H1.
-      lia.
-    Qed.
-
-    Lemma order_zero1 {d} n : (order (d:=d) n) = 0%nat -> (forall i, i< d -> tuple_nth i n 0%nat = 0%nat).
-    Proof.
-      intros.
-      generalize dependent i.
-      induction d;intros; try lia.
-      destruct (destruct_tuple_cons n) as [hd [tl ->]].
-      apply order_zero_split in H1.
-      destruct i.
-      rewrite tuple_nth_cons_hd.
-      apply H1.
-      rewrite tuple_nth_cons_tl.
-      apply IHd;try lia.
-    Qed.
-
-    Lemma order_zero {d} n : (order (d:=d) n) = 0%nat -> (forall i,  tuple_nth i n 0%nat = 0%nat).
-    Proof.
-      intros.
-      destruct (Nat.lt_ge_cases i d).
-      apply order_zero1;auto.
-      destruct n.
-      simpl.
-      rewrite nth_overflow;auto;lia.
-     Qed.
 
     Lemma ps_index_comp1 {d} ix i :  ps_index (d := d) ix (comp1  i) == match (order ix) with
                                                                          | 1 => match (tuple_nth i ix 0%nat) with
@@ -1366,6 +1426,228 @@ Section MultiBounds.
   (* Qed. *)
 End MultiBounds.
 
+Section PS_Eval.
+  Context `{SemiRing}.
+  Notation "A [[ x^ n ]]" := (@mps A n) (at level 2).
+  Lemma ps_mult0 {n} (a b : A[[x^n]]): ps_index 0 (a * b) == ps_index 0 a * ps_index 0 b.
+  Proof.
+    induction n.
+    simpl;reflexivity.
+  Admitted.
+
+  #[global] Instance EvalTrivial : forall n, HasEvaluation (A := A{{x^n}}) (B := A^n) (C := A).
+  Proof.
+    intros.
+    exists (fun a x => x == 0) (fun a x P => (ps_index 0 a));intros;auto.
+    intros a b eq c d ->; reflexivity.
+    rewrite H1;reflexivity.
+    rewrite ps_index_plus.
+    reflexivity.
+    apply ps_mult0.
+  Defined.
+
+End PS_Eval.
+Section Bounded_PS.
+
+  Context `{TotallyOrderedField}.
+ Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
+  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+  Context `{norm_abs : forall x, 0 <= x -> norm x == x}.
+
+  Context {d : nat} {a : (@mps A d)^d}.
+  Context {M r : A} {Mpos : 0 <= M} {rpos : 0 <= r}.
+
+  Definition a_bound_series : (@mps A 1)  := fun n => M * (npow r n).
+
+  Context {a_bound : mps_tuple_bound a (tuple_nth 0 t(a_bound_series) 0)}.
+  
+  Lemma zero_in_domain n : (0 : A^d) \in_dom (IVP_D a n).
+  Proof.
+  Admitted.
+
+  Definition y (n : nat)   := ![n] ** ((IVP_D a n) @ (_; (zero_in_domain n))).
+
+  Lemma norm1 : norm 1 == 1.  
+  Proof.
+    apply norm_abs.
+    apply le_0_1.
+  Qed.
+
+  Lemma y_nth (n : nat) i : i < d -> tuple_nth i (y n) 0 == ![n] * (ps_index 0 (IVP_Di a n i)).
+  Proof.
+    intros.
+    unfold y.
+    rewrite scalar_mult_spec;auto.
+    apply ring_eq_mult_eq;try reflexivity.
+    unfold eval.
+    simpl.
+    rewrite (evalt_spec _ _ _ _ H1).
+    simpl.
+    rewrite IVP_D_nth;auto.
+    reflexivity.
+  Qed.
+
+  Add Ring TRing: (ComRingTheory (A := A)). 
+
+  Lemma Di1_bound n k :  norm (IVP_Di (ntimes d t(a_bound_series))  (S n) 0 k) <= Fn_bound (r := r) (M := (ntimes d M)) n k.
+ Proof.
+   revert k.
+   induction n; intros.
+   - assert (IVP_Di (ntimes d t(a_bound_series)) 1 0 == (ntimes d ( fun n : nat => M * npow r n))).
+     {
+       rewrite IVP_Di_S.
+       rewrite sum_1.
+       simpl IVP_Di.
+       assert (pdiff (A:=(@mps A 1)) 0 comp_one_ps == 1) as ->.
+       {
+         simpl;intros.
+         unfold derive_ps, one_ps, comp_one_ps.
+         destruct n.
+         simpl;ring.
+         destruct n.
+         simpl.
+         ring.
+         simpl.
+         rewrite ntimes_zero.
+         ring.
+       }
+       rewrite mul1.
+       rewrite <-ntimes_nth;try lia.
+       rewrite tuple_nth_cons_hd.
+       reflexivity.
+     }
+     (* pose proof (IVP_Di_S (d:=1)  bounder 0 0 ). *)
+     rewrite (single_index_proper _ _ _ H1).
+     setoid_rewrite (ntimes_index (d:=0)).
+     unfold Fn_bound.
+     simpl.
+     ring_simplify.
+     simpl.
+     rewrite rising_factorial0.
+     ring_simplify.
+     apply (le_trans _ _ _ (norm_ntimes_le_ntimes_norm _ _)).
+     rewrite norm_abs.
+     rewrite mulC.
+     rewrite ntimes_mult.
+     rewrite mulC;apply le_refl.
+     apply mul_pos_pos;auto.
+     apply npow_pos;auto.
+   - pose proof (IVP_Di_S (d:=1)  (ntimes d t(a_bound_series)) 0 (S n) ).
+     rewrite (single_index_proper _ _ _ H1).
+     rewrite single_index_proper;try apply sum_1.
+     replace (S n) with (n+1)%nat by lia.
+     apply (bound_prod (norm1 := norm1)).
+     + intros.
+       unfold f_bound.
+       rewrite single_index_proper; try (rewrite <-ntimes_nth;try lia;rewrite tuple_nth_cons_hd;reflexivity ).
+       unfold a_bound_series.
+       setoid_rewrite (ntimes_index (d:=0)).
+       apply (le_trans _ _ _ (norm_ntimes_le_ntimes_norm _ _)).
+       rewrite norm_abs; [rewrite mulC,ntimes_mult,mulC; apply le_refl|].
+       apply mul_pos_pos;auto.
+       apply npow_pos;auto.
+    + intros.
+      replace (n+1)%nat with (S n) by lia.
+       apply IHn.
+  Qed.
+
+  Lemma le_norm x : x <= norm x.
+  Proof.
+     destruct (le_total x 0).
+     apply (le_trans _ _ _ H1).
+     apply norm_nonneg.
+     rewrite norm_abs;auto.
+     apply le_refl.
+   Qed.
+
+  Lemma y_bound_Fn i n: i < d -> norm (tuple_nth i (y (S n)) 0 ) <= ![S n] * Fn_bound (r := r) (M := (ntimes d M)) n 0.  
+  Proof.
+   intros.
+   assert (dneg0 : d = S (pred d)) by lia.
+   pose proof (IVP_D_bound (norm1 := norm1) a _ (S n) a_bound ).
+   rewrite y_nth;auto.
+   specialize (H2 i 0 H1).
+   rewrite zero_order in H2.
+   apply (le_trans _ _ _ (norm_mult _ _)).
+   assert ( tuple_nth 0 (IVP_D (ntimes d t(a_bound_series)) (S n)) 0 0
+ == IVP_Di (ntimes d t(a_bound_series)) (S n) 0 0).
+   {
+     rewrite dneg0.
+     apply (single_index_proper 0%nat (tuple_nth 0 (IVP_D (ntimes (S (pred d)) t( fun n : nat => M * npow r n)) (S n)) 0)).
+     setoid_rewrite (IVP_D_nth (d:=1));try lia.
+     reflexivity.
+   }
+   rewrite H3 in H2.
+   rewrite IVP_D_nth in H2;auto.
+   rewrite norm_abs;try apply invfact_pos.
+   apply mul_le_compat_pos;try apply invfact_pos.
+   apply (le_trans _ _ _ H2).
+   apply (le_trans _ _ _ (le_norm _ )).
+   apply Di1_bound.
+ Qed.
+
+  Lemma y0 i : i < d -> tuple_nth i (y 0) 0 == 0.
+  Proof.
+    intros.
+    unfold y.
+    rewrite scalar_mult_spec;auto.
+    simpl inv_factorial.
+    rewrite mulC,mul1.
+    unfold IVP_D.
+    simpl.
+    rewrite (evalt_spec _ _ _ _ H1).
+    rewrite id_nth;auto.
+    Opaque comp1.
+    simpl.
+    rewrite (ps_index_comp1).
+    Transparent comp1.
+    rewrite zero_order;reflexivity.
+  Defined.
+
+  Lemma y_bound i n: i < d -> norm (tuple_nth i (y (S n)) 0 ) <= ntimes d M  * npow (ntimes 2 1 * ntimes d M * r) n.
+  Proof.
+     intros.
+     (* destruct n. *)
+     (* - simpl. *)
+     (*   rewrite y0;auto. *)
+     (*   rewrite norm_abs; try apply le_refl. *)
+     (*   rewrite mul1. *)
+     (*   apply ntimes_nonneg;auto. *)
+     apply (le_trans _ _ _ (y_bound_Fn _ _ H1)).
+     assert (0 <= ntimes d M )by (apply ntimes_nonneg;auto).
+    pose proof (mul_le_compat_pos (invfact_pos (S n)) (Fn_bound0 (rge0 := rpos) (Mge0 := H2)  n)).
+       apply (le_trans _ _ _ H3).
+       rewrite <-!mulA.
+       enough (![ S n] * [n ]! * ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n  <= ( [S n ]! * ![ S n]) * ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n ).
+       {
+         apply (le_trans _ _ _ H4).
+         rewrite fact_invfact.
+         ring_simplify.
+         apply le_refl.
+       }
+       setoid_replace (([S n ]! * ![ S n]) * ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n ) with (![ S n] * ([S n ]! * (ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n ))) by ring.
+       rewrite !mulA.
+       apply mul_le_compat_pos; try apply invfact_pos.
+       rewrite mulC.
+       rewrite (mulC [S n]!).
+       apply mul_le_compat_pos; try apply invfact_pos.
+       apply mul_pos_pos.
+       apply ntimes_nonneg;auto.
+       apply npow_pos.
+       apply mul_pos_pos;auto.
+       apply mul_pos_pos; apply ntimes_nonneg;auto.
+       apply le_0_1.
+       simpl.
+       rewrite mulC.
+       setoid_replace ([n]!) with ([n]!*1) at 1 by ring.
+       apply mul_le_compat_pos.
+       apply fact_pos.
+       rewrite addC.
+       setoid_replace 1 with (0 + 1) at 1 by ring.
+       apply le_plus_compat.
+       apply ntimes_nonneg.
+       apply le_0_1.
+   Qed.
 Section Uniqueness.
   Context `{AbstractFunctionSpace} {d : nat}.
   Context {f g : (A (S d))^(S d)} {y0 : (A 0)^(S d)}  {in_dom_f : y0 \in_dom f} {in_dom_g : y0 \in_dom g}.
@@ -1387,9 +1669,7 @@ Section Uniqueness.
       destruct  (eval_change_f _ _ _ P1 H7) as [P1' ->].
       destruct  (eval_change_f _ _ _ P2 H8) as [P2' ->].
       clear P1 P2 H7 H8.
-      assert (sum (fun j=> D[ k] (tuple_nth j f 0 * D[ j] (IVP_Di f n i))) (S d) == sum (fun j => D[ j] (IVP_Di f n i) * D[ k] (tuple_nth j f 0) + tuple_nth j f 0 * D[ k] (D[ j] (IVP_Di f n i))) (S d)) by (apply sum_ext;intros;apply pdiff_mult).
 
-      assert (sum (fun j=> D[ k] (tuple_nth j g 0 * D[ j] (IVP_Di g n i))) (S d) == sum (fun j => D[ j] (IVP_Di g n i) * D[ k] (tuple_nth j g 0) + tuple_nth j g 0 * D[ k] (D[ j] (IVP_Di g n i))) (S d)) by (apply sum_ext;intros;apply pdiff_mult).
       destruct  (eval_change_f _ _ _ P1' H7) as [P1 ->].
       destruct  (eval_change_f _ _ _ P2' H8) as [P2 ->].
       clear P1' P2' H7 H8.
