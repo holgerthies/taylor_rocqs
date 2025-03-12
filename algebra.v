@@ -32,6 +32,8 @@ Class RawRing  {A : Type} `{Setoid A}:= {
  Notation "1" := one : algebra_scope.
  Notation "0" := zero : algebra_scope.
 
+ Notation "x \_ i" := (tuple_nth i x 0) (at level 2).
+ 
 Class SemiRing `{R_rawRing : RawRing}   := {
 
       add_proper :: Proper (equiv ==> equiv ==> equiv) add;
@@ -90,6 +92,7 @@ Class Field `{A_Ring : Ring} := {
 Section Sums.
   Context `{SemiRing}.
   Add Ring ARing : ComSemiRingTheory.
+
   Lemma sum_S_fun (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
   Proof.
     unfold sum.
@@ -127,6 +130,33 @@ Section Sums.
      rewrite IHd;[| intros; apply H1;  lia].
      rewrite H1;try lia;reflexivity.
    Qed.
+
+  Lemma sum_zero (f : nat -> A) d : (forall i, i < d  -> f i == 0) -> (sum f d) == 0. 
+  Proof.
+    intros.
+    induction d.
+    unfold sum;reflexivity.
+    rewrite sum_S.
+    rewrite IHd;auto.
+    rewrite H1;auto.
+    ring.
+  Qed.
+
+  Lemma sum_single (f : nat -> A) j d : (j < d) -> (forall i, i < d -> (not (i = j)) -> f i == 0) -> (sum f d) == f j. 
+  Proof.
+    intros.
+    induction d; try lia.
+    rewrite sum_S.
+    assert (j < d \/ j = d)%nat by lia.
+    destruct H3.
+    rewrite IHd;auto.
+    enough (f d == 0) as -> by ring.
+    apply H2;lia.
+    rewrite H3.
+    rewrite sum_zero;[ring|].
+    intros.
+    apply H2;lia.
+  Qed.
 End Sums.
 
 Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
@@ -210,7 +240,7 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    induction d;intros.
    apply y.
    destruct (destruct_tuple_cons n) as [hd [tl P]].
-   apply (pdiff i (IHd tl (S i))).
+   apply (nth_derivative i (IHd tl (S i)) hd).
  Defined.
 
  Definition derive_rec `{PartialDifferentialRing } {d}  (y : A) (n : nat^d) := derive_rec_helper 0 y n.
@@ -221,7 +251,8 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
     induction d;intros;simpl.
     rewrite eq;reflexivity.
     destruct (destruct_tuple_cons i) as [hd [tl P]].
-    rewrite IHd.
+    apply nth_derivative_proper.
+    setoid_rewrite IHd.
     reflexivity.
   Defined.
 
@@ -236,8 +267,9 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    revert i.
    induction m;intros;simpl;try reflexivity.
     destruct (destruct_tuple_cons k) as [hd [tl P]].
+    rewrite <-nth_derivative_plus.
+    apply nth_derivative_proper.
     rewrite IHm.
-    rewrite !pdiff_plus.
     reflexivity.
   Qed.
 
@@ -259,6 +291,7 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    reflexivity.
  Defined.
 Notation "D[ i ] f" := (pdiff i f) (at level 4) : algebra_scope.
+Notation "Dx[ x ] f" := (derive_rec f x) (at level 4) : algebra_scope.
 (* Notation "D[ i ]n f" := (nth_derivative i f n) (at level 4) : algebra_scope. *)
 
 
@@ -379,6 +412,14 @@ Section RingTheory.
   Lemma ring_eq_mult_eq : forall x y x' y', x == x' -> y == y' -> x * y == x' * y'. 
   Proof. intros x y _ _ <- <-;ring. Qed.
 
+  Lemma one_unique x : (forall y, x *y == y) -> x == 1.
+  Proof.
+    intros.
+    rewrite <-(H0 1).
+    assert (x * x == x * 1) as <- by (rewrite H0;ring).
+    rewrite H0.
+    reflexivity.
+  Qed.
 End RingTheory.
 
 
@@ -691,6 +732,13 @@ Section VectorDiffRing.
 
 End VectorDiffRing.
 
+   Lemma tuple_nth_nth_derivative_S `{PartialDifferentialRing } {d} n m (t : A^d) i : (n < d)%nat -> tuple_nth n (nth_derivative i t (S m)) 0 == pdiff i (tuple_nth n (nth_derivative i t m) 0).
+   Proof.
+     intros.
+     simpl.
+     rewrite pdiff_tuple_nth;auto.
+     reflexivity.
+   Defined.
 
 Section Composition.
   Context `{SemiRing}.
@@ -703,11 +751,11 @@ Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : na
 Class CompositionalDiffAlgebra := {
     composition : forall {m n}, A m -> (A (S n))^m ->  (A (S n));
     comp1 {m} (n : nat) : A m;
+    composition_id {m n} i (x : (A (S n))^m) : composition (comp1 i) x == tuple_nth i x 0;
+    composition_plus_comp : forall {m n} x y (z :(A (S n))^m) , composition (x+y) z == (composition x z) + (composition y z);
+    composition_mult_comp : forall {m n} x y (z :(A (S n))^m) , composition (x*y) z == (composition x z) * (composition y z);
+    pdiff_chain : forall {m n d} (x : A m) (y : (A (S n))^m), D[d] (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m);
     composition_proper {m n}:: Proper (equiv ==> equiv ==> equiv) (@composition m n);
-    composition_id {m n} i (x : @tuple m (A (S n))) : composition (comp1 i) x == tuple_nth i x 0;
-    composition_plus_comp : forall {m n} x y (z :@tuple m (A (S n))) , composition (x+y) z == (composition x z) + (composition y z);
-    composition_mult_comp : forall {m n} x y (z :@tuple m (A (S n))) , composition (x*y) z == (composition x z) * (composition y z);
-    pdiff_chain : forall {m n d} (x : A m) (y : @tuple m (A (S n))), pdiff d (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m)
   }.
 
 
@@ -786,6 +834,49 @@ Qed.
    rewrite pdiff_tuple_nth;auto.
    reflexivity.
  Qed.
+
+  Definition id (d : nat) : (A d)^d := proj1_sig (seq_to_tuple (comp1 (m:=d)) d (def:=0)).
+
+  Lemma id_nth {d} i: i < d -> tuple_nth i (id d) 0 = comp1 i.  
+  Proof.
+    intros.
+    unfold id.
+    destruct (seq_to_tuple (comp1 (m:=d)) d (def := 0)).
+    simpl.
+    rewrite e;auto;reflexivity.
+  Qed.
+
+  Lemma id_spec {d} (f : (A 1)^d) : (multi_composition (id d) f) == f.
+  Proof.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    rewrite tuple_nth_multicomposition;auto.
+    rewrite id_nth;auto.
+    rewrite composition_id.
+    reflexivity.
+  Qed.
+
+  Lemma diff_id_same {d} i : i<d ->  D[i] (comp1 (m:=d) i) == 1.
+  Admitted.
+  Lemma diff_id_distinct {d} i j : (i <> j)%nat -> D[i] (comp1 (m:=d) j) == 0.
+  Admitted.
+  (* Proof. *)
+  (*   intros. *)
+  (*    assert ((comp1 (m:=(S d)) i) \o1 (id (S d)) == comp1 i). *)
+  (*    { *)
+  (*      rewrite composition_id. *)
+  (*      rewrite id_nth;auto. *)
+  (*      reflexivity. *)
+  (*    } *)
+  (*    rewrite <-H5. *)
+  (*    rewrite pdiff_chain. *)
+  (*    rewrite sum_ext. *)
+  (*    admit. *)
+  (*    intros;rewrite id_nth;auto. *)
+  (*    pose proof (pdiff_chain (d := i) (comp1 (m:=(S d)) i) (id (S d))). *)
+  (*    apply one_unique. *)
+  (*    intros. *)
+  (*    assert  *)
 End PartialDiffAlgebraTheory.
 
 

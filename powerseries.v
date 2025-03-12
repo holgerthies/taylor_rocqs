@@ -534,12 +534,12 @@ Section MultiPowerseries.
     exists @multips_composition mps_comp1.
     (* - intros. *)
     (*   apply (const_to_mps _ X). *)
-    - intros;apply multips_composition_proper.
-    - intros.
-      apply mps_composition1.
+    - intros; apply mps_composition1.
     - apply mps_composition_plus.
     - apply mps_composition_mult.
     - apply mps_composition_prule.
+    - intros;apply multips_composition_proper.
+
   Defined.
 
   Lemma mul_ps_zero {d} (a b : mps (S d)) :  ((a*b) 0%nat) == (a 0%nat) * (b 0%nat).

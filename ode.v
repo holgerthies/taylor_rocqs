@@ -3,7 +3,7 @@ Require Import List.
 Require Import ZArith.
 Import ListNotations.
 Require Import algebra.
-Require Import powerseries.
+Require Import abstractpowerseries.
 Require Import functions.
 Require Import polynomial.
 Require Import Setoid.
@@ -11,101 +11,29 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Lists.SetoidList.
 Require Import Classical.
 Require Import tuple.
-
+Require Import combinatorics.
 
  Open Scope algebra_scope.
 
-Section PIVP.
+Section ODE_basic.
   Context `{CompositionalDiffAlgebra} .
 
+  Definition ODE_solution {d} f (y : (A 1)^d) := D[0]y ==  f \o y.
 
-  Definition is_IVP_solution_series {d} f (y : (A 1)^d) := D[0]y =  f \o y.
 
-   (* Definition tuple_choice_P {T d} P (Hp : (forall i, (i < d)%nat -> {x : T  | P x i})): forall x, {t : (@tuple d T) | forall i (lt : (i < d)%nat), tuple_nth i t x =  proj1_sig (Hp i lt) }. *)
-   (* Proof. *)
-   (*   intros. *)
-   (*   revert dependent P. *)
-   (*   induction d;intros. *)
-   (*   exists nil_tuple. *)
-   (*   intros;lia. *)
-   (*   assert (forall i, i < d -> (S i) < (S d)) by lia. *)
-   (*   enough {t : (tuple d) | forall i (lt' : i < d), tuple_nth i t x = proj1_sig (Hp (S i) (H4 _ lt'))} as [t0 T0]. *)
-   (*   { *)
-   (*     assert (0 < S d)%nat by lia. *)
-   (*     exists (tuple_cons (proj1_sig (Hp 0%nat H5)) t0). *)
-   (*     intros. *)
-   (*     destruct i. *)
-   (*     rewrite tuple_nth_cons_hd;simpl. *)
-   (*     replace H5 with lt by apply proof_irrelevance;auto. *)
-   (*     rewrite tuple_nth_cons_tl. *)
-   (*     assert (i < d)%nat by lia. *)
-   (*     rewrite (T0 _ H6). *)
-   (*     replace (H4 i H6) with lt by apply proof_irrelevance;auto. *)
-   (*   } *)
-   (*   assert (Hp' : forall i, i < d -> {x : T | forall lt', proj1_sig (Hp (S i) (H4 i lt')) = x}). *)
-   (*   { *)
-   (*     intros. *)
-   (*     destruct (Hp (S i) (H4 _ H5)) eqn:E. *)
-   (*     exists x0. *)
-   (*     intros. *)
-   (*     replace lt' with H5 by apply proof_irrelevance. *)
-   (*     rewrite E;auto. *)
-   (*   } *)
-   (*   destruct (IHd _ Hp'). *)
-   (*   exists x0. *)
-   (*   intros. *)
-   (*   rewrite (e _ lt'). *)
-   (*   destruct (Hp' i lt'). *)
-   (*   simpl; rewrite e0;auto. *)
-   (* Qed. *)
-   Lemma tuple_nth_nth_derivative_S {d} n m (t : (A m)^d) i : (n < d)%nat -> tuple_nth n (nth_derivative i t (S m)) 0 == pdiff i (tuple_nth n (nth_derivative i t m) 0).
-   Proof.
-     intros.
-     simpl.
-     rewrite pdiff_tuple_nth;auto.
-     reflexivity.
-   Defined.
-
-  (* Fixpoint IVP_Di {d} (f : (A d)^d) (n i : nat) := *)
-  (*    match n with *)
-  (*    | 0%nat => (comp1 i) *)
-  (*    | (S n') => (sum (fun j => tuple_nth j f 0 * (D[j] (IVP_Di f n' i))) d) *)
-  (*  end. *)
-
-  Definition id (d : nat) : (A d)^d := proj1_sig (seq_to_tuple (comp1 (m:=d)) d (def:=0)).
-
-  Lemma id_nth {d} i: i < d -> tuple_nth i (id d) 0 = comp1 i.  
-  Proof.
-    intros.
-    unfold id.
-    destruct (seq_to_tuple (comp1 (m:=d)) d (def := 0)).
-    simpl.
-    rewrite e;auto;reflexivity.
-  Qed.
-
-  Lemma id_spec {d} (f : (A 1)^d) : ((id d) \o f) == f.
-  Proof.
-    apply (tuple_nth_ext' _ _ 0 0).
-    intros.
-    rewrite tuple_nth_multicomposition;auto.
-    rewrite id_nth;auto.
-    rewrite composition_id.
-    reflexivity.
-  Qed.
-
-  Fixpoint IVP_D {d} (f : (A d)^d) (n: nat) : (A d)^d :=
+  Fixpoint F {d} (f : (A d)^d) (n: nat) : (A d)^d :=
      match n with
      | 0%nat => (id d)
-     | (S n') => (sum (fun j => (tuple_nth j f 0) ** (D[j] (IVP_D f n'))) d)
+     | (S n') => (sum (fun j => f\_j ** (D[j] (F f n'))) d)
      end.
 
-  Fixpoint IVP_Di {d} (f : (A d)^d) (n i : nat) : (A d) :=
+  Fixpoint Fi {d} (f : (A d)^d) (n i : nat) : (A d) :=
      match n with
      | 0%nat => comp1 i
-     | (S n') => (sum (fun j => (tuple_nth j f 0) * (D[j] (IVP_Di f n' i))) d)
+     | (S n') => (sum (fun j => (tuple_nth j f 0) * (D[j] (Fi f n' i))) d)
      end.
 
-  Definition IVP_D_spec {d} f :  forall n y, @is_IVP_solution_series d f y -> (nth_derivative 0 y n) == ((IVP_D f n) \o y).
+  Definition F_spec {d} f :  forall n y, @ODE_solution d f y -> (nth_derivative 0 y n) == ((F f n) \o y).
   Proof.
      intros.
      induction n;[rewrite id_spec;simpl nth_derivative;reflexivity|].
@@ -113,11 +41,12 @@ Section PIVP.
      replace (nth_derivative 0 y (S n)) with  (D[0] (nth_derivative 0 y n)) by (simpl;auto).
      rewrite IHn.
      rewrite multicomposition_chain_rule.
-      replace (IVP_D f (S n)) with (sum (fun j => (tuple_nth j f 0) ** (D[j] (IVP_D f n))) (S d)) by auto.
+      replace (F f (S n)) with (sum (fun j => (tuple_nth j f 0) ** (D[j] (F f n))) (S d)) by auto.
      rewrite multi_composition_sum_comp.
      apply sum_ext.
      intros.
      rewrite <-pdiff_tuple_nth;auto.
+     unfold ODE_solution in H4.
      rewrite H4.
      apply (tuple_nth_ext' _ _ 0 0).
      intros.
@@ -127,34 +56,8 @@ Section PIVP.
      rewrite composition_mult_comp.
      reflexivity.
    Qed.
-  (*  Definition IVP_Di_spec {d} f n: forall i y,  (i < d)%nat ->  @is_IVP_solution_series d f y -> ((IVP_Di f n i) \o y ) == tuple_nth i ((D^n[0]y)  0. *)
-  (*  Proof. *)
-  (*    intros. *)
-  (*    induction n. *)
-  (*    simpl. *)
-  (*    apply composition_id. *)
-  (*    rewrite tuple_nth_nth_derivative_S;auto. *)
-  (*    destruct d; try lia. *)
-  (*    pose proof (pdiff_chain (IVP_Di f n i) y (d := 0)). *)
-  (*    simpl. *)
-  (*    rewrite <-IHn. *)
-  (*    rewrite H6. *)
-  (*    rewrite composition_sum_comp. *)
-  (*    apply sum_ext; intros. *)
-  (*    rewrite composition_mult_comp. *)
-  (*    rewrite <- derive_tuple_nth; try lia. *)
-  (*    rewrite H5. *)
-  (*    rewrite tuple_nth_multicomposition;try lia. *)
-  (*    reflexivity. *)
-  (* Defined. *)
 
-  (*  Definition IVP_D {d} (f :@tuple d (A d)) (n :nat) : @tuple d (A d). *)
-  (*  Proof. *)
-  (*    destruct (seq_to_tuple (IVP_Di f n) d (def := 0)). *)
-  (*    apply x. *)
-  (*  Defined. *)
-
-   Lemma IVP_D_nth {d} f n i : i < d -> tuple_nth i (@IVP_D d f n) 0 == IVP_Di f n i.
+   Lemma F_nth {d} f n i : i < d -> (@F d f n)\_i  == Fi f n i.
    Proof.
      intros.
      induction n.
@@ -173,102 +76,21 @@ Section PIVP.
    Qed.
 
   
-
-End PIVP.
-
-
-Section factorial.
-  Context `{SemiRing}.
-  Class Sn_invertible := {
-      inv_Sn  (n : nat) : A; 
-      inv_Sn_spec : forall n, (ntimes (S n) 1) * inv_Sn n == 1
-  }.
-
-  Definition inv_factorial `{Sn_invertible} (n : nat) : A.
-  Proof.
-    induction n.
-    apply 1.
-    apply  (inv_Sn n  * IHn).
-  Defined.
-  Definition factorial  (n : nat) : A.
-  Proof.
-    induction n.
-    apply 1.
-    apply  ((ntimes (S n) 1)  * IHn).
-  Defined.
-
-End factorial.
-  Notation "![ n ]" := (inv_factorial n).
-  Notation "[ n ]!" := (factorial n).
- Section factorialFacts.
-  Context `{SemiRing}.
-  Context `{invSn : (Sn_invertible (A := A) (H:=_) (R_rawRing := _))}.
-  Add Ring TRing: (ComSemiRingTheory (A := A)). 
-
-  Lemma fact_invfact n : [n]! * ![n] == 1. 
-  Proof.
-    induction n.
-    simpl.
-    ring.
-    simpl.
-    ring_simplify.
-    rewrite mulC.
-    rewrite (mulC (ntimes  _ _)).
-    rewrite <-!(mulA ![n]).
-    rewrite (mulC ![n]).
-    rewrite IHn.
-    ring_simplify.
-    rewrite mulA.
-    rewrite IHn.
-    ring_simplify.
-    setoid_replace (ntimes n 1 * inv_Sn n + inv_Sn n ) with (ntimes (S n) 1 * inv_Sn n).
-    rewrite inv_Sn_spec;reflexivity.
-    simpl;ring.
+   Lemma  IVP_F1 {d} f k: k < d -> (@Fi d f 1 k) == f\_k. 
+   Proof.
+     intros.
+     simpl.
+     setoid_rewrite (sum_single _ k); try lia.
+     rewrite diff_id_same;auto.
+     apply mul1.
+     intros.
+     rewrite diff_id_distinct;auto.
+     rewrite mul0.
+     reflexivity.
   Qed.
 
- End factorialFacts.
- Section FactorialOrder.
-  Context `{TotallyOrderedField}.
- Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
-  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+End ODE_basic.
 
-  Add Ring TRing: (ComSemiRingTheory (A := A)). 
-  Lemma ntimes_nonneg x n: (0 <= x) -> 0 <= ntimes n x.
-  Proof.
-    intros.
-    induction n.
-    simpl;apply le_refl.
-    simpl.
-    setoid_replace 0 with (0 + 0) by ring.
-    apply le_le_plus_le;auto.
- Qed.
-  Lemma fact_pos n : 0 <= [n]!.
-  Proof.
-    induction n.
-    simpl.
-    apply le_0_1.
-    simpl.
-    apply mul_pos_pos;try apply IHn.
-    setoid_replace (0 : A) with (0+0 ) by ring.
-    apply le_le_plus_le; [apply le_0_1|].
-    apply ntimes_nonneg;apply le_0_1.
-  Qed.
-
-    
-  Lemma inv_Sn_pos n : 0 <= inv_Sn n.
-  Proof.
-  Admitted.    
-
-  Lemma invfact_pos n : 0 <= ![n].
-  Proof.
-    induction n.
-    simpl.
-    apply le_0_1.
-    simpl.
-    apply mul_pos_pos;try apply IHn.
-    apply inv_Sn_pos.
-   Qed.
-End FactorialOrder.
 Open Scope fun_scope.
 Section TaylorSequence.
 
@@ -277,24 +99,23 @@ Section TaylorSequence.
   Context {d : nat} (f : (A d)^d)  (y0 : (A 0)^d) (dom_f : y0 \in_dom f).
 
 
-
-  Lemma dom_D : forall n, y0 \in_dom (IVP_D f n).
+  Lemma dom_F : forall n, y0 \in_dom (F f n).
   Proof.
     intros.
-    induction n;intros i Hi;rewrite (dom_change_f _ _ _ (IVP_D_nth _ _  _ Hi));auto;[apply dom_id|].
+    induction n;intros i Hi;rewrite (dom_change_f _ _ _ (F_nth _ _  _ Hi));auto;[apply dom_id|].
     simpl.
     destruct d; try lia.
     apply dom_sum;intros.
     apply dom_mult.
     apply dom_f;lia.
     apply dom_diff.
-    rewrite <-(dom_change_f _ _ _ (IVP_D_nth _ _  _ Hi)).
+    rewrite <-(dom_change_f _ _ _ (F_nth _ _  _ Hi)).
     apply IHn;lia.
   Qed.
 
-  Definition ivp_solution_taylor (n : nat) : (A 0)^d  := ![n] ** ((IVP_D f n) @ (y0; (dom_D n))).
+  Definition ivp_solution_taylor (n : nat) : (A 0)^d  := ![n] ** ((F f n) @ (y0; (dom_F n))).
 
-  Definition is_IVP_solution (y : (A 1)^d) (Hy : (0 : (A 0)^1) \in_dom y) := is_IVP_solution_series f y  /\ y @ (0;Hy) == y0.
+  Definition is_IVP_solution (y : (A 1)^d) (Hy : (0 : (A 0)^1) \in_dom y) := ODE_solution f y  /\ y @ (0;Hy) == y0.
 
   Lemma  is_IVP_solution_deriv_dom {y Hy}: is_IVP_solution y Hy -> forall n, (0 : (A 0)^1) \in_dom (nth_derivative 0 y n). 
   Proof.
@@ -310,19 +131,19 @@ Section TaylorSequence.
 
   Lemma ivp_solution_taylor0 : ivp_solution_taylor 0 == y0.
   Proof.
-    unfold ivp_solution_taylor, IVP_D.
+    unfold ivp_solution_taylor, F.
     apply (tuple_nth_ext' _ _ 0 0).
     intros.
     rewrite scalar_mult_spec;auto.
     rewrite mulC, mul1.
     simpl.
     rewrite (evalt_spec _ _ _ _ H6).
-    assert (y0 \in_dom (IVP_Di f 0 i)).
+    assert (y0 \in_dom (Fi f 0 i)).
     {
-      rewrite <-(dom_change_f  _ _ _ (IVP_D_nth _ _ _ H6)).
-      apply dom_D;auto.
+      rewrite <-(dom_change_f  _ _ _ (F_nth _ _ _ H6)).
+      apply dom_F;auto.
     }
-    rewrite (functions.eval_proper  _ (IVP_Di f 0 i) y0 y0 _ H7);try reflexivity.
+    rewrite (functions.eval_proper  _ (Fi f 0 i) y0 y0 _ H7);try reflexivity.
     simpl;rewrite eval_id;auto;reflexivity.
     rewrite id_nth;auto.
     simpl;reflexivity.
@@ -331,19 +152,19 @@ Section TaylorSequence.
   Lemma ivp_solution_taylor_spec n y Hy (S :  is_IVP_solution y Hy) : ivp_solution_taylor n == ![n] ** ((nth_derivative 0 y n) @ (0;(is_IVP_solution_deriv_dom S n))).
   Proof.
     unfold ivp_solution_taylor.
-    setoid_replace (((IVP_D f n) @ (y0; dom_D n))) with ((nth_derivative 0 y n) @ (0; is_IVP_solution_deriv_dom S n));try reflexivity.
-    destruct S.
-    pose proof (IVP_D_spec _ n _ i).
-    assert ((0 : (A 0)^1) \in_dom (IVP_D f n) \o y).
+    setoid_replace (((F f n) @ (y0; dom_F n))) with ((nth_derivative 0 y n) @ (0; is_IVP_solution_deriv_dom S n));try reflexivity.
+    destruct S as [i e].
+    pose proof (F_spec _ n _ i).
+    assert ((0 : (A 0)^1) \in_dom (F f n) \o y).
     {
       apply (dom_composition _ y 0 Hy _ e).
-      apply dom_D.
+      apply dom_F.
     }
     rewrite (meval_proper _ _ _ _ (is_IVP_solution_deriv_dom (conj i e) n) H7 H6);try reflexivity.
-    assert ((y @ (0; Hy)) \in_dom (IVP_D f n)).
+    assert ((y @ (0; Hy)) \in_dom (F f n)).
     {
       rewrite e.
-      apply dom_D.
+      apply dom_F.
     }
     rewrite (eval_composition_compat  _ _ _ Hy H8 H7).
     apply meval_proper;try rewrite e;reflexivity.
@@ -388,6 +209,237 @@ Section TaylorSequence.
   
 End TaylorSequence.
 
+Section PowerSeriesSolution.
+  
+  Context `{AbstractPowerSeries}.
+  Context `{SemiRing (A := A) (H:=H) (R_rawRing := R_rawRing)}.
+
+  Add Ring ARing: (ComSemiRingTheory (A := A)). 
+  Context {d : nat} {f : (nat^(S d) -> A)^(S d)}.
+
+
+  Definition y_i (n : nat) (i : nat) : A  :=  ![n] * ((Fi f n i) 0).
+  Definition yt := (proj1_sig (seq_to_tuple (def := 0) (fun i (n : nat^1) => (y_i (n)\_0 i)) (S d))).
+
+  Lemma yt_spec i k : (i < (S d))%nat -> yt\_i t(k) == y_i k i.
+  Proof.
+    intros.
+    unfold yt.
+    destruct (seq_to_tuple _  _).
+    simpl.
+    rewrite e;auto.
+    simpl.
+    reflexivity.
+  Qed.
+
+  Lemma index1_add (n m : nat): t(n) + t(m) = t(n+m). 
+  Proof.
+    simpl.
+    reflexivity.
+  Qed.
+
+  Lemma yi_spec : forall k n i, i < (S d) -> ((Fi f n i) \o1 yt) t(k)  == Dx[t(n)] (yt\_i) t(k).
+  Proof.
+    intros k.
+    enough (forall k0, (k0 <= k)%nat ->  forall n i : nat, (i < (S d)) -> ((Fi f n i) \o1 yt) t(k0)  == Dx[t(n)] (yt\_i) t(k0)) by (intros;apply H6;lia).
+    intros.
+    rewrite ps_derive.
+    rewrite index1_add.
+    rewrite yt_spec;auto.
+    replace (add n k0)%nat with (n+k0)%nat by (simpl;auto).
+    revert dependent i.
+    revert dependent n.
+    revert dependent k0.
+    induction k.
+    - intros.
+      assert (k0 = 0)%nat as -> by lia.
+      rewrite ps_comp0.
+      replace (n+0)%nat with n by lia.
+      unfold y_i.
+      simpl.
+      rewrite rising_factorial1.
+      ring_simplify.
+      rewrite mulA.
+      rewrite fact_invfact.
+      ring.
+   -  intros.
+      assert ((k0 <= k)%nat \/ (k0 = S k)%nat) by lia.
+      destruct H8; [apply IHk;auto|].
+      rewrite H8;clear H8 H6.
+      replace (n+ S k)%nat with (S n+k)%nat by lia.
+      simpl rising_factorialt in *.
+      replace (S (k+1))%nat with (k+2)%nat by lia.
+      rewrite rising_factorial_s'.
+      replace (n+1)%nat with (S n) by lia.
+      setoid_replace ( inv_Sn k * [k + 1 ! S n] * 1 * y_i (S n + k) i) with ( inv_Sn k * ([k + 1 ! S n] * 1 * y_i (S n + k) i)) by ring.
+      rewrite <-IHk;try lia.
+      setoid_replace ((Fi f n i) \o1 yt t( S k)) with (inv_Sn k *  (# (S k) * (Fi f n i) \o1 yt t( S k))) by (rewrite <-mulA, (mulC (inv_Sn k)); rewrite inv_Sn_spec;ring).
+
+      replace (S k) with (k+1)%nat by lia.
+      rewrite <-deriv_next.
+      apply ring_eq_mult_eq; try reflexivity.
+      pose proof (pdiff_chain (d:=0) (Fi f n i) yt).
+      rewrite index_proper;try apply H6; try reflexivity.
+      clear H6.
+      simpl Fi.
+      pose proof (composition_sum_comp (fun j : nat => f \_ j * D[ j] (Fi (H3 := H4) f n i)) yt d t(k)).
+      rewrite H6.
+      setoid_replace (sum (A := nat^1 -> A) (fun i0 : nat => (f \_ i0 * D[ i0] (Fi  (H3 := H4) f n i)) \o1 yt) (S d) t(k)) with (sum (A := nat^1 -> A) (fun i0 : nat => (f \_ i0 \o1 yt  * (D[ i0] (Fi  (H3 := H4) f n i)) \o1 yt)) (S d) t(k)) by (apply index_proper;[apply sum_ext;intros; rewrite composition_mult_comp|];reflexivity).
+      rewrite !index_sum.
+      apply sum_ext.
+      intros.
+      apply exchange_ps.
+      intros.
+
+      pose proof (IVP_F1 f n0 H8 ).
+      setoid_replace ((f \_n0 \o1 yt) t(i0)) with (((Fi  f 1 n0) \o1 yt) t(i0)) by (apply index_proper;try rewrite composition_proper; try rewrite <-H10; try reflexivity).
+      rewrite deriv_next.
+      rewrite yt_spec;auto.
+      replace (i0+1)%nat with (1 + i0)%nat by lia.
+      rewrite IHk;auto.
+      rewrite rising_factorialn1.
+      replace (i0+1)%nat with (S i0) by lia.
+      simpl.
+      ring.
+  Qed.
+      
+End PowerSeriesSolution.
+Section Taylorindex.
+
+  Context `{A_comRing : SemiRing}.
+
+
+ Definition ps_index {d} (n : nat^d) (a : @mps A d) : A.
+ Proof.
+   induction d.
+   apply a.
+   destruct (destruct_tuple_cons n) as [hd [tl P]].
+   apply (IHd tl (a hd)).
+ Defined.
+
+
+
+   #[global] Instance ps_index_proper d n : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (@ps_index d n).
+   Proof.
+   Admitted.
+
+    Lemma ps_index_0 {d} ix :  ps_index (d := d) ix 0 ==0.
+    Proof.
+      induction d.
+      simpl.
+      reflexivity.
+      simpl.
+      destruct (destruct_tuple_cons ix) as [hd [tl P]].
+      apply IHd.
+    Qed.
+
+    Lemma ps_index_1 {d} ix :  ps_index (d := d) ix 1 == match (order ix) with  0 => 1 | _ => 0 end.
+    Proof.
+      induction d.
+      simpl;reflexivity.
+      simpl.
+      destruct (destruct_tuple_cons ix) as [hd [tl ->]].
+      destruct hd.
+      simpl.
+      apply IHd.
+      simpl.
+      rewrite ps_index_0.
+      reflexivity.
+    Qed.
+
+
+   Instance single_index_proper {d}  (n : nat) : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun (a : @mps A (S d)) => (a n)).
+   Proof.
+     intros a b Heq.
+     apply seq_A_setoid.
+     rewrite Heq.
+     reflexivity.
+   Defined.
+   Lemma ps_index_plus {d} (a b : @mps A d) n : ps_index n (a+b) == ps_index n a + ps_index n b. 
+   Proof.
+     induction d.
+     simpl.
+     reflexivity.
+     Opaque add.
+     simpl.
+     destruct (destruct_tuple_cons n) as [hd [tl P]].
+     enough ((a+b) hd == a hd + b hd) as ->.
+     apply IHd.
+     Transparent add.
+     simpl.
+     unfold sum_ps.
+     reflexivity.
+  Qed.
+
+    Lemma ps_index_comp1 {d} ix i :  ps_index (d := d) ix (comp1  i) == match (order ix) with
+                                                                         | 1 => match (tuple_nth i ix 0%nat) with
+                                                                               |  1 => 1 | _ => 0  end
+                                                                         | _ => 0
+                                                                          end.
+    Proof.
+      generalize dependent d.
+      induction i;intros;try (simpl;reflexivity).
+      - simpl.
+        destruct d;simpl;try reflexivity.
+        destruct (destruct_tuple_cons ix) as [hd [tl P]].
+        simpl.
+        destruct hd eqn:E.
+        simpl.
+        rewrite ps_index_0.
+        rewrite P.
+        rewrite tuple_nth_cons_hd.
+        destruct (order tl); try destruct n;try reflexivity.
+        simpl.
+        destruct n;simpl;[|rewrite ps_index_0;reflexivity].
+        rewrite P.
+        rewrite tuple_nth_cons_hd.
+        rewrite ps_index_1.
+        reflexivity.
+      - simpl.
+        destruct d; simpl; try reflexivity.
+        destruct (destruct_tuple_cons ix) as [hd [tl P]].
+        simpl.
+        destruct hd.
+        + simpl.
+          rewrite P.
+          rewrite tuple_nth_cons_tl.
+          apply IHi.
+        + rewrite ps_index_0.
+          rewrite P.
+          rewrite tuple_nth_cons_tl.
+          simpl.
+          destruct (order tl) eqn:E.
+          simpl;rewrite order_zero; try lia; destruct hd; simpl;try reflexivity.
+          destruct hd;simpl;try reflexivity.
+    Qed.
+
+    Lemma ntimes_index {d} (a : @mps A (S d)) n i : (ntimes n a) i == ntimes n (a i). 
+    Proof.
+      induction n.
+      simpl.
+      reflexivity.
+      intros .
+      simpl ntimes.
+      Transparent add.
+      simpl add.
+      unfold sum_ps.
+      rewrite IHn.
+      reflexivity.
+    Qed.
+
+    Lemma ntimes_ps_index {d} (a : @mps A d) n i : ps_index i (ntimes n a) == ntimes n (ps_index i a ). 
+    Proof.
+      induction n.
+      simpl.
+      rewrite ps_index_0.
+      reflexivity.
+      simpl.
+      rewrite ps_index_plus.
+      rewrite IHn.
+      reflexivity.
+    Qed.
+End Taylorindex.
+
 Section Bounds. 
 Context `{TotallyOrderedField}.
  Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
@@ -397,29 +449,8 @@ Context `{TotallyOrderedField}.
  Context {M r : A} {Mge0: 0 <= M} {rge0: 0 <= r}.
  
 
- Definition rising_factorial k n := [k+n-1]! * ![k-1].
- Notation "[ k ! n ]" := (rising_factorial k n).
-
- Add Ring KRing: (ComRingTheory (A := A)).
- Add Ring PRing: (ComSemiRingTheory (A :=(@mps A 1))).
-
-
- Lemma rising_factorial1 n : [1 ! n]  == [n]!.
- Proof.
-   unfold rising_factorial.
-   simpl.
-   replace (n-0)%nat with n by lia.
-   ring.
- Qed.
-
- Lemma rising_factorial0 n : [n ! 0]  == 1.
- Proof.
-   unfold rising_factorial.
-   replace (n+0-1)%nat with (n-1)%nat by lia.
-   rewrite fact_invfact.
-   reflexivity.
- Qed.
  
+ Add Ring PRing: (ComSemiRingTheory (A :=(@mps A 1))).
  Definition inv2  := inv_Sn 1.
 
  Notation "| a | <= b" := (forall k, norm (a k) <= b k) (at level 70).
@@ -490,44 +521,6 @@ Context `{TotallyOrderedField}.
   Qed.
 
   Notation "# n" := (ntimes n 1) (at level 2).
-  Lemma rising_factorial_s n k : [k+1!n+1] == #(k+1) * [(k+2) ! n].
-  Proof.
-    simpl.
-    unfold rising_factorial.
-    replace (k + 1 + (n+1) - 1)%nat with (S(k + n))%nat by lia.
-    replace (k + 1 - 1)%nat with k by lia.
-    replace (k + 2 + n- 1)%nat with (S (k + n))%nat by lia.
-    replace (k + 2 - 1)%nat with (S k)%nat by lia.
-    replace (k +1 )%nat with (S k)%nat by lia.
-    enough (![k] == ntimes (S k) 1 * ![S k]) as -> by ring.
-    simpl inv_factorial.
-    rewrite <-mulA.
-    rewrite inv_Sn_spec.
-    ring.
-  Qed.
-
-  Lemma rising_factorial_sk n k : [k+1!n] ==   #(k+1) *  inv_Sn (k+n) * [(k+2) ! n].
-  Proof.
-    simpl.
-    unfold rising_factorial.
-    replace (k + 1 + n - 1)%nat with (k + n)%nat by lia.
-    replace (k + 1 - 1)%nat with k by lia.
-    replace (k + 2 + n- 1)%nat with (S (k + n))%nat by lia.
-    replace (k + 2 - 1)%nat with (S k)%nat by lia.
-    replace (k + 1)%nat with (S k)%nat by lia.
-    setoid_replace (#(S k) * inv_Sn (k + n) * ([S (k + n) ]! * ![ S k])) with ([k+n]!*![k] * (#(S (k+n))  * inv_Sn (k+n)) * (#(S k) * inv_Sn k)) by (simpl;ring).
-    rewrite !inv_Sn_spec;ring.
-  Qed.
-  Lemma rising_factorial_sn n k : [S k! S n] ==   #(k+n+1) * [S k ! n].
-  Proof.
-    simpl.
-    unfold rising_factorial.
-    replace (S k + S n -1)%nat with (S (k + n))%nat by lia.
-    replace (S k + n -1)%nat with (k + n )%nat by lia.
-    replace (k+n+1)%nat with (S (k + n) )%nat by lia.
-    simpl.
-    ring.
-  Qed.
  Lemma le_eq x y : (x == y) -> (x <= y).
  Proof.
    intros ->.
@@ -851,129 +844,6 @@ Context `{TotallyOrderedField}.
   Qed.
 End Bounds.
 
-Section Multiindex.
-
-  Context `{A_comRing : SemiRing}.
-
-  #[global] Instance nat_setoid : Setoid nat.
-  Proof.
-    exists (fun x y => (x=y)).
-    constructor; intros a; intros;try auto.
-    rewrite H0, H1;auto.
-  Defined.
-
-  #[global] Instance nat_rawring : RawRing (A := nat).
-  Proof.
-    constructor.
-    apply 0%nat.
-    apply 1%nat.
-    intros a b.
-    apply (a+b)%nat.
-    intros a b.
-    apply (a*b)%nat.
-  Defined.
-
-  #[global] Instance nat_semiring : SemiRing (A := nat).
-  Proof.
-    constructor;intros;simpl;try lia;intros a b eq c d eq';lia.
-  Defined.
-
- Definition ps_index {d} (n : nat^d) (a : @mps A d) : A.
- Proof.
-   induction d.
-   apply a.
-   destruct (destruct_tuple_cons n) as [hd [tl P]].
-   apply (IHd tl (a hd)).
- Defined.
-
-
- Definition order {d} (n : nat^d) : nat.
- Proof.
-   induction d.      
-   apply 0%nat.
-   destruct (destruct_tuple_cons n) as [hd [tl P]].
-   apply (hd + (IHd tl))%nat.
- Defined.
-
-   #[global] Instance ps_index_proper d n : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (@ps_index d n).
-   Proof.
-   Admitted.
-
-    Lemma ps_index_0 {d} ix :  ps_index (d := d) ix 0 ==0.
-    Proof.
-      induction d.
-      simpl.
-      reflexivity.
-      simpl.
-      destruct (destruct_tuple_cons ix) as [hd [tl P]].
-      apply IHd.
-    Qed.
-
-    Lemma ps_index_1 {d} ix :  ps_index (d := d) ix 1 == match (order ix) with  0 => 1 | _ => 0 end.
-    Proof.
-      induction d.
-      simpl;reflexivity.
-      simpl.
-      destruct (destruct_tuple_cons ix) as [hd [tl ->]].
-      destruct hd.
-      simpl.
-      apply IHd.
-      simpl.
-      rewrite ps_index_0.
-      reflexivity.
-    Qed.
-
-    Lemma order_cons {d} hd tl : order (d:=S d) (tuple_cons hd tl) = (hd + order tl)%nat.
-    Proof.
-      simpl.
-      destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]].
-      apply tuple_cons_ext in P.
-      destruct P as [-> ->].
-      lia.
-    Qed.
-
-    Lemma order_zero_split {d} hd tl : order (d:=S d) (tuple_cons hd tl) = 0%nat -> (hd = 0%nat /\ order tl = 0%nat).
-    Proof.
-      intros.
-      rewrite order_cons in H0.
-      lia.
-    Qed.
-
-    Lemma order_zero1 {d} n : (order (d:=d) n) = 0%nat -> (forall i, i< d -> tuple_nth i n 0%nat = 0%nat).
-    Proof.
-      intros.
-      generalize dependent i.
-      induction d;intros; try lia.
-      destruct (destruct_tuple_cons n) as [hd [tl ->]].
-      apply order_zero_split in H0.
-      destruct i.
-      rewrite tuple_nth_cons_hd.
-      apply H0.
-      rewrite tuple_nth_cons_tl.
-      apply IHd;try lia.
-    Qed.
-
-    Lemma order_zero {d} n : (order (d:=d) n) = 0%nat -> (forall i,  tuple_nth i n 0%nat = 0%nat).
-    Proof.
-      intros.
-      destruct (Nat.lt_ge_cases i d).
-      apply order_zero1;auto.
-      destruct n.
-      simpl.
-      rewrite nth_overflow;auto;lia.
-     Qed.
-
-    Lemma zero_order {d} : (order (d:=d) 0) = 0%nat.
-    Proof.
-      induction d.
-      simpl;reflexivity.
-      rewrite vec0_cons.
-      rewrite order_cons.
-      rewrite IHd.
-      simpl.
-      reflexivity.
-    Qed.
-End Multiindex.
 Section MultiBounds.
   Context `{TotallyOrderedField}.
  Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
@@ -1041,28 +911,6 @@ Section MultiBounds.
        intros.
     Admitted.
 
-   Instance single_index_proper {d}  (n : nat) : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun (a : @mps A (S d)) => (a n)).
-   Proof.
-     intros a b Heq.
-     apply seq_A_setoid.
-     rewrite Heq.
-     reflexivity.
-   Defined.
-   Lemma ps_index_plus {d} (a b : @mps A d) n : ps_index n (a+b) == ps_index n a + ps_index n b. 
-   Proof.
-     induction d.
-     simpl.
-     reflexivity.
-     Opaque add.
-     simpl.
-     destruct (destruct_tuple_cons n) as [hd [tl P]].
-     enough ((a+b) hd == a hd + b hd) as ->.
-     apply IHd.
-     Transparent add.
-     simpl.
-     unfold sum_ps.
-     reflexivity.
-  Qed.
    Lemma zero_ps_le_zero {d} : |(0 : @mps A d)|  <= zero_ps.
    Proof.
      simpl.
@@ -1176,73 +1024,6 @@ Section MultiBounds.
     Qed.
 
 
-    Lemma ps_index_comp1 {d} ix i :  ps_index (d := d) ix (comp1  i) == match (order ix) with
-                                                                         | 1 => match (tuple_nth i ix 0%nat) with
-                                                                               |  1 => 1 | _ => 0  end
-                                                                         | _ => 0
-                                                                          end.
-    Proof.
-      generalize dependent d.
-      induction i;intros;try (simpl;reflexivity).
-      - simpl.
-        destruct d;simpl;try reflexivity.
-        destruct (destruct_tuple_cons ix) as [hd [tl P]].
-        simpl.
-        destruct hd eqn:E.
-        simpl.
-        rewrite ps_index_0.
-        rewrite P.
-        rewrite tuple_nth_cons_hd.
-        destruct (order tl); try destruct n;try reflexivity.
-        simpl.
-        destruct n;simpl;[|rewrite ps_index_0;reflexivity].
-        rewrite P.
-        rewrite tuple_nth_cons_hd.
-        rewrite ps_index_1.
-        reflexivity.
-      - simpl.
-        destruct d; simpl; try reflexivity.
-        destruct (destruct_tuple_cons ix) as [hd [tl P]].
-        simpl.
-        destruct hd.
-        + simpl.
-          rewrite P.
-          rewrite tuple_nth_cons_tl.
-          apply IHi.
-        + rewrite ps_index_0.
-          rewrite P.
-          rewrite tuple_nth_cons_tl.
-          simpl.
-          destruct (order tl) eqn:E.
-          simpl;rewrite order_zero; try lia; destruct hd; simpl;try reflexivity.
-          destruct hd;simpl;try reflexivity.
-    Qed.
-
-    Lemma ntimes_index {d} (a : @mps A (S d)) n i : (ntimes n a) i == ntimes n (a i). 
-    Proof.
-      induction n.
-      simpl.
-      reflexivity.
-      intros .
-      simpl ntimes.
-      Transparent add.
-      simpl add.
-      unfold sum_ps.
-      rewrite IHn.
-      reflexivity.
-    Qed.
-
-    Lemma ntimes_ps_index {d} (a : @mps A d) n i : ps_index i (ntimes n a) == ntimes n (ps_index i a ). 
-    Proof.
-      induction n.
-      simpl.
-      rewrite ps_index_0.
-      reflexivity.
-      simpl.
-      rewrite ps_index_plus.
-      rewrite IHn.
-      reflexivity.
-    Qed.
     Lemma norm_zero_eq : norm 0 == 0.
     Proof.
         setoid_replace (norm 0) with 0 by (rewrite norm_zero;reflexivity).

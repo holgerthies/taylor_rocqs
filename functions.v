@@ -5,6 +5,8 @@ Require Import tuple.
 Require Import Psatz.
 
 Require Import Classical.
+Require Import combinatorics.
+
 
 Section Evaluation.
   Context {A B C : Type} `{SemiRing A} `{SemiRing B} `{SemiRing C}.
@@ -18,7 +20,6 @@ Section Evaluation.
       dom_mult  (f g : A) (x : B) : in_domain f x -> in_domain g x -> in_domain (f*g) x;
       eval_mult_compat (f g : A) (x : B) P1 P2 P3: eval (f * g) x P3  == eval f x P1 * eval g x P2;
     }.
-
 End Evaluation.
 
 Section MultiEvaluation.
@@ -430,6 +431,13 @@ Infix "[+]" := scalar_addf (at level 2).
 (*   Qed. *)
 
 (* End DifferentialAlgebraTheory. *)
+Section AbstractPowerseries.
+  Context `{SemiRing}.
+  Context `{CompositionalDiffAlgebra (A := (fun d => (nat^d -> A)))}.
+  Class AbstractPowerseries := {
+      ps_property {d} : forall (a : (nat^d -> A)) (k j : nat^d), derive_rec a k j == a (k+j);
+    }.
+End AbstractPowerseries.
 Section Analytic.
 
 Context `{AbstractFunctionSpace} {d e : nat} {f : (A d)^e} {x0 : (A 0%nat)^d} {dom : x0 \in_dom f}.
