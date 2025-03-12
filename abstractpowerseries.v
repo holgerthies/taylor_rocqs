@@ -119,21 +119,19 @@ Section AbstractPowerSeriesProperties.
 
   Lemma deriv_rec_next {d e} (f : nat^d -> A) hd (tl : nat^e) : (derive_rec (D[0]f) (tuple_cons hd tl)) == (derive_rec f (tuple_cons (S hd) tl)).
   Proof.
+    Opaque SetoidClass.equiv.
     unfold derive_rec;simpl.
-    intros k.
     destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]].
     destruct (destruct_tuple_cons (tuple_cons (S hd) tl)) as [hd'' [tl'' P']].
     apply tuple_cons_ext in P.
     apply tuple_cons_ext in P'.
     destruct P as [<- <-].
     destruct P' as [<- <-].
-    induction e;intros.
-    - simpl.
-      pose proof (nth_derivative_S 0 f hd).
-      apply index_proper;try rewrite H6;try reflexivity.
-   -  simpl.
-      destruct (destruct_tuple_cons tl) as [hd' [tl' P']].
-  Admitted.
+    rewrite nth_derivative_proper; try apply deriv_next_helper.
+    rewrite nth_derivative_S.
+    reflexivity.
+    Transparent SetoidClass.equiv.
+  Qed.
       
   Lemma deriv_next {d} (f : nat^(S d) -> A) hd tl : (D[0] f) (tuple_cons hd tl) == # (hd+1) * f (tuple_cons (hd+1)%nat tl). 
   Proof.  
@@ -148,8 +146,27 @@ Section AbstractPowerSeriesProperties.
     reflexivity.
   Qed.
 
-  Lemma exchange_ps (h h' g : nat^1 -> A) (k : nat) : (forall i, (i <= k)%nat -> (h t(i)) == (h' t(i))) -> (h * g) t(k) == (h' * g) t(k).
-  Admitted.
+  Lemma deriv_next_backwards {d} (f : nat^(S d) -> A) hd tl : f (tuple_cons (S hd) tl) == (inv_Sn hd) * (D[0] f) (tuple_cons hd tl).
+  Proof.  
+    pose proof (inv_Sn_spec hd).
+    rewrite <-mul1.
+    rewrite <-H6.
+    rewrite mulC.
+    rewrite (mulC (# (S hd))).
+    rewrite mulA.
+    replace (S hd) with (hd + 1)%nat by lia.
+    rewrite <-deriv_next.
+    reflexivity.
+  Qed.
+  Lemma zero_tuple1 : (0 : nat^1) == t(0).
+  Proof.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    rewrite vec0_nth.
+    assert (i = 0)%nat as -> by lia.
+    simpl.
+    reflexivity.
+  Qed.
 
   Lemma index_plus {m} (g1 g2 : nat^m -> A) (k : nat^m): (g1 + g2 ) k == g1 k + g2 k.
   Proof.
@@ -163,6 +180,35 @@ Section AbstractPowerSeriesProperties.
     apply derive_rec_plus.
   Qed.   
 
+  Lemma exchange_ps (h h' g : nat^1 -> A) (k : nat) : (forall i, (i <= k)%nat -> (h t(i)) == (h' t(i))) -> (h * g) t(k) == (h' * g) t(k).
+  Proof.
+    revert h h' g.
+    induction k;intros.
+    - rewrite !ps_mul0.
+      enough (h 0 == h' 0) as -> by reflexivity.
+      assert (0 <= 0)%nat by lia.
+      specialize (H6 _ H7).
+      transitivity (h t(0)).
+      apply index_proper;try reflexivity.
+      rewrite H6.
+      apply index_proper;try reflexivity.
+    - rewrite !deriv_next_backwards.
+      apply ring_eq_mult_eq; try reflexivity.
+      rewrite index_proper; try apply pdiff_mult; try reflexivity.
+      rewrite (index_proper (D[ 0] (h' * g)) _ (pdiff_mult _ _ _ ) t(k) t(k)); try reflexivity.
+      rewrite !index_plus.
+      apply ring_eq_plus_eq.
+      + rewrite (index_proper (g *  (D[0] h)) _ (mulC _ _ ) t(k) t(k)); try reflexivity.
+        rewrite (index_proper (g *  (D[0] h')) _ (mulC _ _ ) t(k) t(k)); try reflexivity.
+        apply IHk.
+        intros.
+        rewrite !deriv_next.
+        apply (ring_eq_mult_eq); try reflexivity.
+        apply H6; lia.
+      + apply IHk.
+        intros.
+        apply H6;auto.
+   Qed.
   Lemma deriv_rec_1 {d} (f : nat^d -> A) hd (tl : nat^0) : (derive_rec f (tuple_cons hd tl)) == nth_derivative 0 f hd.
   Proof.
     unfold derive_rec;simpl.
