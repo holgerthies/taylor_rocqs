@@ -247,9 +247,9 @@ Section PowerSeriesSolution.
     rewrite index1_add.
     rewrite yt_spec;auto.
     replace (add n k0)%nat with (n+k0)%nat by (simpl;auto).
-    revert dependent i.
-    revert dependent n.
-    revert dependent k0.
+    generalize dependent i.
+    generalize dependent n.
+    generalize dependent k0.
     induction k.
     - intros.
       assert (k0 = 0)%nat as -> by lia.
@@ -302,8 +302,34 @@ Section PowerSeriesSolution.
       simpl.
       ring.
   Qed.
-      
+
+  Lemma y_is_solution : ODE_solution f yt.
+  Proof.     
+    unfold ODE_solution.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    pose proof (tuple_nth_multicomposition i 0 f yt ).
+    setoid_rewrite H7;auto.
+    setoid_rewrite (pdiff_tuple_nth yt);auto.
+    setoid_replace (D[0] yt\_i) with (derive_rec yt\_i t(1)) by (rewrite deriv_rec_1;simpl; reflexivity).
+    intros k.
+    pose proof (yi_spec (k\_0) 1%nat i H6).
+    assert (k == t(k\_0)).
+    {
+      apply (tuple_nth_ext' _ _ 0 0).
+      intros.
+      assert (i0 = 0)%nat as ->  by lia.
+      simpl.
+      reflexivity.
+    }
+    assert (Dx[t(1)] yt \_i k == Dx[t(1)] yt \_ i t(k\_0)) as -> by  (apply index_proper;try reflexivity;auto).
+    rewrite <- H8.
+    apply index_proper;try rewrite H9;try reflexivity.
+    pose proof (IVP_F1 f i  H6).
+    rewrite composition_proper; try apply H10; try reflexivity.
+ Qed.
 End PowerSeriesSolution.
+
 Section Taylorindex.
 
   Context `{A_comRing : SemiRing}.
