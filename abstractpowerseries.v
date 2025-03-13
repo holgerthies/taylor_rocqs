@@ -180,7 +180,7 @@ Section AbstractPowerSeriesProperties.
     apply derive_rec_plus.
   Qed.   
 
-  Lemma exchange_ps (h h' g : nat^1 -> A) (k : nat) : (forall i, (i <= k)%nat -> (h t(i)) == (h' t(i))) -> (h * g) t(k) == (h' * g) t(k).
+  Lemma exchange_ps_factor (h h' g : nat^1 -> A) (k : nat) : (forall i, (i <= k)%nat -> (h t(i)) == (h' t(i))) -> (h * g) t(k) == (h' * g) t(k).
   Proof.
     revert h h' g.
     induction k;intros.
@@ -227,5 +227,25 @@ Section AbstractPowerSeriesProperties.
     rewrite sum_S.
     rewrite index_plus.
     rewrite IHN;reflexivity.
+  Qed.
+
+  Lemma deriv_eq_ps_equal {m} (a b : (nat^m -> A)) : (forall (k : nat^m), (Dx[k] a) == (Dx[k] b)) -> a == b.
+  Proof.
+    intros.
+    intros i.
+    rewrite ps_property_backwards.
+    rewrite (ps_property_backwards b).
+    apply ring_eq_mult_eq;try reflexivity.
+    apply H6.
+  Qed.
+  Lemma deriv_eq_ps_equal1  (a b : (nat^1 -> A)) : (forall (k : nat), nth_derivative 0 a k == nth_derivative 0 b k) -> a == b.
+  Proof.
+    intros.
+    apply deriv_eq_ps_equal.
+    intros.
+    Search derive_rec nth_derivative.
+    destruct (destruct_tuple_cons k) as [k0 [N ->]].
+    rewrite !deriv_rec_1.
+    apply H6.
   Qed.
 End AbstractPowerSeriesProperties.

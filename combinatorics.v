@@ -45,7 +45,7 @@ Section Multiindex.
    destruct (destruct_tuple_cons n) as [hd [tl P]].
    apply (hd + (IHd tl))%nat.
  Defined.
-
+ 
     Lemma order_cons {d} hd tl : order (d:=S d) (tuple_cons hd tl) = (hd + order tl)%nat.
     Proof.
       simpl.
@@ -96,7 +96,24 @@ Section Multiindex.
       simpl.
       reflexivity.
     Qed.
-
+  #[global] Instance order_proper {d} : Proper (equiv ==> equiv) (order (d:=d)). 
+  Proof.
+    intros a b eq.
+    induction d.
+    simpl.
+    reflexivity.
+    Opaque equiv.
+    simpl.
+    destruct (destruct_tuple_cons a ) as [a0 [ta Pa]].
+    destruct (destruct_tuple_cons b ) as [b0 [tb Pb]].
+    Transparent equiv.
+    rewrite Pa,Pb in eq.
+    apply tuple_cons_equiv in eq;auto.
+    destruct eq .
+    rewrite H.
+    rewrite (IHd ta tb);auto.
+    reflexivity.
+  Qed.
  End Multiindex.
  
 (* factorial, inverse factorial and rising factorials *)
