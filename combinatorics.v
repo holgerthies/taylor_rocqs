@@ -114,8 +114,14 @@ Section Multiindex.
     rewrite (IHd ta tb);auto.
     reflexivity.
   Qed.
+
+   Lemma zero_tuple_zero (n : nat^0): n == 0.
+   Proof.
+     apply (tuple_nth_ext' _ _ 0 0).
+     intros; lia.
+   Qed.
  End Multiindex.
- 
+
 (* factorial, inverse factorial and rising factorials *)
 Section factorial.
   Context `{SemiRing}.
@@ -398,6 +404,24 @@ Defined.
   rewrite inv_Sn_spec.
   ring.
 Qed.
+
+Lemma inv_Sn_unique a b : # (S a) * b == 1 <-> b == inv_Sn a.   
+  Proof.
+    split; [|intros ->;apply inv_Sn_spec].
+    intros.
+    setoid_replace (inv_Sn a) with (# (S a) * b * inv_Sn a) by (rewrite H1;ring).
+    rewrite  mulA.
+    rewrite (mulC b), <-mulA.
+    rewrite inv_Sn_spec.
+    ring.
+Qed.
+
+  Lemma inv_Sn0 : inv_Sn 0 == 1.
+  Proof.
+    setoid_replace (inv_Sn 0) with (ntimes 1 1 * (inv_Sn 0)) by (simpl;ring).
+    rewrite inv_Sn_spec.
+    reflexivity.
+  Qed.
  End factorialTheorems.
 
 Section FactorialOrderTheorems.
@@ -443,6 +467,48 @@ Section FactorialOrderTheorems.
    Qed.
 End FactorialOrderTheorems.
 
-Section TupleFactorials.
 
-End TupleFactorials.
+Section EmbedNat.
+   
+   Context `{SemiRing}.
+
+  Context `{invSn : (Sn_invertible (A := A) (H:=_) (R_rawRing := _))}.
+
+  Add Ring TRing: (ComSemiRingTheory (A := A)). 
+    Lemma nat_plus_compat a b: #(a+b)%nat == #a + #b.
+    Proof.
+      induction b.
+      replace (a+0)%nat with a by lia.
+      simpl.
+      ring.
+      replace (a+S b)%nat  with (S (a+b)) by lia.
+      simpl.
+      rewrite IHb.
+      ring.
+    Qed.
+
+    Lemma nat_mult_compat a b: #(a*b)%nat == #a * #b.
+    Proof.
+      induction b.
+      replace (a*0)%nat with 0%nat by lia.
+      simpl.
+      ring.
+      replace (a*S b)%nat  with (a+a*b)%nat by lia.
+      rewrite nat_plus_compat.
+      rewrite IHb.
+      simpl.
+      ring.
+    Qed.
+
+    Lemma rat_plus1 a b c : #a +  inv_Sn c * #b == #(a*(c+1) + b) * inv_Sn c.
+    Proof.
+     simpl.
+     rewrite nat_plus_compat, nat_mult_compat.
+     ring_simplify.
+     replace (c+1)%nat with (S c) by lia.
+     rewrite mulA.
+     rewrite (mulC _ (# (S c))).
+     rewrite inv_Sn_spec.
+     ring.
+   Qed.
+End EmbedNat.

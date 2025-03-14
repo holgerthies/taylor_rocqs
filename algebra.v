@@ -243,6 +243,14 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    apply (nth_derivative i (IHd tl (S i)) hd).
  Defined.
 
+ Definition derive_rec_helper_next  `{PartialDifferentialRing } {d} (i : nat) (y : A) n0 (n : nat^d) : derive_rec_helper i y (tuple_cons n0 n) = nth_derivative i (derive_rec_helper (S i) y n) n0.
+ Proof.
+   simpl.
+   destruct (destruct_tuple_cons (tuple_cons n0 n)) as [hd [tl p]].
+   apply tuple_cons_ext in p.
+   destruct p as [-> ->].
+   reflexivity.
+ Qed.
  Definition derive_rec `{PartialDifferentialRing } {d}  (y : A) (n : nat^d) := derive_rec_helper 0 y n.
   #[global] Instance derive_helper_proper `{PartialDifferentialRing } {d} (i : nat^d) j : Proper (equiv ==> equiv) (fun f => derive_rec_helper j f i ).
   Proof.
@@ -420,6 +428,18 @@ Section RingTheory.
     rewrite H0.
     reflexivity.
   Qed.
+
+  Lemma npow_mult x  y n : npow (x*y) n == npow x n * npow y n.
+  Proof.
+    induction n.
+    simpl.
+    ring.
+    simpl.
+    rewrite IHn.
+    ring.
+  Qed.
+
+
 End RingTheory.
 
 
@@ -501,6 +521,16 @@ Proof.
   apply le_plus_compat.
   apply le_0_1.
 Defined.
+
+
+ Lemma npow_pos : forall x n, (0 <= x) -> 0 <= npow x n.
+ Proof.
+   intros.
+   induction n.
+   simpl;apply le_0_1.
+   simpl.
+   apply mul_pos_pos;auto.
+ Qed.
 End OrderTheory.
 
 Section VectorRawRing.

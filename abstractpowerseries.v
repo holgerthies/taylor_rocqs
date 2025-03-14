@@ -73,7 +73,6 @@ Section AbstractPowerSeriesProperties.
     apply index_proper.
   Defined.
 
-  Notation "# n" := (ntimes n 1) (at level 2).
 
 
   Add Ring ARing: (ComSemiRingTheory (A := A)). 
@@ -145,7 +144,72 @@ Section AbstractPowerSeriesProperties.
     rewrite <-ps_property_backwards.
     reflexivity.
   Qed.
+  Definition nth1 (d i : nat) : nat^d.
+  Proof.
+    revert i.
+    induction d;intros.
+    apply 0.
+    destruct i.
+    apply (tuple_cons 1 0).
+    apply (tuple_cons 0 (IHd i)).
+  Defined.
 
+  Lemma nth1_spec1 d i : i < d -> (nth1 d i)\_i == 1.
+  Proof.
+    intros.
+    generalize dependent i.
+    induction d;intros;try lia.
+    destruct i.
+    simpl.
+    rewrite tuple_nth_cons_hd;reflexivity.
+    simpl.
+    rewrite tuple_nth_cons_tl.
+    apply IHd;lia.
+  Qed.
+
+  Lemma nth1_spec0 d i j: i <> j -> (nth1 d i)\_j == 0.
+  Proof.
+    intros.
+    generalize dependent i.
+    generalize dependent j.
+    induction d;intros;try lia.
+    destruct i.
+    simpl.
+    destruct j;reflexivity.
+    simpl.
+    destruct j;reflexivity.
+    simpl.
+    destruct i.
+    destruct j;try lia.
+    rewrite tuple_nth_cons_tl.
+    enough ((0 : nat^d )\_j == 0) by (simpl;auto).
+    apply vec0_nth.
+    destruct j.
+    rewrite tuple_nth_cons_hd;auto.
+    rewrite tuple_nth_cons_tl.
+    apply IHd;lia.
+  Qed.
+
+  Lemma nth1_plus_nth1 d x i: i < d -> (x + (nth1 d i))\_i = x\_i + 1.
+  Proof.
+    intros.
+  Admitted.
+  Lemma nth1_plus_nth0 d x i j: i < d -> i<>j -> (x + (nth1 d i))\_j = x\_j.
+  Proof.
+    intros.
+  Admitted.
+  Lemma deriv_next_nth {d} (f: nat^(S d) -> A) k : forall i, i < d -> D[i] f k == #(k\_i + 1) * f (k+(nth1 (S d) i)).
+  Proof.
+    intros.
+    induction i.
+  Admitted.
+
+  Lemma comp1_index {d} i k : k == nth1 d i -> (comp1 i) k == 1 /\  (not (k == nth1 d i) -> (comp1 i) k == 0).
+  Admitted.
+
+  Lemma comp1_zero_one {d} i k : (comp1 (m:=d)  i) k == 0 \/ (comp1 (m:=d) i ) k == 1.
+  Proof.
+  Admitted.
   Lemma deriv_next_backwards {d} (f : nat^(S d) -> A) hd tl : f (tuple_cons (S hd) tl) == (inv_Sn hd) * (D[0] f) (tuple_cons hd tl).
   Proof.  
     pose proof (inv_Sn_spec hd).
@@ -248,4 +312,15 @@ Section AbstractPowerSeriesProperties.
     rewrite !deriv_rec_1.
     apply H6.
   Qed.
+
+  Lemma ntimes_index {d} (a : nat^d -> A) k n : (ntimes n a k) == ntimes n (a k).
+  Proof.
+    induction n.
+    simpl.
+    rewrite ps0;reflexivity.
+    simpl.
+    rewrite !index_plus.
+    rewrite IHn.
+    reflexivity.
+ Qed.
 End AbstractPowerSeriesProperties.
