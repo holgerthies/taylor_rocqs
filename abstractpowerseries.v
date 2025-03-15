@@ -210,6 +210,9 @@ Section AbstractPowerSeriesProperties.
   Lemma comp1_zero_one {d} i k : (comp1 (m:=d)  i) k == 0 \/ (comp1 (m:=d) i ) k == 1.
   Proof.
   Admitted.
+  Lemma comp1_0 {d} i : (comp1 (m:=d)  i) 0 == 0.
+  Proof.
+  Admitted.
   Lemma deriv_next_backwards {d} (f : nat^(S d) -> A) hd tl : f (tuple_cons (S hd) tl) == (inv_Sn hd) * (D[0] f) (tuple_cons hd tl).
   Proof.  
     pose proof (inv_Sn_spec hd).
