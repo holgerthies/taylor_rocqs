@@ -7,14 +7,36 @@ Require Import combinatorics.
 Section IVP_Examples.
   Open Scope fun_scope.
   Context `{AbstractFunctionSpace }.
-  Context `{Ring (A := A 0) (H := (H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
+  Context `{TotallyOrderedField (A := (A 0)) (H := H 0) (R_rawRing := (H0 0)) (R_semiRing := (H1 0)) }.
+ Context `{normK : (NormedSemiRing (A 0) (A 0) (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+
+  Record Analytic {d} := {
+      y0 : (A 0)^d;
+      f : (A d)^d;
+      logM : nat;
+      r : (A 0);
+      (* Mgt0 : not (M == 0) /\ (0 <= M); *)
+      (* rgt0 : not (r == 0) /\ (0 <= r); *)
+      in_dom : y0 \in_dom f;
+      (* deriv_bound : forall k, (Dx[k] f) @ (y0 ; (dom_D in_dom))\_0 <= t[k]! * M * npow r (order k) *)
+    }.
+
+  Definition ylogM {d} (f : @Analytic d) := d*f.(logM). 
+  Definition y_radius {d} (f : @Analytic d)  := #2 * (ntimes d (npow #2 f.(logM))) * f.(r).
+  Definition AIVP_nth_approx {d} (F : @Analytic d) n := ivp_taylor_poly F.(f) F.(y0) F.(in_dom) (n + 1 + d * F.(logM)).
+
   (* one-dimensional examples *)
 
   Notation "\x_ i" := (comp1 i) (at level 2).
-  Definition exp_ivp : (IVP  (d := 1) (A := A)).
+
+  Definition exp_ivp : (Analytic (d:=1)).
   Proof.
-    exists t(\x_0) t(1).
+    unshelve eapply Build_Analytic.
+    apply t(1).
+    apply t(\x_0).
+    apply 0.
+    apply 1.
     intros n P.
     replace n with 0%nat by lia.
     simpl f.
@@ -23,9 +45,13 @@ Section IVP_Examples.
   Defined.
 
 
-  Definition tan_ivp : (IVP  (d := 1) (A := A)).
+  Definition tan_ivp : (Analytic  (d := 1)).
   Proof.
-    exists t(1 [+] \x_0*\x_0 ) t(0).
+    unshelve eapply Build_Analytic.
+    apply t(0).
+    apply t(1 [+] \x_0*\x_0 ).
+    apply 1.
+    apply 1.
     intros n P.
     replace n with 0%nat by lia.
     simpl f.
@@ -49,14 +75,23 @@ Section IVP_Examples.
     rewrite <-(dom_change_f  _ _ _ H8);apply H9.
   Qed.   
 
-  Definition sin_cos_ivp : (IVP (d := 2) (A := A)).
-    exists t(\x_1;(opp 1) [*] \x_0) t(0;1).
+  Definition sin_cos_ivp : (Analytic (d := 2)).
+    unshelve eapply Build_Analytic.
+    apply t(0;1).
+    apply t(\x_1;(opp 1) [*] \x_0).
+    apply 1.
+    apply 1.
     apply in_dom2.
     split; [|apply dom_mult;try apply const_dom ];try apply dom_id.
   Defined.
 
-  Definition vdp_ivp (mu : A 0) : (IVP (d := 2) (A := A)).
-    exists t(\x_1;mu [*] (1 [+] ((opp 1) [*] \x_0 *\x_0)) * \x_1 + (opp 1) [*] \x_0) t(0;1).
+  Definition vdp_ivp (mu : A 0) : (Analytic (d := 2)).
+    unshelve eapply Build_Analytic.
+    apply t(0;1).
+    apply t(\x_1;mu [*] (1 [+] ((opp 1) [*] \x_0 *\x_0)) * \x_1 + (opp 1) [*] \x_0).
+    (* assumes mu < 1 *)
+    apply 1.
+    apply 1.
     apply in_dom2.
     split; try apply dom_id.
     apply dom_plus; apply dom_mult;try apply dom_id; try apply const_dom.

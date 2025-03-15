@@ -459,8 +459,8 @@ Section Bounds.
 
   Lemma partial_eval_D_S {d} (a: nat^(S d) -> A) n k i : partial_eval (D[S i] a) n k == (D[i] (partial_eval a n)) k.
   Proof.
+    intros.
   Admitted.
-
   Lemma diff_monotone {d} (a : nat^d -> A) b i : (i <d) -> (|a| <= b) -> (|pdiff i a| <= pdiff 0 b).
     generalize dependent i .
     generalize dependent b .
@@ -965,7 +965,7 @@ Section Bounded_PS.
 
   Definition y   := (yt (f := f)).
 
-  Lemma y0 i : i < (S d) -> (y\_i 0) == 0.
+  Lemma y0_spec i : i < (S d) -> (y\_i 0) == 0.
   Proof.
     intros.
     unfold y.
@@ -1085,8 +1085,13 @@ Section Modulus.
     Lemma npow1 x n : x == 1 -> npow x n == 1.
     Proof.
       intros.
-    Admitted.
-
+      induction n.
+      simpl.
+      reflexivity.
+      simpl.
+      rewrite IHn, H6.
+      ring.
+    Qed.
     Lemma ps_modulus_helper x r n m :  norm x <= r -> norm (npow x (n + m)) <= npow r n * npow r m. 
     Proof.   
       intros.
@@ -1097,8 +1102,12 @@ Section Modulus.
       apply npow_monotone; try apply norm_nonneg;auto.
     Qed.
 
-    Lemma bounded_ps_modulus  (a : nat^1 -> A) (M r : A) invr logM x: (r * invr == 1) -> (M <= npow (#2) logM) ->  norm x <= inv2 * invr -> (mps_bound a (a_bound_series M r)) -> fast_cauchy_neighboring (fun n => (partial_sum a x) (n+1+logM)%nat). 
+    Definition bps_modulus logM n := (n+1+logM)%nat.
+    Definition bps_radius invr := inv2 * invr.
+
+    Lemma bounded_ps_modulus_spec  (a : nat^1 -> A) (M r : A) invr logM x: (r * invr == 1) -> (M <= npow (#2) logM) ->  norm x <= (bps_radius invr) -> (mps_bound a (a_bound_series M r)) -> fast_cauchy_neighboring (fun n => (partial_sum a x) (bps_modulus logM n)). 
     Proof.
+      unfold bps_modulus, bps_radius.
       intros.
       unfold fast_cauchy_neighboring.
       intros.
@@ -1138,569 +1147,76 @@ Section Modulus.
       apply npow1.
       apply inv_Sn_spec.
    Qed.
+
+
+
 End Modulus.
 
-  Context `{TotallyOrderedField}.
- Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
-  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+
+Section Analytic.
+
+  Open Scope fun_scope.
+  Context `{AbstractFunctionSpace }.
+
+
+  Context `{TotallyOrderedField (A := (A 0)) (H := H 0) (R_rawRing := (H0 0)) (R_semiRing := (H1 0)) }.
+ Context `{normK : (NormedSemiRing (A 0) (A 0) (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
+  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+  Context `{CompositionalDiffAlgebra (A := (ps (A := (A 0)))) (H := (ps_set)) }.
+  
+  Context `{@AbstractPowerSeries (A 0) (H 0) (H0 0) H7 H8 H9 H10 invSn}.
+
+  (* Context `{AbstractPowerseries (A := (A 0)) (H := (H 0))  (H1 := _)   }. *)
   Context `{norm_abs : forall x, 0 <= x -> norm x == x}.
 
+  Record Analytic {d} := {
+      y0 : (A 0)^d;
+      f : (A d)^d;
+      logM : nat;
+      r : (A 0);
+       rgt0 : not (r == 0) /\ (0 <= r); 
+      in_dom : y0 \in_dom f;
+      (* deriv_bound : forall k, (Dx[k] f) @ (y0 ; (dom_D in_dom))\_0 <= t[k]! * M * npow r (order k) *)
+    }.
 
-  Definition a_bound_series : (@mps A 1)  := fun n => M * (npow r n).
+   Lemma deriv_dom {d}  (F : (Analytic (d := d))) i (k : nat^d) : F.(y0) \in_dom (Dx[k] (F.(f)\_i)).
+   Admitted.
 
-  Context {a_bound : mps_tuple_bound a (tuple_nth 0 t(a_bound_series) 0)}.
-  
-  Lemma zero_in_domain n : (0 : A^d) \in_dom (IVP_D a n).
-  Proof.
-  Admitted.
+   Definition fi_to_ps {d} (F : (Analytic ( d := d))) i (k : nat^d) :=  (Dx[k] (F.(f))\_i) @ (F.(y0) ; deriv_dom F i k).
 
-  Definition y (n : nat)   := ![n] ** ((IVP_D a n) @ (_; (zero_in_domain n))).
+   Definition f_to_ps {d} (F : (Analytic ( d := d)))  :=  proj1_sig (seq_to_tuple (fi_to_ps F) d (def := 0)).
+  Definition analytic_solution_ps {d} (F : Analytic) (i : nat) (ile : i < d) (n : nat)  : (A 0)  :=  ivp_solution_taylor_i F.(f) F.(y0) F.(in_dom) n i ile.
 
-  Lemma norm1 : norm 1 == 1.  
-  Proof.
-    apply norm_abs.
-    apply le_0_1.
-  Qed.
+  Definition powerseries_yi {d} (F : Analytic (d := (S d))) := @y_i (A 0) (H 0) (H0 0) H7 H8 H9 _ _ d  (f_to_ps F).
 
-  Lemma y_nth (n : nat) i : i < d -> tuple_nth i (y n) 0 == ![n] * (ps_index 0 (IVP_Di a n i)).
-  Proof.
-    intros.
-    unfold y.
-    rewrite scalar_mult_spec;auto.
-    apply ring_eq_mult_eq;try reflexivity.
-    unfold eval.
-    simpl.
-    rewrite (evalt_spec _ _ _ _ H1).
-    simpl.
-    rewrite IVP_D_nth;auto.
-    reflexivity.
-  Qed.
-
-  Add Ring TRing: (ComRingTheory (A := A)). 
-
-  Lemma Di1_bound n k :  norm (IVP_Di (ntimes d t(a_bound_series))  (S n) 0 k) <= Fn_bound (r := r) (M := (ntimes d M)) n k.
- Proof.
-   revert k.
-   induction n; intros.
-   - assert (IVP_Di (ntimes d t(a_bound_series)) 1 0 == (ntimes d ( fun n : nat => M * npow r n))).
-     {
-       rewrite IVP_Di_S.
-       rewrite sum_1.
-       simpl IVP_Di.
-       assert (pdiff (A:=(@mps A 1)) 0 comp_one_ps == 1) as ->.
-       {
-         simpl;intros.
-         unfold derive_ps, one_ps, comp_one_ps.
-         destruct n.
-         simpl;ring.
-         destruct n.
-         simpl.
-         ring.
-         simpl.
-         rewrite ntimes_zero.
-         ring.
-       }
-       rewrite mul1.
-       rewrite <-ntimes_nth;try lia.
-       rewrite tuple_nth_cons_hd.
-       reflexivity.
-     }
-     (* pose proof (IVP_Di_S (d:=1)  bounder 0 0 ). *)
-     rewrite (single_index_proper _ _ _ H1).
-     setoid_rewrite (ntimes_index (d:=0)).
-     unfold Fn_bound.
-     simpl.
-     ring_simplify.
-     simpl.
-     rewrite rising_factorial0.
-     ring_simplify.
-     apply (le_trans _ _ _ (norm_ntimes_le_ntimes_norm _ _)).
-     rewrite norm_abs.
-     rewrite mulC.
-     rewrite ntimes_mult.
-     rewrite mulC;apply le_refl.
-     apply mul_pos_pos;auto.
-     apply npow_pos;auto.
-   - pose proof (IVP_Di_S (d:=1)  (ntimes d t(a_bound_series)) 0 (S n) ).
-     rewrite (single_index_proper _ _ _ H1).
-     rewrite single_index_proper;try apply sum_1.
-     replace (S n) with (n+1)%nat by lia.
-     apply (bound_prod (norm1 := norm1)).
-     + intros.
-       unfold f_bound.
-       rewrite single_index_proper; try (rewrite <-ntimes_nth;try lia;rewrite tuple_nth_cons_hd;reflexivity ).
-       unfold a_bound_series.
-       setoid_rewrite (ntimes_index (d:=0)).
-       apply (le_trans _ _ _ (norm_ntimes_le_ntimes_norm _ _)).
-       rewrite norm_abs; [rewrite mulC,ntimes_mult,mulC; apply le_refl|].
-       apply mul_pos_pos;auto.
-       apply npow_pos;auto.
-    + intros.
-      replace (n+1)%nat with (S n) by lia.
-       apply IHn.
-  Qed.
-
-  Lemma le_norm x : x <= norm x.
-  Proof.
-     destruct (le_total x 0).
-     apply (le_trans _ _ _ H1).
-     apply norm_nonneg.
-     rewrite norm_abs;auto.
-     apply le_refl.
-   Qed.
-
-  Lemma y_bound_Fn i n: i < d -> norm (tuple_nth i (y (S n)) 0 ) <= ![S n] * Fn_bound (r := r) (M := (ntimes d M)) n 0.  
-  Proof.
-   intros.
-   assert (dneg0 : d = S (pred d)) by lia.
-   pose proof (IVP_D_bound (norm1 := norm1) a _ (S n) a_bound ).
-   rewrite y_nth;auto.
-   specialize (H2 i 0 H1).
-   rewrite zero_order in H2.
-   apply (le_trans _ _ _ (norm_mult _ _)).
-   assert ( tuple_nth 0 (IVP_D (ntimes d t(a_bound_series)) (S n)) 0 0
- == IVP_Di (ntimes d t(a_bound_series)) (S n) 0 0).
-   {
-     rewrite dneg0.
-     apply (single_index_proper 0%nat (tuple_nth 0 (IVP_D (ntimes (S (pred d)) t( fun n : nat => M * npow r n)) (S n)) 0)).
-     setoid_rewrite (IVP_D_nth (d:=1));try lia.
-     reflexivity.
-   }
-   rewrite H3 in H2.
-   rewrite IVP_D_nth in H2;auto.
-   rewrite norm_abs;try apply invfact_pos.
-   apply mul_le_compat_pos;try apply invfact_pos.
-   apply (le_trans _ _ _ H2).
-   apply (le_trans _ _ _ (le_norm _ )).
-   apply Di1_bound.
- Qed.
-
-  Lemma y0 i : i < d -> tuple_nth i (y 0) 0 == 0.
-  Proof.
-    intros.
-    unfold y.
-    rewrite scalar_mult_spec;auto.
-    simpl inv_factorial.
-    rewrite mulC,mul1.
-    unfold IVP_D.
-    simpl.
-    rewrite (evalt_spec _ _ _ _ H1).
-    rewrite id_nth;auto.
-    Opaque comp1.
-    simpl.
-    rewrite (ps_index_comp1).
-    Transparent comp1.
-    rewrite zero_order;reflexivity.
-  Defined.
-
-  Lemma y_bound i n: i < d -> norm (tuple_nth i (y (S n)) 0 ) <= ntimes d M  * npow (ntimes 2 1 * ntimes d M * r) n.
-  Proof.
+  Lemma y_ps_same {d} (F : Analytic (d:=S d)): forall i (ile : i < S d) k, (0 < k) ->  analytic_solution_ps F i ile k  == powerseries_yi F k i.
+   Proof.  
      intros.
-     (* destruct n. *)
-     (* - simpl. *)
-     (*   rewrite y0;auto. *)
-     (*   rewrite norm_abs; try apply le_refl. *)
-     (*   rewrite mul1. *)
-     (*   apply ntimes_nonneg;auto. *)
-     apply (le_trans _ _ _ (y_bound_Fn _ _ H1)).
-     assert (0 <= ntimes d M )by (apply ntimes_nonneg;auto).
-    pose proof (mul_le_compat_pos (invfact_pos (S n)) (Fn_bound0 (rge0 := rpos) (Mge0 := H2)  n)).
-       apply (le_trans _ _ _ H3).
-       rewrite <-!mulA.
-       enough (![ S n] * [n ]! * ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n  <= ( [S n ]! * ![ S n]) * ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n ).
-       {
-         apply (le_trans _ _ _ H4).
-         rewrite fact_invfact.
-         ring_simplify.
-         apply le_refl.
-       }
-       setoid_replace (([S n ]! * ![ S n]) * ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n ) with (![ S n] * ([S n ]! * (ntimes d M * npow (ntimes 2 1 * ntimes d M * r) n ))) by ring.
-       rewrite !mulA.
-       apply mul_le_compat_pos; try apply invfact_pos.
-       rewrite mulC.
-       rewrite (mulC [S n]!).
-       apply mul_le_compat_pos; try apply invfact_pos.
-       apply mul_pos_pos.
-       apply ntimes_nonneg;auto.
-       apply npow_pos.
-       apply mul_pos_pos;auto.
-       apply mul_pos_pos; apply ntimes_nonneg;auto.
-       apply le_0_1.
-       simpl.
-       rewrite mulC.
-       setoid_replace ([n]!) with ([n]!*1) at 1 by ring.
-       apply mul_le_compat_pos.
-       apply fact_pos.
-       rewrite addC.
-       setoid_replace 1 with (0 + 1) at 1 by ring.
-       apply le_plus_compat.
-       apply ntimes_nonneg.
-       apply le_0_1.
-   Qed.
-Section Uniqueness.
-  Context `{AbstractFunctionSpace} {d : nat}.
-  Context {f g : (A (S d))^(S d)} {y0 : (A 0)^(S d)}  {in_dom_f : y0 \in_dom f} {in_dom_g : y0 \in_dom g}.
-
-  Lemma dom_Dif : forall n i, y0 \in_dom (IVP_Di f n i).
-  Admitted.
-  Lemma dom_Dig : forall n i, y0 \in_dom (IVP_Di g n i).
+     unfold analytic_solution_ps.
+     unfold powerseries_yi.
+     unfold ivp_solution_taylor_i.
+     unfold y_i.
+     apply ring_eq_mult_eq; try reflexivity.
+     induction k; try lia.
+     simpl.
+     
   Admitted.
 
-  Lemma Di_unique : (forall (n : nat^d) P1 P2, (derive_rec f n) @ (y0; P1)  == (derive_rec g n) @ (y0;P2)) -> forall (k : nat^d)  (n i : nat) P1 P2, (derive_rec (IVP_Di f n i) k) @ (y0; P1) == (derive_rec (IVP_Di g n i) k) @ (y0; P2).
-  Proof.
-    intros.
-    revert dependent k.
-    induction n;intros.
-    - simpl;apply functions.eval_proper; reflexivity.
-    - simpl.
-      pose proof (derive_rec_sum k (fun j : nat => tuple_nth j f 0 * D[ j] (IVP_Di f n i)) d).
-      pose proof (derive_rec_sum k (fun j : nat => tuple_nth j g 0 * D[ j] (IVP_Di g n i)) d).
-      destruct  (eval_change_f _ _ _ P1 H7) as [P1' ->].
-      destruct  (eval_change_f _ _ _ P2 H8) as [P2' ->].
-      clear P1 P2 H7 H8.
-
-      destruct  (eval_change_f _ _ _ P1' H7) as [P1 ->].
-      destruct  (eval_change_f _ _ _ P2' H8) as [P2 ->].
-      clear P1' P2' H7 H8.
+   Lemma analytic_yi_bound {d} (F : Analytic (d := (S d))) i (Hi : i < S d) n: norm (analytic_solution_ps F i Hi (S n)) <= ntimes (S d) (npow #2 F.(logM))  * npow (#2 * ntimes (S d) (npow #2 F.(logM)) * F.(r)) n.
+   Proof.
+     intros.
+     rewrite y_ps_same;auto;try lia.
+     unfold powerseries_yi.
+     rewrite <-yt_spec;auto.
+     assert (mps_tuple_bound  (f_to_ps F) t( a_bound_series (npow #2 (F.(logM))) F.(r)) \_ 0).
+     {
+       admit.
+     }
+     assert (Mpos : 0 <= npow #2 F.(logM)) by (apply npow_pos;apply ntimes_nonneg;apply le_0_1).
+     pose proof (y_bound (H0 := _) (norm_abs := norm_abs) (Mpos := Mpos) (rpos := (proj2 F.(rgt0))) (f_bounded := H12) (H4 := _) i n Hi);auto.
+ Admitted.
+   Definition analytic_yi_M {d} (F: Analytic (d := d)) : (A 0) := ntimes (S d) (npow #2 F.(logM)).
+   Definition analytic_yi_r {d} (F: Analytic (d := d)) := (#2 * ntimes (S d) (npow #2 F.(logM)) * F.(r)).
+    Lemma analytic_yi_modulus_spec {d} (F : Analytic (d := (S d))) i invr logM x: ((analytic_yi_r F) * invr == 1) -> (analytic_yi_M F <= npow (#2) logM) ->  norm x <= (bps_radius invr) -> fast_cauchy_neighboring (fun n => (partial_sum (to_ps (powerseries_yi F i)) x) (bps_modulus logM n)). 
     Admitted.
-End Uniqueness.
-Section Analytic.
-Context `{AbstractFunctionSpace} {d : nat}.
-Context `{TotallyOrderedField (A := (A 0)) (H:=(H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
- Context `{normK : (NormedSemiRing ((A 0)^d) (A 0) (H := _)  (H0 := (H 0))  (R_rawRing0 := (H0 0%nat)) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }. 
-  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
-  Context {M R : A 0} {Mpos : 0 <= M} {Rpos : 0 <= R}.
-  Context {f : (A d)^d} {y0 : (A 0)^d}  {in_dom : y0 \in_dom f}.
-  Definition derivative {e :nat} (n : nat^e) (i  : (A d)^d.
-  Proof.
-    
-  Definition to_ps {e} (g : (A e)) : @mps (A 0) e.
-  Proof.
-     revert e g.
-     induction e;intros.
-     apply g.
-     intros n.
-     
- Context {p : (@mps (A 0) d)^e}.
-
- Definition D_bound (f : (A d)^e) x0 (B : nat -> (A 0)) := forall n i H, (i < d) -> norm ((nth_derivative i f n) @ (x0; H)) <= (B n).
- Definition D_boundi (f : (A d)^e) x0 (B : nat -> (A 0)) i := forall n H, norm ((nth_derivative i f n) @ (x0; H)) <= (B n).
- Definition Fi_bound M R n k := [n]! * [k+2*n]! * ![2*n] *  (npow (1+1) n) * (npow M (n+1)) * npow R (n+k). 
- Definition Fi_pbound M R n i k := ([n]! * [i]! * [k+2*n]! * ![2*n]) * (npow (1+1) n)* (npow M (n+2)) * (npow R (n+k +i )).
-
- Add Ring TRing: (ComRingTheory (A := (A 0))). 
-
- Lemma  Fi_pbound_spec M R n i k : (Fi_bound M R 0 i) * (Fi_bound M R n k) == Fi_pbound M R n i k.
- Proof.
-   unfold Fi_bound, Fi_pbound.
-   simpl.
-   replace (i+0)%nat with i by lia.
-   replace (n+0)%nat with n by lia.
-   setoid_replace (npow M (n+2)) with (npow M (n+1) * M).
-   setoid_replace (npow R (n+k+i)) with (npow R (n+k) * npow R i)  by (rewrite !npow_plus;ring).
-   ring.
-   rewrite !npow_plus.
-   simpl.
-   ring.
- Qed.
-
- (* Lemma Fi_bound_D M R n i k :  *)
-
- Lemma nth_derivative_S_prod_at (f g : (A d)^e)  (x0 : (A 0)^d) i n P: (x0 \in_dom f) -> (x0 \in_dom g) -> exists P1 P2, (nth_derivative i (f * g) (S n)) @ (x0; P) == (nth_derivative i (g * (pdiff i f) ) n) @ (x0; P1) + (nth_derivative i (f* (pdiff i g) ) n) @ (x0; P2). 
- Proof.
-   intros.
-   pose proof (nth_derivative_S_prod1 f g i n).
-   destruct (eval_change_f  _ _ _ P H9) as [P' eq].
-   assert (x0 \in_dom (nth_derivative i (g * pdiff i f) n)) as D1.
-   {
-    apply nth_derivative_dom.
-    apply dom_mult;auto.
-    intros j jle.
-    simpl;rewrite pdiff_tuple_nth;auto.
-    apply dom_diff;auto.
-   }
-   assert (x0 \in_dom (nth_derivative i (f * pdiff i g) n)) as D2.
-   {
-    apply nth_derivative_dom.
-    apply dom_mult;auto.
-    intros j jle.
-    simpl;rewrite pdiff_tuple_nth;auto.
-    apply dom_diff;auto.
-   }
-   exists D1;exists D2.
-   rewrite eq.
-   apply eval_plus_compat.
- Qed.
-
- Definition simple_bound (x : nat -> (A 0)^e) (C : A 0) n (r : (A 0))   := forall k, norm (x k) <= C * [k+n]! * npow r k.
-
- Definition derive_seq (x : nat -> (A 0)^e) k := (fun n => x (n+k)%nat).
- 
- Notation "x ^ ( n )" := (derive_seq x n) (at level 2).
- Definition simple_bound_prod (x : nat -> (A 0)^e) (C : A 0) n (r : (A 0)) d1 d2  := forall k, norm (x k) <= (C * [(k+n+d1+d2)%nat]! * [(n+d2)%nat]! * [d1]! * ![(n+d1+d2)%nat]* npow r k).
-
- Lemma simpl_bound_deriv x C n r k  : simple_bound x C n r -> simple_bound (x ^(k)) (C*npow r k) (n+k) r.
- Proof.
-   intros.
-   induction k.
-   - simpl.
-     replace (n+0)%nat with n by lia.
-     unfold simple_bound.
-     setoid_replace (C*1) with C by ring.
-     intros k.
-     unfold derive_seq.
-     replace (k+0)%nat with k by lia.
-     apply H7.
-   - intros i.
-     replace (x ^ (S k) i) with (x ^ (k) (S i)).
-     apply (le_trans _ _ _ (IHk  _)).
-     replace (S i + (n+k))%nat with (S (i + n +k)) by lia.
-     replace (i + (n+S k))%nat with (S (i + n +k)) by lia.
-     simpl.
-     ring_simplify.
-     apply le_eq.
-     ring.
-     unfold derive_seq.
-     simpl.
-     f_equal.
-     lia.
-  Qed.
-
- Lemma simpl_bound_prod (f g : nat -> (A 0)^e) C M n r d1 d2 : simple_bound f M 0 r  -> simple_bound  g C n r -> simple_bound_prod (f ^ (d1) * g ^ (d2)) (C* M * npow r (d1+d2)) n r d1 d2.
- Proof.
-   intros.
-   intros k.
-   induction k.
-   -  specialize (H7 d1).
-     specialize (H8 d2).
-     unfold derive_seq.
-     simpl.
-     apply (le_trans _ _ _ (norm_mult _ _)).
-     
-     apply (le_trans _ _ _ (mul_le_le_compat_pos (norm_nonneg _) (norm_nonneg _) H7 H8)).
-     rewrite npow_plus.
-     replace (d1 + 0)%nat with d1 by lia.
-     replace (d2 + n)%nat with (n+d2)%nat by lia.
-     ring_simplify.
-     rewrite !mulA.
-     rewrite fact_invfact.
-     apply le_eq.
-     ring.
-   - pose proof (nth_derivative_S_prod_at ((nth_derivative i f d1 * nth_derivative i g d2)) ).
-     destruct (eval_change_f _ _ _ (nth_deriva) H8).
- Admitted.
-
- (* Lemma simple_bound_proper f g x0 x1 C0 C1  n r1 r2 i : f==g -> x0==x1 -> C0==C1 -> r1 == r2  -> simple_bound g x1 C1 n r2 i -> simple_bound f x0 C0 n r1 i. *)
- (* Proof. *)
- (*   intros. *)
- (*   unfold simple_bound, D_boundi. *)
- (*   intros. *)
- (*   rewrite H9. *)
- (*   enough ((nth_derivative i f n0)  == (nth_derivative i g n0)). *)
- (*   destruct (eval_change_f _ _ _ H12 H13). *)
- (*   rewrite H14. *)
- (*   pose proof x. *)
- (*   rewrite H8 in H15. *)
- (*   rewrite (functions.eval_proper _ _ _ _ x H15 );try reflexivity; try apply H8. *)
- (*   rewrite (npow_proper n0 _ _ H10). *)
- (*   apply H11;auto. *)
- (*   apply (nth_derivative_proper i n0 _ _ H7). *)
- (* Qed. *)
-
- (* Lemma simple_bound_properf {f g x0 C n r i} : f==g -> simple_bound g x0 C n r i -> simple_bound f x0 C n r i. *)
- (* Proof. *)
- (*   intros. *)
- (*   apply (simple_bound_proper f g x0 x0 C C n r r); try reflexivity;auto. *)
- (* Qed. *)
-
-
- (* Lemma simpl_bound_deriv f x0 C n r k i : simple_bound f x0 C n r i -> simple_bound (nth_derivative i f k) x0 (C*npow r k) (n+k) r i. *)
- (* Proof. *)
- (*   intros. *)
- (*   induction k. *)
- (*   - simpl. *)
- (*     replace (n+0)%nat with n by lia. *)
- (*     apply (simple_bound_proper f f x0 x0 (C*1) C n r r);try reflexivity;try ring;auto. *)
- (*   - intros j D. *)
- (*    enough (nth_derivative i (nth_derivative i f (S k)) j == nth_derivative i (nth_derivative i f k ) (j+1)%nat). *)
- (*     destruct (eval_change_f _ _ _ D H8). *)
- (*     rewrite H9. *)
- (*     specialize (IHk (j+1)%nat x). *)
- (*     apply (le_trans _ _ _ IHk). *)
- (*     replace (j+1)%nat with (S j) by lia. *)
- (*     replace (j+(n+ S k))%nat with (S (j + n + k)) by lia. *)
- (*     simpl. *)
- (*     apply le_eq. *)
- (*     replace (j+(n+k))%nat with (j+n+k)%nat by lia. *)
- (*     ring. *)
- (*     rewrite !nth_derivative_twice. *)
- (*     replace (S k + j)%nat with (k + (j+1))%nat by lia. *)
- (*     reflexivity. *)
- (*  Qed. *)
- (* Definition simple_bound_prod (f : (A d)^e) (x0 : (A 0)^d) (C : A 0) n (r : (A 0)) i d1 d2  := D_boundi f x0 (fun (k : nat) => (C * [(k+n+d1+d2)%nat]! * [(n+d2)%nat]! * [d1]! * ![(n+d1+d2)%nat]* npow r k)) i. *)
-
- Opaque eval.
- Lemma simpl_bound_prod (f g : (A d)^e) (x0 : (A 0)^d)  C M n r d1 d2 i : simple_bound f x0 M 0 r i -> simple_bound  g x0 C n r i -> simple_bound_prod ((nth_derivative i f d1) * (nth_derivative i g d2)) x0 (C* M * npow r (d1+d2)) n r i d1 d2.
- Proof.
-   intros.
-   intros k Hk.
-   assert (forall n, x0 \in_dom (nth_derivative i f n)).
-   admit.
-   assert (forall n, x0 \in_dom (nth_derivative i g n)).
-   admit.
-   induction k.
-   - simpl.
-     rewrite (eval_mult_compat _ _ _ (H9 d1) (H10 d2)).
-     specialize (H7 d1 (H9 d1)).
-     simpl in H7.
-     specialize (H8 d2 (H10 d2)).
-     simpl in H8.
-     apply (le_trans _ _ _ (norm_mult _ _)).
-     
-     apply (le_trans _ _ _ (mul_le_le_compat_pos (norm_nonneg _) (norm_nonneg _) H7 H8)).
-     rewrite npow_plus.
-     replace (d1 + 0)%nat with d1 by lia.
-     replace (d2 + n)%nat with (n+d2)%nat by lia.
-     ring_simplify.
-     rewrite !mulA.
-     rewrite fact_invfact.
-     apply le_eq.
-     ring.
-   - pose proof (nth_derivative_S_prod_at ((nth_derivative i f d1 * nth_derivative i g d2)) ).
-     destruct (eval_change_f _ _ _ (nth_deriva) H8).
- Admitted.
-
- Lemma D_bound_prod M R f g x0 n : (0 <= M) -> (0 <= R) -> (x0 \in_dom f) -> (x0 \in_dom g) -> D_bound f x0 (Fi_bound M R 0) -> D_bound  g x0 (fun i => Fi_bound M R n (i+1)) -> D_bound (f*g) x0 (Fi_bound M R (n+1)).
- Proof.
-   intros Mpos Rpos D1 D2 B1 B2. 
-   intros k i D3 ile.
-   induction k;intros.
-   - simpl nth_derivative.
-     rewrite (eval_mult_compat f g x0  D1 D2 D3).
-     apply (le_trans _ _ _ (norm_mult _ _)).
-     specialize (B1 0%nat i D1 ile).
-     specialize (B2 0%nat i D2 ile).
-     simpl nth_derivative in B1, B2.
-     apply (le_trans _ _ _ (mul_le_le_compat_pos (norm_nonneg _) (norm_nonneg _)  B1 B2)).
-     Opaque ntimes Init.Nat.mul.
-     rewrite Fi_pbound_spec.
-     simpl.
-     unfold Fi_pbound,Fi_bound.
-     simpl.
-     ring_simplify.
-     rewrite mulC.
-     rewrite !(mulA (npow R _)).
-     apply mul_le_compat_pos;try (apply npow_pos;auto).
-     replace (n+1+1)%nat with (n+2)%nat by lia.
-     rewrite !(mulC _ (npow M _)).
-     apply mul_le_compat_pos;try (apply npow_pos;auto).
-     rewrite !(mulC _ (npow _ _ )).
-     rewrite !mulA.
-     rewrite !fact_invfact.
-     ring_simplify.
-     replace (n+1)%nat with (S n) by lia.
-     simpl.
-     rewrite (mulA (1+1)).
-     rewrite (mulC (1+1)).
-     rewrite !mulA.
-     apply mul_le_compat_pos.
-     apply npow_pos;auto; try apply lt_0_2.
-
-     Transparent ntimes.
-     simpl.
-     rewrite ntimes_twice.
-     rewrite !(mulC [n]!).
-     rewrite <-!mulA.
-     rewrite !(mulC _ [n]!).
-     apply mul_le_compat_pos;try apply fact_pos.
-     simpl in *.
-     rewrite (mulC _ (1+1)), distrL.
-     apply le_plus_compat.
-     rewrite mul1.
-     rewrite <-add0 at 1.
-     rewrite addC.
-     apply le_plus_compat.
-     apply le_0_1.
-  -  destruct (nth_derivative_S_prod_at f g x0 i k D3 D1 D2) as [D1' [D2' Heq]].
-     rewrite Heq.
-     
-End  Bounds.
-(*   Open Scope fun_scope. *)
-(*   Context `{AbstractFunction }. *)
-(*   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}. *)
-(*   Context {d : nat} (f : A{d;d})  (y0 : A{d;0%nat}) (dom_f : y0 \in_dom f). *)
-(*   Context `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}. *)
-(*   Context `{normed : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}. *)
-(*   Add Ring TRing: (ComRingTheory (A := (A {d;0%nat}))). *)
-(*   Lemma ivp_poly_diff n (t : A {d;0%nat}) : eval_poly (ivp_taylor_poly f y0 dom_f (S n)) t  == eval_poly (ivp_taylor_poly f y0 dom_f n) t + ivp_solution_taylor f y0 dom_f (S n) * npow t (S n). *)
-(*   Proof. *)
-(*     induction n. *)
-(*     simpl eval_poly. *)
-(*     simpl npow. *)
-(*     ring_simplify;reflexivity. *)
-(*     rewrite eval_eval2 at 1. *)
-(*     simpl eval_poly2 at 1. *)
-(*     rewrite eval_poly2_app1. *)
-(*     rewrite app_length. *)
-(*     rewrite ivp_taylor_poly_length. *)
-(*     simpl length. *)
-(*     ring_simplify. *)
-(*     replace (S n + 1)%nat with (S (S n)) by lia. *)
-(*     apply ring_eq_plus_eq; [reflexivity|]. *)
-(*     rewrite eval_poly2_app1. *)
-(*     rewrite <-eval_eval2. *)
-(*     rewrite IHn. *)
-(*     ring_simplify. *)
-(*     rewrite ivp_taylor_poly_length. *)
-(*     reflexivity. *)
-(*   Qed. *)
-(* End Bounds. *)
-
-  (* Notation "![ n ]" := (inv_factorial n). *)
-  
-  
-(* Section PolynomialModel. *)
-(*   Open Scope fun_scope. *)
-(*   Context `{AbstractFunction }. *)
-(*   Context `{TotallyOrderedField (A := (A 0%nat)) (H := (H 0%nat)) (R_rawRing := (H0 0%nat)) (R_semiRing := (H1 0%nat))}. *)
-(*   Context `{normed : (NormedSemiRing (A 0) (A 0) (H := (H 0)) (H0 := (H 0)) (R_rawRing := (H0 0%nat)) (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}. *)
-(*   Notation "| x |" := (norm x) (at level 10). *)
-(*   Notation "y \_ i" := (tuple_nth i y 0) (at level 1). *)
-
-(*   Definition in_box {d} (c : A{d;0%nat})  r   (x : A{d;0%nat}) := forall i, | x\_i - c\_i | <= r. *)
-
-(*   Notation "x \in B( c , r )" := (in_box c r x) (at level 4). *)
-(*   Context {d : nat} (f : A{d;d})  (y0 : A{d;0%nat}) (r : A 0) (dom_f :forall x,  x \in B(y0,r) -> x \in_dom f). *)
-(*    Context (r_nonneg : 0 <= r). *)
-(*    Lemma int_dom_D n  x (Hx : x \in B(y0, r)) : x \in_dom (IVP_D f n). *)
-(*   Proof. *)
-(*     apply dom_D. *)
-(*     apply dom_f. *)
-(*     exact Hx. *)
-(*   Qed. *)
-
-(*   Lemma y0_in_dom : y0 \in_dom f. *)
-(*   Proof. *)
-(*     apply dom_f. *)
-(*     intros i. *)
-(*     setoid_replace (y0\_i - y0\_i) with (0 : A 0). *)
-(*     rewrite (proj2 (norm_zero 0));auto;reflexivity. *)
-(*     unfold minus. *)
-(*     rewrite addI;reflexivity. *)
-(*   Qed. *)
-
-(*   Context (bound : nat -> (A 0)) (bound_pos : forall n, 0 <= bound n /\ not (bound n == 0)) (bound_spec : forall n x (Hx : x \in B(y0, r)),  ![n] ** ((IVP_D f n) @ (x;(int_dom_D n x Hx)))  \in B(0,(bound n))). *)
-
-(*   (* Definition IVP_solution_approx  (n : nat): AbstractPolynomialModel (A := A 0) (d:=d). *) *)
-(*   (* Proof. *) *)
-(*   (*   constructor. *) *)
-(*   (*   apply (ivp_taylor_poly f y0 y0_in_dom n). *) *)
-(*   (*   destruct (bound_pos 1). *) *)
-(*   (*   apply (r *  inv H8). *) *)
-(*   (*   apply  *) *)
-(*   (* Definition T_y (i n : nat) H := ![n] * ((nth_derivative y n) @ (0;H)\_i). *) *)
-
-(*   (* Definition taylor_polynomial  *) *)
-(*   (* Context (y_dom : forall x, x \in B(0, r) -> x \in_dom y). *) *)
-(*   (* Context (taylor_theorem : forall n t i x (domx : x \in B(0,r)), | [y](t;Dy)\_i - ![n]* [n_derivative y n](0;y_dom domx) | <= ). *) *)
-(* End PolynomialModel. *)
+End Analytic.

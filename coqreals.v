@@ -12,6 +12,7 @@ Require Import tuple.
 Require Import Psatz.
 Require Import List.
 Require Import examples.
+Require Import ConstructiveAbs.
 Import ListNotations.
 Section ConstructiveReals.
   Context {R : ConstructiveReals}.
@@ -163,6 +164,26 @@ Defined.
     lia.
   Defined.
 
+  Lemma CRabs_zero x :   CRabs R x == zero <-> x == zero.
+  Proof.
+  Admitted.
+
+  #[global] Instance R_norm : NormedSemiRing (A := CRcarrier R) (B := CRcarrier R) (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_totalOrder). 
+  Proof.
+    exists (CRabs R).
+    intros.
+    apply ConstructiveAbs.CRabs_morph_prop_Proper.
+    intros.
+    apply CRabs_pos.
+    intros.
+    apply CRabs_zero.
+    intros.
+    apply CRabs_triang.
+    intros.
+    simpl.
+    rewrite CRabs_mult.
+    apply CRle_refl.
+  Defined.
   Open Scope algebra_scope.
   Open Scope fun_scope.
 
@@ -176,65 +197,6 @@ Defined.
  Definition exp_series := PIVP_T (tuple_cons p1 nil_tuple) (tuple_cons 1 nil_tuple). 
 End ConstructiveReals.
 
-From Coq.Reals Require Import ConstructiveCauchyReals.
-From Coq.Reals.Cauchy Require Import ConstructiveRcomplete.
-Require Import QArith.
-Require Import Qpower.
-Require Import Qabs.
-Require Import Qround.
-Open Scope fun_scope.
-Open Scope Q_scope.
-Locate "_ # _".
-  Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
-  Definition minus1_poly : (@mpoly (CRcarrier CRealConstructive) 2).
-  Proof.
-    apply [[];[inject_Q (q (-1) 1)]].
-  Defined.
-
-  
-  Definition RQ := CRcarrier CRealConstructive.
-  Definition sin_cos_taylor  := IVP_taylor (A := @mpoly RQ ) sin_cos_ivp.
-
-  Definition vdp_taylor  := IVP_taylor (A := @mpoly RQ) (vdp_ivp (inject_Q (q 1  10))).
-
-  Definition eval_tuple_poly {d} (p : (@poly (tuple d (@mpoly (CRcarrier CRealConstructive) 0)))) (t : CReal)  : list Q.
-  Proof.
-    pose proof (seq_to_tuple (fun n => t) d (def := t)).
-    destruct X.
-    pose proof (eval_poly p x).
-    destruct X.
-    apply (map (fun a => seq a 10) x0).
-  Defined.
-
-  Definition t0 := (t(inject_Q 3;inject_Q 1) : (tuple 2 RQ)).
-  Definition t1 := (t(inject_Q 3;inject_Q 1;inject_Q 2) : (tuple 3 RQ)).
-  Definition poly2 := const_to_mpoly 3 (inject_Q 3).
-  Check poly2.
-  Definition ppoly2 : (tuple 3 CReal {x^3}) := t(poly2;poly2;poly2).
-  Lemma a : t0  \in_dom minus1_poly. 
-  Proof.
-    apply poly_total.
-  Qed.
-
-  Definition norm_poly := (poly_normt (sin_cos_ivp (A:=@mpoly RQ)).(f)).
-  Eval vm_compute in (seq (norm_poly) 4).
-  Definition eval1 := (minus1_poly @ (t0;a)).
-  Definition eval_s := (sin_cos_ivp (A:=@mpoly RQ)).(f) @ (sin_cos_ivp.(y0);sin_cos_ivp.(in_dom)).
-  Eval vm_compute in  (eval_tuple_poly (vdp_taylor 1) (inject_Q (q 2 10))).
-
-  Lemma ab : t1  \in_dom ppoly2.
-  Proof.
-    apply poly_total.
-  Qed.
-  Definition eval0 := poly2 @ (t1;ab).
-
-  
-  Definition eval_s := (sin_cos_ivp (A:=@mpoly RQ)).(f) @ (sin_cos_ivp.(y0);sin_cos_ivp.(in_dom)).
-  Definition eval_t := (tan_ivp (A:=@mpoly RQ)).(f) @ (tan_ivp.(y0);tan_ivp.(in_dom)).
-  Definition eval1 := (minus1_poly @ (t0;a)).
-  Definition aa := (tuple_nth 0%nat eval_t (inject_Q 0)).
-   
-  
 
 
 

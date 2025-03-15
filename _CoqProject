@@ -7,4 +7,6 @@ powerseries.v
 polynomial.v
 abstractpowerseries.v
 ode.v
+odebounds.v
+coqreals.v
 examples.v

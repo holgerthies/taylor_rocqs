@@ -118,8 +118,22 @@ Section TaylorSequence.
     apply IHn;lia.
   Qed.
 
+  Lemma dom_Fi : forall n i, i<d -> y0 \in_dom (Fi f n i).
+  Proof.
+    intros.
+    induction n.
+    simpl.
+    apply dom_id.
+    destruct d; try lia.
+    apply dom_sum;intros.
+    apply dom_mult.
+    apply dom_f;lia.
+    apply dom_diff.
+    apply IHn.
+  Qed.
   Definition ivp_solution_taylor (n : nat) : (A 0)^d  := ![n] ** ((F f n) @ (y0; (dom_F n))).
 
+  Definition ivp_solution_taylor_i (n : nat) i (ile : i < d) : (A 0)  := ![n] * ((Fi f n i) @ (y0; (dom_Fi n i ile))).
   Definition is_IVP_solution (y : (A 1)^d) (Hy : (0 : (A 0)^1) \in_dom y) := ODE_solution f y  /\ y @ (0;Hy) == y0.
 
   Lemma  is_IVP_solution_deriv_dom {y Hy}: is_IVP_solution y Hy -> forall n, (0 : (A 0)^1) \in_dom (nth_derivative 0 y n). 
@@ -540,7 +554,4 @@ Section IVP_Record.
       y0 : (A 0)^d;
       in_dom : y0 \in_dom f
     }.
-
-  Definition IVP_taylor {d} (ivp : @IVP d) := ivp_taylor_poly ivp.(f) ivp.(y0) ivp.(in_dom). 
-
 End IVP_Record.
