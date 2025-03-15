@@ -93,6 +93,7 @@ Section ODE_basic.
      reflexivity.
   Qed.
 
+
 End ODE_basic.
 
 Open Scope fun_scope.
@@ -529,3 +530,17 @@ End PowerSeriesSolution.
 (*     Qed. *)
 (* End Taylorindex. *)
 
+
+Section IVP_Record.
+  Open Scope fun_scope.
+  Context `{AbstractFunctionSpace }.
+  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+  Record IVP {d} := {
+      f : (A d)^d;
+      y0 : (A 0)^d;
+      in_dom : y0 \in_dom f
+    }.
+
+  Definition IVP_taylor {d} (ivp : @IVP d) := ivp_taylor_poly ivp.(f) ivp.(y0) ivp.(in_dom). 
+
+End IVP_Record.

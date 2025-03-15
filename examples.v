@@ -3,6 +3,7 @@ Require Import Psatz.
 Require Import tuple.
 Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
+Require Import combinatorics.
 Section IVP_Examples.
   Open Scope fun_scope.
   Context `{AbstractFunctionSpace }.

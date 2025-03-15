@@ -1035,7 +1035,110 @@ Section Bounded_PS.
        apply ntimes_nonneg.
        apply le_0_1.
    Qed.
+
  End Bounded_PS. 
+
+Section Modulus.
+  Context `{AbstractPowerSeries}.
+  Context `{TotallyOrderedField (A := A) (H := _) (R_rawRing := _)}.
+ Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
+  Context `{norm_abs : forall x, 0 <= x -> norm x == x}.
+  Add Ring TRing: (ComRingTheory (A := A)). 
+
+ Definition fast_cauchy_neighboring (a : nat -> A) := forall n, norm (a (S n) - a n) <= npow inv2 (S n).
+
+    Definition partial_sum (a : nat^1 -> A) (x : A) (N : nat) := sum (fun n => a t(n) * npow x n) N.
+
+    Lemma partial_sum_neighboring (a : nat^1 -> A) (x : A) (N : nat) : norm (partial_sum a x (S N) - partial_sum a x N) == norm (a t(N) * npow x N).
+    Proof.
+      unfold partial_sum.
+      rewrite sum_S.
+      apply norm_proper.
+      ring.
+   Qed.
+      
+    Lemma npow_norm_le x n : norm (npow x n) <= npow (norm x) n.
+    Proof.
+      induction n.
+      simpl.
+      rewrite norm_abs; try reflexivity;try apply le_0_1; try apply le_refl.
+      simpl.
+      apply (le_trans _ _ _ (norm_mult _ _)).
+      apply mul_le_compat_pos; try apply norm_nonneg.
+      apply IHn.
+    Qed.
+
+    Lemma npow_monotone x y n : (0 <= x) -> (x <= y) -> npow x n <= npow y n.
+    Proof.
+      intros.
+      induction n.
+      simpl.
+      apply le_refl.
+      simpl.
+      apply mul_le_le_compat_pos;auto.
+      apply npow_pos;auto.
+    Qed.
+
+    Lemma inv2_pos : 0 <= inv2.
+    Admitted.
+
+    Lemma npow1 x n : x == 1 -> npow x n == 1.
+    Proof.
+      intros.
+    Admitted.
+
+    Lemma ps_modulus_helper x r n m :  norm x <= r -> norm (npow x (n + m)) <= npow r n * npow r m. 
+    Proof.   
+      intros.
+      rewrite npow_plus.
+      apply (le_trans _ _ _ (norm_mult _ _)).
+      apply mul_le_le_compat_pos; try apply norm_nonneg;apply (le_trans _ _ _ (npow_norm_le _ _)).
+      apply npow_monotone; try apply norm_nonneg;auto.
+      apply npow_monotone; try apply norm_nonneg;auto.
+    Qed.
+
+    Lemma bounded_ps_modulus  (a : nat^1 -> A) (M r : A) invr logM x: (r * invr == 1) -> (M <= npow (#2) logM) ->  norm x <= inv2 * invr -> (mps_bound a (a_bound_series M r)) -> fast_cauchy_neighboring (fun n => (partial_sum a x) (n+1+logM)%nat). 
+    Proof.
+      intros.
+      unfold fast_cauchy_neighboring.
+      intros.
+      replace ((S n + 1) + logM)%nat with (S (n+1+logM))%nat by lia.
+      rewrite partial_sum_neighboring.
+      apply (le_trans _ _ _ (norm_mult _ _)).
+      rewrite mulC.
+        
+      apply (le_trans _ _ _ (mul_le_compat_pos (norm_nonneg _) (H9 _))).
+      rewrite mulC.
+      pose proof (bound_nonneg a (a_bound_series M r) H9).
+      apply  (le_trans _ _ _ (mul_le_compat_pos  (H10 _) (ps_modulus_helper _ _ _ logM H8))).
+      unfold a_bound_series.
+      rewrite order1d.
+      rewrite to_ps_simpl.
+      rewrite !npow_mult.
+      ring_simplify.
+      setoid_replace (M * npow r (n + 1 + logM) * npow inv2 (n+1) * npow invr (n+1) * npow inv2 logM *npow invr logM) with ((npow inv2 (n+1)) * (M * npow inv2 logM) * ( npow r (n+1+logM) * npow invr (n+1) * npow invr logM)) by ring.
+      rewrite (npow_plus r).
+      setoid_replace  (npow r (n + 1) * npow r logM * npow invr (n + 1) * npow invr logM)  with ((npow r (n+1) * npow invr (n+1)) * ((npow r logM) * (npow invr logM))) by ring.
+      rewrite <-!npow_mult.
+      setoid_replace ((npow (r * invr) (n + 1))) with 1 by apply npow1;auto.
+      setoid_replace ((npow (r * invr) (logM))) with 1 by apply npow1;auto.
+      ring_simplify.
+      replace (n+1)%nat with (S n) by lia.
+      setoid_replace ( npow inv2 (S n)) with ( npow inv2 (S n) * 1) at 2 by ring.
+      rewrite mulA.
+      apply mul_le_compat_pos.
+      apply npow_pos.
+      apply inv2_pos.
+      rewrite mulC.
+      apply (le_trans _ _ _ (mul_le_compat_pos (npow_pos _ _ (inv2_pos)) H7)).
+      rewrite mulC.
+      rewrite <-npow_mult.
+      unfold inv2.
+      apply le_eq.
+      apply npow1.
+      apply inv_Sn_spec.
+   Qed.
+End Modulus.
 
   Context `{TotallyOrderedField}.
  Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
@@ -1552,19 +1655,6 @@ End  Bounds.
 (*     reflexivity. *)
 (*   Qed. *)
 (* End Bounds. *)
-Section IVP_Record.
-  Open Scope fun_scope.
-  Context `{AbstractFunctionSpace }.
-  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
-  Record IVP {d} := {
-      f : (A d)^d;
-      y0 : (A 0)^d;
-      in_dom : y0 \in_dom f
-    }.
-
-  Definition IVP_taylor {d} (ivp : @IVP d) := ivp_taylor_poly ivp.(f) ivp.(y0) ivp.(in_dom). 
-
-End IVP_Record.
 
   (* Notation "![ n ]" := (inv_factorial n). *)
   

@@ -7,6 +7,7 @@ Require Import algebra.
 Require Import functions.
 Require Import List.
 Require Import tuple.
+Require Import combinatorics.
 Import ListNotations.
  #[global] Instance list_A_setoid {A} {A_setoid : Setoid A} : Setoid (list A).
  Proof.
@@ -1720,134 +1721,35 @@ Defined.
 
 End Evaluation.
 
-(* Section DifferentialAlgebra. *)
+Section Bounds.
+  Context `{TotallyOrderedField}.
+ Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
 
-(*   Context  `{KV_DA : differentialAlgebra}. *)
+ (* Fixpoint poly_norm {d} (p : A{x^d}) := *)
+ (*   match d with *)
+ (*     | 0 => 0 *)
+ (*   | (S n) => match p with *)
+ (*             | nil => 0 *)
+ (*             | hd :: tl => poly_norm hd + poly_norm tl *)
+ (*             end *)
+ (*     end. *)
+                     
+ Definition poly_norm {d} (p : A{x^d}) : A.
+ Proof.
+   induction d.
+   apply (norm p).
+   induction p.
+   apply 0.
+   apply ((IHd a) + IHp).
+ Defined.
+ Lemma poly_bound_spec {d} (p : A{x^d}) (k : nat^d) : ((derive_rec p k) @ (0; (poly_total (derive_rec p k) 0))) <= t[k]! * poly_norm p.
+ Admitted.
 
-(*   Add Ring RRing: (ComSemiRingTheory (A:=V)). *)
-(*   Add Ring KRing: (ComRingTheory (A:=K)). *)
-(*   Lemma PolyDifferentialAlgebra : differentialAlgebra (K:=K) (V:=(@poly V) ). *)
-(*   Proof. *)
-(*   exists (fun x (v : (@poly V)) => map (fun y =>  x [*] y) v). *)
-(*   - intros. *)
-(*     apply (nth_ext_A _ _ 0 0). *)
-(*     rewrite map_length;auto. *)
-(*     intros. *)
-(*     rewrite nth_proper;[|symmetry;apply smult1]. *)
-(*     rewrite map_nth. *)
-(*     rewrite !smult1;reflexivity. *)
-(*  - intros a b  H1 c d H2. *)
-(*    apply (nth_ext_A _ _ 0 0). *)
-(*    rewrite !map_length. *)
-(*    apply (@eqlistA_length V SetoidClass.equiv). *)
-(*    apply H2. *)
-(*    intros. *)
-(*    rewrite (nth_indep _ 0 (a [*] 0));auto. *)
-(*    rewrite (nth_indep _ 0 (b [*] 0));[|rewrite !map_length in *]. *)
-(*    rewrite !map_nth. *)
-(*    rewrite H1. *)
-(*    rewrite nth_proper_list; try apply H2. *)
-(*    reflexivity. *)
-(*    replace (length d) with (length c); auto. *)
-(*    apply (@eqlistA_length V SetoidClass.equiv). *)
-(*    apply H2. *)
-(*  - intros. *)
-(*     apply (nth_ext_A _ _ 0 0). *)
-(*     simpl;rewrite !length_sum_coefficients,!map_length,length_sum_coefficients;auto. *)
-(*     intros. *)
-(*     rewrite (nth_indep _ 0 (a [*] 0));auto. *)
-(*     simpl;rewrite !map_nth, !sum_coefficient_nth;simpl. *)
-(*     rewrite (nth_proper n (map _ u)); try (symmetry;apply (smult_zero a)). *)
-(*     rewrite (nth_proper n (map _ v)); try (symmetry;apply (smult_zero a)). *)
-(*     rewrite !map_nth. *)
-(*     rewrite smult_plus_distr. *)
-(*     ring. *)
-(*   - intros. *)
-(*     apply (nth_ext_A _ _ 0 0). *)
-(*     simpl;rewrite !length_sum_coefficients,!map_length;lia. *)
-(*     intros. *)
-(*     simpl;rewrite sum_coefficient_nth. *)
-(*     rewrite (nth_proper n); try (symmetry;apply (smult_zero (a+b))). *)
-(*     rewrite (nth_proper n (map (fun y => a [*] _) _)); try (symmetry;apply (smult_zero a)). *)
-(*     rewrite (nth_proper n (map (fun y => b [*] _) _)); try (symmetry;apply (smult_zero b)). *)
-(*     rewrite !map_nth. *)
-(*     apply splus_mult_dist. *)
-(*   - intros. *)
-(*     rewrite map_map. *)
-(*     apply (nth_ext_A _ _ 0 0). *)
-(*     rewrite !map_length;auto. *)
-(*     intros. *)
-(*     rewrite (nth_proper n (map (fun y => (a * b) [*] _) _)); try (symmetry;apply (smult_zero (a * b))). *)
-(*     rewrite !map_nth. *)
-(*     pose proof (map_nth (fun x => a [*] (b [*] x)) v 0 n). *)
-(*     simpl in H2. *)
-(*     rewrite (nth_indep _ _ ((fun x => a [*] (b [*] x)) 0));auto. *)
-(*     rewrite H2. *)
-(*     rewrite smult_mult_compat. *)
-(*     ring. *)
-(*  Defined. *)
-
-(*  Lemma poly_antideriv_exists (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) (p : (@poly V)) :  {P : (@poly V) | length P = (length p + 1)%nat /\ forall n,  nth (S n) P 0 == (inv (char0 n)) [*] (nth n p 0)}. *)
-(*  Proof. *)
-(*    induction p using poly_rev_ind. *)
-(*    - exists [0]. *)
-(*      split;[simpl;lia|]. *)
-(*      intros. *)
-(*      rewrite !nth_overflow; simpl;try lia. *)
-(*      rewrite smult_zero;reflexivity. *)
-(*   - destruct IHp as [P0 [L H1]]. *)
-(*     exists (P0 ++ [(inv (char0 (length p))) [*] x]). *)
-(*     split;[rewrite !app_length;simpl;lia|]. *)
-(*     intros. *)
-(*     destruct (Nat.lt_total (S n) (length P0)) as [N | [N | N]]. *)
-(*     rewrite !app_nth1; auto;try lia;apply H2. *)
-(*     rewrite !app_nth2;try lia. *)
-(*     rewrite N at 1. *)
-(*     replace (length P0 - length P0)%nat with 0%nat by lia. *)
-(*     replace (length p) with n by lia. *)
-(*     replace (n - n)%nat with 0%nat by lia. *)
-(*     simpl;reflexivity. *)
-(*     rewrite !nth_overflow;try (rewrite app_length;simpl;lia). *)
-(*     rewrite smult_zero;reflexivity. *)
-(*  Defined. *)
-
-(*  Definition antiderive_poly (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K))))) p := proj1_sig (poly_antideriv_exists char0 p). *)
-
-(*   Lemma ntimes_smult n (x : K) y : ntimes n (x [*] y) == x [*] (ntimes n y). *)
-(*   Proof. *)
-(*     induction n;simpl. *)
-(*     rewrite smult_zero;reflexivity. *)
-(*     rewrite IHn. *)
-(*     rewrite smult_plus_distr;reflexivity. *)
-(*   Qed. *)
-
-(*   Lemma ntimes_VK n y : ntimes (S n) y == (ntimes (S n) (1 : K)) [*] y. *)
-(*   Proof. *)
-(*     induction n;simpl. *)
-(*     rewrite !add0. *)
-(*     rewrite smult1;reflexivity. *)
-(*     rewrite !splus_mult_dist. *)
-(*     rewrite IHn;simpl. *)
-(*     rewrite !splus_mult_dist. *)
-(*     rewrite !smult1. *)
-(*     reflexivity. *)
-(*   Defined. *)
-
-(*  Lemma antiderive_derive (char0 : (forall n, (not (ntimes (S n) 1 == (0 : K) )))) p : derive_poly (antiderive_poly char0 p) == p. *)
-(*  Proof. *)
-(*    unfold derive_poly, antiderive_poly. *)
-(*    destruct (poly_antideriv_exists char0 p) as [P [LP HP]]. *)
-(*    simpl. *)
-(*    destruct (poly_deriv_exists P) as [P' [LP' HP']]. *)
-(*    simpl. *)
-(*    apply (nth_ext_A _ _ 0 0). *)
-(*    simpl;rewrite LP', LP;lia. *)
-(*    intros. *)
-(*    rewrite HP', HP. *)
-(*    rewrite ntimes_smult. *)
-(*    rewrite ntimes_VK. *)
-(*    rewrite smult_mult_compat. *)
-(*    rewrite mulI. *)
-(*    rewrite smult1;reflexivity. *)
-(*  Qed. *)
-(* End DifferentialAlgebra. *)
+ Definition poly_normt {d} {e} (p : A{x^d}^e) : A.
+ Proof.
+   induction e.
+   apply 0.
+   destruct (destruct_tuple_cons p) as [p0 [tl P]].
+   apply ((poly_norm p0) + (IHe tl)).
+ Defined.
+End Bounds.

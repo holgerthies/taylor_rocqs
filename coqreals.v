@@ -1,3 +1,4 @@
+Require Import combinatorics.
 Require Import Coq.Reals.Abstract.ConstructiveReals.
 Require Import algebra.
 Require Import polynomial.
@@ -182,17 +183,19 @@ Require Import Qpower.
 Require Import Qabs.
 Require Import Qround.
 Open Scope fun_scope.
-
+Open Scope Q_scope.
+Locate "_ # _".
+  Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
   Definition minus1_poly : (@mpoly (CRcarrier CRealConstructive) 2).
   Proof.
-    apply [[];[inject_Q (-1#1)]].
+    apply [[];[inject_Q (q (-1) 1)]].
   Defined.
 
   
   Definition RQ := CRcarrier CRealConstructive.
   Definition sin_cos_taylor  := IVP_taylor (A := @mpoly RQ ) sin_cos_ivp.
 
-  Definition vdp_taylor  := IVP_taylor (A := @mpoly RQ) (vdp_ivp (inject_Q (1 # 10))).
+  Definition vdp_taylor  := IVP_taylor (A := @mpoly RQ) (vdp_ivp (inject_Q (q 1  10))).
 
   Definition eval_tuple_poly {d} (p : (@poly (tuple d (@mpoly (CRcarrier CRealConstructive) 0)))) (t : CReal)  : list Q.
   Proof.
@@ -213,9 +216,12 @@ Open Scope fun_scope.
     apply poly_total.
   Qed.
 
+  Definition norm_poly := (poly_normt (sin_cos_ivp (A:=@mpoly RQ)).(f)).
+  Eval vm_compute in (seq (norm_poly) 4).
   Definition eval1 := (minus1_poly @ (t0;a)).
   Definition eval_s := (sin_cos_ivp (A:=@mpoly RQ)).(f) @ (sin_cos_ivp.(y0);sin_cos_ivp.(in_dom)).
-  Eval vm_compute in  (eval_tuple_poly (vdp_taylor 5) (inject_Q ( 2 # 10))).
+  Eval vm_compute in  (eval_tuple_poly (vdp_taylor 1) (inject_Q (q 2 10))).
+
   Lemma ab : t1  \in_dom ppoly2.
   Proof.
     apply poly_total.
