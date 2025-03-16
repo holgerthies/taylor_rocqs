@@ -15,6 +15,7 @@ Section Evaluation.
       eval f x (P : in_domain f x) :  C;
       in_domain_proper  :: Proper (equiv ==> equiv ==> equiv) in_domain;
       eval_proper  : forall f1 f2 x1 x2 P1 P2, f1 == f2 -> x1 == x2 -> eval f1 x1 P1 == eval f2 x2 P2;
+      eval_0  (x : B) P : eval 0 x P == 0;
       dom_plus (f g : A) (x : B) : in_domain f x -> in_domain g x  -> in_domain (f+g) x;
       eval_plus_compat (f g : A) (x : B) P1 P2 P3: eval (f + g) x P3  == eval f x P1 +  eval g x P2;
       dom_mult  (f g : A) (x : B) : in_domain f x -> in_domain g x -> in_domain (f*g) x;
@@ -227,11 +228,26 @@ Definition evalt {d}  (f : A^d) (x : B) (P : in_domaint f x) : C^d.
       rewrite (eval_proper _ _ x x (P3 i H6) H8 H7);try reflexivity.
       rewrite eval_plus_compat; try reflexivity.
     Qed.
+
+    Lemma meval_0 {n}  (x : B) P : evalt (d := n) 0 x P  == 0.
+    Proof.
+      apply (tuple_nth_ext' _ _ 0 0).
+      intros.
+      rewrite !(evalt_spec _ _ _ _ H6).
+      rewrite !vec0_nth.
+      assert ((0 : A^n)\_i == 0) by (rewrite vec0_nth;reflexivity).
+      destruct (eval_change_f _ _ _ (P i H6) H7).
+      rewrite H8.
+      apply eval_0.
+    Qed.
+
   #[global] Instance HasMultiEval {d} : (HasEvaluation (A := (A ^ d)) (B:=B) (C := (C^d))).
   Proof.
     exists (in_domaint ) evalt.
     - apply in_domt_proper.
     - apply meval_proper.
+    - intros.
+      apply meval_0.
     - intros.
       intros i n.
       rewrite vec_plus_spec;auto.
@@ -369,83 +385,3 @@ End AbstractFunctionTheory.
 Infix "[*]" := scalar_multf (at level 2).
 Infix "[+]" := scalar_addf (at level 2).
 
-
-(* Section Interval. *)
-(*   Context `{K : Type}. *)
-(*   Context `{ofieldK : TotallyOrderedField K}. *)
-(*   Context `{normK : (NormedSemiRing K K (H := H) (H0 := H) (R_rawRing := R_rawRing) (R_rawRing0 := R_rawRing) (R_TotalOrder := R_TotalOrder))}. *)
-
-(*   Add Ring TRing: ComRingTheory. *)
-(*   Definition cinterval := (K * K)%type. *)
-(*   Definition in_cinterval x i := (normK.(norm) (x-(fst i))) <= snd i. *)
-(*   Definition in_cintervalt {n} (x : @tuple n K) (i : @tuple n cinterval) : Prop. *)
-(*   Proof. *)
-(*     induction n. *)
-(*     apply True. *)
-(*     destruct (destruct_tuple x) as [x0 [xt P1]]. *)
-(*     destruct (destruct_tuple i) as [i0 [it P2]]. *)
-(*     apply ((in_cinterval x0 i0) /\ (IHn xt it)). *)
-(*   Defined. *)
-(* End Interval. *)
-  (* Class differentialRing `{R_semiRing : comSemiRing} := *)
-  (*   { *)
-  (*   derivation : A -> A; *)
-  (*   derivation_plus : forall r1 r2, derivation (add r1 r2) == add (derivation r1) (derivation r2); *)
-  (*   derivation_mult : forall r1 r2, derivation (mul r1 r2) == add (mul r2 (derivation r1)) (mul r1  (derivation r2)); *)
-  (*   derivation_proper :> Proper (equiv ==> equiv) derivation; *)
-  (*   }. *)
-
-(* Section DifferentialAlgebra. *)
-(*   Context {K V : Type} . *)
-  
-(*   Class differentialAlgebra `{K_field : Field (A := K)} `{R_differentialRing : (differentialRing (A := V))} := { *)
-(*       smult : K -> V -> V; *)
-(*       smult1 : forall v, smult one v == v; *)
-(*       smult_proper :> Proper (equiv ==> equiv ==> equiv) smult; *)
-(*       smult_plus_distr : forall a u v, smult a (u+v) == smult a u + smult a v; *)
-(*       splus_mult_dist : forall a b v, smult (a+b) v == smult a v + smult b v; *)
-(*       smult_mult_compat : forall a b v, smult a (smult b v) == smult (a*b) v *)
-(*     }.  *)
-
-(* End DifferentialAlgebra. *)
-
-(* Local Infix "[*]" := smult (at level 2, left associativity). *)
-
-(* Section DifferentialAlgebraTheory. *)
-(*   Context {K V : Type}  `{DA : differentialAlgebra (K:=K) (V := V)}. *)
-(*   Add Ring RRing: (ComSemiRingTheory (A:=V)). *)
-(*   Add Ring RRing: (ComRingTheory (A:=K)). *)
-(*   Lemma smult_zero  a : a [*] 0 == 0. *)
-(*   Proof. *)
-(*     enough (0 [*] 0 == 0). *)
-(*     rewrite <-H1. *)
-(*     rewrite smult_mult_compat. *)
-(*     setoid_replace (a*0) with (0 : K) by ring;auto. *)
-(*     reflexivity. *)
-(*     pose proof (smult1 0). *)
-(*     rewrite <- H1 at 2. *)
-(*     setoid_replace (1 : K) with (0+1 : K) by ring. *)
-(*     rewrite splus_mult_dist. *)
-(*     rewrite smult1. *)
-(*     rewrite add0;reflexivity. *)
-(*   Qed. *)
-
-(* End DifferentialAlgebraTheory. *)
-Section AbstractPowerseries.
-  Context `{SemiRing}.
-  Context `{CompositionalDiffAlgebra (A := (fun d => (nat^d -> A)))}.
-  Class AbstractPowerseries := {
-      ps_property {d} : forall (a : (nat^d -> A)) (k j : nat^d), derive_rec a k j == a (k+j);
-    }.
-End AbstractPowerseries.
-Section Analytic.
-
-Context `{AbstractFunctionSpace} {d e : nat} {f : (A d)^e} {x0 : (A 0%nat)^d} {dom : x0 \in_dom f}.
-Context `{TotallyOrderedField (A := (A 0)) (H:=(H 0)) (R_rawRing := (H0 0)) (R_semiRing := (H1 0))}.
- Context `{normK : (NormedSemiRing ((A 0)^e) (A 0)  (H0 := (H 0))  (R_rawRing0 := (H0 0%nat)) (R_TotalOrder := R_TotalOrder))}. 
-Class Analytic := {
-    M : (A 0);
-    R : (A 0);
-    derivative_bound : forall n i, (i < d) -> norm ((nth_derivative i f n) @ (x0; (nth_derivative_dom f x0 n i dom))) <= M * npow R n
-  }.
-End Analytic.

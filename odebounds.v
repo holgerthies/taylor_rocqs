@@ -1228,14 +1228,34 @@ Section Analytic.
 
   Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) H9 H10 H11 H12 invSn d  (f_to_ps F).
 
-  Lemma eval_sum_compat f N : (sum f N){y0} == (sum (fun n => (f n){y0}) N).
-  Admitted.
+  Lemma eval_sum_compat f N :  (sum f N){y0} == (sum (fun n => (f n){y0}) N).
+  Proof.  
+   intros.
+   unfold eval0.
+   induction N.
+   apply eval_0.
+   rewrite functions.eval_proper; try apply sum_S; try reflexivity.
+   rewrite sum_S.
+   rewrite <-IHN;try lia.
+   rewrite eval_plus_compat.
+   reflexivity.
+   Unshelve.
+   apply in_dom.
+  Qed.
 
   Lemma eval_mul_compat f g : (f * g){y0} == f{y0} * g{y0}.
-  Admitted.
+  Proof.
+   unfold eval0.
+   apply eval_mult_compat.
+ Qed.
 
   Instance eval0_proper : Proper (SetoidClass.equiv ==> SetoidClass.equiv) eval0.
-  Admitted.
+  Proof.
+    intros a b Heq.
+     unfold eval0.
+     apply functions.eval_proper;auto.
+     reflexivity.
+  Qed.
 
   Lemma fi_to_ps_0 F  i : i < S d -> (fi_to_ps F i 0) == F.(f)\_i{y0}.
   Proof.

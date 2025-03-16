@@ -1645,6 +1645,7 @@ Defined.
     Lemma mpoly_pdiff_chain : forall {m n d} (x : mpoly m) (y : @tuple m (mpoly (S n))), pdiff d (mpoly_composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) m).
     Admitted.
 
+      
   #[global] Instance mpoly_comp_diff_algebra : CompositionalDiffAlgebra (A := (@mpoly A) ).
   Proof.
   exists @mpoly_comp' @poly_comp1;unfold mpoly_comp'.
@@ -1668,6 +1669,7 @@ Section Evaluation.
      intros.
      rewrite H0, H1.
      reflexivity.
+   - apply zero_poly_eval.
    - simpl.
      apply mpoly_add_spec.
     - simpl.
