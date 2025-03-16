@@ -34,7 +34,7 @@ Open Scope algebra_scope.
     constructor;intros;simpl;try lia;intros a b eq c d eq';lia.
   Defined.
 
-  Notation "# n" := (ntimes n 1) (at level 2).
+  Notation "# n" := (ntimes n 1) (at level 2) : algebra_scope.
 (* Results about multiindices (tuples of nat) *)
 Section Multiindex.
 
@@ -422,6 +422,17 @@ Qed.
     rewrite inv_Sn_spec.
     reflexivity.
   Qed.
+
+  Lemma inv_factt0 {d} :  inv_factorialt (d := d) 0 == 1.
+  Proof.
+    induction d.
+    simpl.
+    reflexivity.
+    rewrite vec0_cons.
+    rewrite inv_factt_cons.
+    rewrite IHd.
+    simpl;ring.
+  Qed.
  End factorialTheorems.
 
 Section FactorialOrderTheorems.
@@ -511,4 +522,5 @@ Section EmbedNat.
      rewrite inv_Sn_spec.
      ring.
    Qed.
+   Definition inv2  := inv_Sn 1.
 End EmbedNat.

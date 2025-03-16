@@ -910,5 +910,5 @@ Qed.
 End PartialDiffAlgebraTheory.
 
 
-Infix "\o" := multi_composition (at level 2).
 
+Infix "\o" := multi_composition (at level 2).

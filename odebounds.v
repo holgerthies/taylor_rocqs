@@ -657,7 +657,7 @@ Section Bounds.
 
   Lemma mul_ps_S  (a b : nat^1 -> A) n :  (a*b) t(S n) == (a t(0)) * b t((S n)) + ((coeff_shift1 a) * b) t(n).
   Proof.
-  Admitted.
+  Admitted. 
 
    Lemma fg_bounded (a b : nat^1 -> A ) C1 C2 r n : |a| <= to_ps (f_bound C1 r) -> |b| <= to_ps (g_bound C2 n r )-> |a*b| <= to_ps (fg_bound C1 C2 r n).
    Proof.
@@ -715,7 +715,6 @@ Section Bounds.
       ring.
    Qed.
 
-   Definition inv2  := inv_Sn 1.
    Definition Fn_bound M r n k := npow inv2 n * ![n] * [k+1!2*n]* npow M (n+1) * npow r (n + k).
    Definition DFn_bound M r n k :=  npow (inv2) n * ![n] * [(k+1)!2*n+1]* npow M (n+1) * npow r (n + (k + 1)).
  
@@ -1080,7 +1079,9 @@ Section Modulus.
     Qed.
 
     Lemma inv2_pos : 0 <= inv2.
-    Admitted.
+    Proof.
+      apply inv_Sn_pos.
+    Qed.
 
     Lemma npow1 x n : x == 1 -> npow x n == 1.
     Proof.
@@ -1152,71 +1153,169 @@ Section Modulus.
 
 End Modulus.
 
+Section Reals.
 
+  Class ConstrComplete `{TotallyOrderedField} `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) } `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}:=
+  {
+    has_limit : forall (xn : nat -> A), fast_cauchy_neighboring xn -> { x | forall n, norm (x - xn n) <= npow inv2 n}
+  }.
+
+End Reals.
 Section Analytic.
 
   Open Scope fun_scope.
   Context `{AbstractFunctionSpace }.
 
+  Context `{ConstrComplete (A := (A 0)) (H := _) (R_rawRing := _) (R_semiRing := _)}.
 
-  Context `{TotallyOrderedField (A := (A 0)) (H := H 0) (R_rawRing := (H0 0)) (R_semiRing := (H1 0)) }.
- Context `{normK : (NormedSemiRing (A 0) (A 0) (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
-  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+
+  Context `{TotallyOrderedField (A := (A 0)) (H := H 0) (R_rawRing := (H0 0)) (R_semiRing := (H1 0)) (A_Ring := _) (R_Field := _) (R_TotalOrder := _)}.
   Context `{CompositionalDiffAlgebra (A := (ps (A := (A 0)))) (H := (ps_set)) }.
-  
-  Context `{@AbstractPowerSeries (A 0) (H 0) (H0 0) H7 H8 H9 H10 invSn}.
+  Context `{@AbstractPowerSeries (A 0) (H 0) (H0 0) H9 H10 H11 H12 invSn}.
 
+   Add Ring KRing: (ComRingTheory (A := (A 0))).
   (* Context `{AbstractPowerseries (A := (A 0)) (H := (H 0))  (H1 := _)   }. *)
   Context `{norm_abs : forall x, 0 <= x -> norm x == x}.
+  Context {d : nat}.
+  Context {y0 : (A 0)^(S d)}.
+  Context {in_dom : forall f, y0 \in_dom f}.
 
-  Record Analytic {d} := {
-      y0 : (A 0)^d;
-      f : (A d)^d;
-      logM : nat;
-      r : (A 0);
-       rgt0 : not (r == 0) /\ (0 <= r); 
-      in_dom : y0 \in_dom f;
-      (* deriv_bound : forall k, (Dx[k] f) @ (y0 ; (dom_D in_dom))\_0 <= t[k]! * M * npow r (order k) *)
+  Definition eval0 f := f @ (y0; in_dom f).
+
+  Notation "f {y0}" := (eval0 f) (at level 2).
+
+  Record Analytic  := {
+      f : (A (S d))^(S d);
+      M : nat;
+      r : nat;
+      deriv_bound : forall (k : nat^d) i , i<(S d) -> ((Dx[k] f)\_i){y0} <= t[k]! * #M * npow #r (order  k) 
     }.
 
-   Lemma deriv_dom {d}  (F : (Analytic (d := d))) i (k : nat^d) : F.(y0) \in_dom (Dx[k] (F.(f)\_i)).
-   Admitted.
+   Definition fi_to_ps (F : Analytic) i (k : nat^(S d)) :=  t![k] * (Dx[k] (F.(f))\_i){y0}.
 
-   Definition fi_to_ps {d} (F : (Analytic ( d := d))) i (k : nat^d) :=  (Dx[k] (F.(f))\_i) @ (F.(y0) ; deriv_dom F i k).
+   Definition f_to_ps  (F : (Analytic))  :=  proj1_sig (seq_to_tuple (fi_to_ps F) (S d) (def := 0)).
 
-   Definition f_to_ps {d} (F : (Analytic ( d := d)))  :=  proj1_sig (seq_to_tuple (fi_to_ps F) d (def := 0)).
-  Definition analytic_solution_ps {d} (F : Analytic) (i : nat) (ile : i < d) (n : nat)  : (A 0)  :=  ivp_solution_taylor_i F.(f) F.(y0) F.(in_dom) n i ile.
+   Lemma f_to_ps_spec F  : forall i, i < (S d) -> (f_to_ps F)\_i = fi_to_ps F i.
+   Proof.
+     intros.
+     unfold f_to_ps.
+     destruct (seq_to_tuple (fi_to_ps F) (S d) (def := 0)).
+     simpl.
+     rewrite e;auto.
+   Qed.
 
-  Definition powerseries_yi {d} (F : Analytic (d := (S d))) := @y_i (A 0) (H 0) (H0 0) H7 H8 H9 _ _ d  (f_to_ps F).
+   Lemma derive_rec_helper0 {n m} (a : A n) i  :  derive_rec_helper i (d := m)  a 0 == a.
+   Proof.
+     revert i.
+     induction m;intros.
+     simpl.
+     reflexivity.
+     simpl.
+     destruct (destruct_tuple_cons 0) as [h0 [tl0 P]].
+     setoid_rewrite vec0_cons in P.
+     apply tuple_cons_ext in P.
+     destruct P as [<- <-].
+     simpl.
+     apply IHm.
+   Qed.
+   Lemma derive_rec_0 {n m} (a : A n)  :  derive_rec (d := m)  a 0 == a.
+   Proof.
+     apply derive_rec_helper0.
+   Qed.
 
-  Lemma y_ps_same {d} (F : Analytic (d:=S d)): forall i (ile : i < S d) k, (0 < k) ->  analytic_solution_ps F i ile k  == powerseries_yi F k i.
+   Definition analytic_solution_ps  (F : Analytic) (i : nat) (n : nat)  : (A 0)  :=  ![n] * (Fi F.(f) n i){y0}.
+
+
+  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) H9 H10 H11 H12 invSn d  (f_to_ps F).
+
+  Lemma eval_sum_compat f N : (sum f N){y0} == (sum (fun n => (f n){y0}) N).
+  Admitted.
+
+  Lemma eval_mul_compat f g : (f * g){y0} == f{y0} * g{y0}.
+  Admitted.
+
+  Instance eval0_proper : Proper (SetoidClass.equiv ==> SetoidClass.equiv) eval0.
+  Admitted.
+
+  Lemma fi_to_ps_0 F  i : i < S d -> (fi_to_ps F i 0) == F.(f)\_i{y0}.
+  Proof.
+    intros.
+    unfold fi_to_ps.
+    rewrite inv_factt0.
+    setoid_rewrite derive_rec_0.
+    ring_simplify.
+    reflexivity.
+  Qed.
+    
+
+  Lemma y_ps_same (F : Analytic): forall i k, (i < S d) -> (0 < k) ->  analytic_solution_ps F i k  == powerseries_yi F k i.
    Proof.  
      intros.
      unfold analytic_solution_ps.
      unfold powerseries_yi.
-     unfold ivp_solution_taylor_i.
-     unfold y_i.
-     apply ring_eq_mult_eq; try reflexivity.
-     induction k; try lia.
-     simpl.
-     
+     pose proof (yi_spec (f := (f_to_ps F)) k 0 i H14).
+     setoid_rewrite yt_spec in H16;auto.
+     rewrite <-H16.
   Admitted.
 
-   Lemma analytic_yi_bound {d} (F : Analytic (d := (S d))) i (Hi : i < S d) n: norm (analytic_solution_ps F i Hi (S n)) <= ntimes (S d) (npow #2 F.(logM))  * npow (#2 * ntimes (S d) (npow #2 F.(logM)) * F.(r)) n.
+   Lemma fast_cauchy_neighboring_proper f g: (forall n, f n == g n) -> fast_cauchy_neighboring f <-> fast_cauchy_neighboring g. 
+   Proof.
+   Admitted.
+
+   Lemma fast_cauchy_neighboring_ps_proper f g x: (forall n, f n == g n) -> fast_cauchy_neighboring (fun n => (partial_sum (to_ps f) x n)) <-> fast_cauchy_neighboring (fun n => (partial_sum (to_ps g) x n)). 
    Proof.
      intros.
-     rewrite y_ps_same;auto;try lia.
-     unfold powerseries_yi.
-     rewrite <-yt_spec;auto.
-     assert (mps_tuple_bound  (f_to_ps F) t( a_bound_series (npow #2 (F.(logM))) F.(r)) \_ 0).
-     {
-       admit.
-     }
-     assert (Mpos : 0 <= npow #2 F.(logM)) by (apply npow_pos;apply ntimes_nonneg;apply le_0_1).
-     pose proof (y_bound (H0 := _) (norm_abs := norm_abs) (Mpos := Mpos) (rpos := (proj2 F.(rgt0))) (f_bounded := H12) (H4 := _) i n Hi);auto.
- Admitted.
-   Definition analytic_yi_M {d} (F: Analytic (d := d)) : (A 0) := ntimes (S d) (npow #2 F.(logM)).
-   Definition analytic_yi_r {d} (F: Analytic (d := d)) := (#2 * ntimes (S d) (npow #2 F.(logM)) * F.(r)).
-    Lemma analytic_yi_modulus_spec {d} (F : Analytic (d := (S d))) i invr logM x: ((analytic_yi_r F) * invr == 1) -> (analytic_yi_M F <= npow (#2) logM) ->  norm x <= (bps_radius invr) -> fast_cauchy_neighboring (fun n => (partial_sum (to_ps (powerseries_yi F i)) x) (bps_modulus logM n)). 
-    Admitted.
+     apply fast_cauchy_neighboring_proper.
+     intros.
+     unfold partial_sum.
+     apply sum_ext.
+     intros.
+     rewrite !to_ps_simpl.
+     rewrite H14.
+     reflexivity.
+   Qed.
+
+   Definition analytic_solution_r F : {ry : nat | #2 * ntimes (S d) #F.(M) * #F.(r) <= #ry }.
+   Admitted.
+
+   Definition analytic_solution_logM (F : Analytic) : {logM : nat | ntimes (S d) #F.(M) <= npow (#2) logM  }.
+   Admitted.
+
+   Definition bound_ps F := (a_bound_series (A := (A 0)) (npow #2 (proj1_sig (analytic_solution_logM F))) #(proj1_sig (analytic_solution_r F))).
+
+   Lemma bound_solution F : forall i, i < (S d) -> (mps_bound (to_ps (analytic_solution_ps F i)) (bound_ps F)).
+   Proof.
+     intros.
+     intros k.
+     setoid_rewrite y_ps_same;auto.
+   Admitted.
+
+
+   Definition analytic_modulus (F : Analytic) (t : (A 0)) i  : i<(S d) -> t <= (inv_Sn (proj1_sig (analytic_solution_r F))) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps (analytic_solution_ps F i)) t ((proj1_sig (analytic_solution_logM F)) + n)).
+   Proof.
+   intros.
+   pose proof (y_ps_same F i ).
+   pose proof (bounded_ps_modulus_spec (norm_abs := norm_abs) (to_ps (fun k => (powerseries_yi F k i)))).
+   (* apply (fast_cauchy_neighboring_ps_proper _ _ _ (y_ps_same)). *)
+  Admitted.
+
+
+   
+ (*   Lemma analytic_yi_bound {d} (F : Analytic (d := (S d))) i (Hi : i < S d) n: norm (analytic_solution_ps F i Hi (S n)) <= ntimes (S d) (npow #2 F.(logM))  * npow (#2 * ntimes (S d) (npow #2 F.(logM)) * F.(r)) n. *)
+ (*   Proof. *)
+ (*     intros. *)
+ (*     rewrite y_ps_same;auto;try lia. *)
+ (*     unfold powerseries_yi. *)
+ (*     rewrite <-yt_spec;auto. *)
+ (*     assert (mps_tuple_bound  (f_to_ps F) t( a_bound_series (npow #2 (F.(logM))) F.(r)) \_ 0). *)
+ (*     { *)
+ (*       admit. *)
+ (*     } *)
+ (*     assert (Mpos : 0 <= npow #2 F.(logM)) by (apply npow_pos;apply ntimes_nonneg;apply le_0_1). *)
+ (*     pose proof (y_bound (H0 := _) (norm_abs := norm_abs) (Mpos := Mpos) (rpos := (proj2 F.(rgt0))) (f_bounded := H12) (H4 := _) i n Hi);auto. *)
+ (* Admitted. *)
+ (*   Definition analytic_yi_M {d} (F: Analytic (d := d)) : (A 0) := ntimes (S d) (npow #2 F.(logM)). *)
+ (*   Definition analytic_yi_r {d} (F: Analytic (d := d)) := (#2 * ntimes (S d) (npow #2 F.(logM)) * F.(r)). *)
+ (*    Lemma analytic_yi_modulus_spec {d} (F : Analytic (d := (S d))) i invr logM x: ((analytic_yi_r F) * invr == 1) -> (analytic_yi_M F <= npow (#2) logM) ->  norm x <= (bps_radius invr) -> fast_cauchy_neighboring (fun n => (partial_sum (to_ps (powerseries_yi F i)) x) (bps_modulus logM n)).  *)
+ (*    Admitted. *)
 End Analytic.

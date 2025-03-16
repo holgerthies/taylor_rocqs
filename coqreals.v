@@ -11,13 +11,16 @@ Require Import tuple.
 
 Require Import Psatz.
 Require Import List.
-Require Import examples.
+Require Import ConstructiveRcomplete.
+Require Import ConstructiveLimits.
+
+(* Require Import examples. *)
 Require Import ConstructiveAbs.
 Import ListNotations.
 Section ConstructiveReals.
   Context {R : ConstructiveReals}.
   Open Scope ConstructiveReals.
-
+  Close Scope algebra_scope.
 Lemma neq_apart : forall x y,(not (CReq R x y)) -> (CRlt R x y) + (CRlt R  y x).
 Proof.
   intros.
@@ -184,17 +187,40 @@ Defined.
     rewrite CRabs_mult.
     apply CRle_refl.
   Defined.
-  Open Scope algebra_scope.
   Open Scope fun_scope.
 
-  Lemma y_in_dom {d} (f : ((mpoly d)^d)) (y0 : (mpoly 0)^d) :  y0 \in_dom f.
-  Proof.
-    intros n P.
-    simpl;auto.
-  Defined.
+  Require Import odebounds.
+  Lemma cauchy_neighboring_to_mod_helper  xn k i j : fast_cauchy_neighboring xn ->   (Nat.log2_up (Pos.to_nat (k+1)) <= i)%nat -> (Nat.log2_up (Pos.to_nat (k+1)) <= j)%nat ->  CRabs R (xn i - xn j)%ConstructiveReals  <=  CR_of_Q R {| Qnum := 1; Qden := k |}.
+  Admitted.
 
-  Definition PIVP_T {d} (f : @tuple d (mpoly d)) y0 := ivp_taylor_poly f y0 (y_in_dom f y0).
- Definition exp_series := PIVP_T (tuple_cons p1 nil_tuple) (tuple_cons 1 nil_tuple). 
+  Lemma cauchy_neighboring_to_mod   xn : fast_cauchy_neighboring xn ->  (CR_cauchy R xn).
+  Proof.
+    intros.
+    intros k.
+    exists (Nat.log2_up ((Pos.to_nat (k+1)))).
+    intros.
+    apply cauchy_neighboring_to_mod_helper;auto.
+ Defined.
+
+  Lemma npow_inv2 n :  npow (CR_of_Q R (/ inject_Z 2)) n == CR_of_Q R (2^(- Z.of_nat n))%Q.
+  Proof.
+  Admitted.
+
+  Lemma fast_cauchy_fast_limit xn x n : CR_cv R xn x -> fast_cauchy_neighboring xn -> norm (x - xn n) <= npow inv2 n.
+  Admitted.
+
+  #[global] Instance R_complete : ConstrComplete (A := CRcarrier R).
+  Proof.
+    constructor.
+    intros.
+    destruct (CR_complete _ xn).
+    apply cauchy_neighboring_to_mod;auto.
+    intros.
+    exists x.
+    intros.
+    apply fast_cauchy_fast_limit;auto.
+  Qed.
+    
 End ConstructiveReals.
 
 
