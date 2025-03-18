@@ -558,19 +558,6 @@ Qed.
    apply mult_coeff_spec.
  Defined.
 
- (*  Lemma shift_poly p1 c : {p2 | forall x, eval_poly p2 x = eval_poly p1 (x-c)}. *)
- (*  Proof. *)
- (*    induction p1 as [| a0 p1' IH]; [exists []; intros; simpl; ring | ]. *)
- (*    destruct IH as [p2 IH]. *)
- (*    destruct (mult_poly [-c; 1] p2) as [q Q]. *)
- (*    destruct (sum_poly [a0] q) as [q' Q']. *)
- (*    exists q'. *)
- (*    intros. *)
- (*    rewrite Q', Q, IH. *)
- (*    simpl. *)
- (*    ring. *)
- (* Qed. *)
-   
   Lemma split_poly p d : {qu | (length (fst qu)) = (min d (length p)) /\ (length (snd qu)) = (length p - d)%nat /\ forall x, eval_poly p x == eval_poly (fst qu) x + npow x d * eval_poly (snd qu) x}.
   Proof.
     exists (firstn d p, skipn d p).
@@ -588,21 +575,6 @@ Qed.
 
 
  
- (*  Lemma derivative_monomial n : forall x, uniform_derivative_fun (fun x => (npow x (S n))) (fun x => (Nreal (S n) * npow x n)) x. *)
- (* Proof. *)
- (*   intros. *)
- (*   induction n. *)
- (*   - simpl. *)
- (*     replace ((real_1+0)*real_1) with real_1 by ring. *)
- (*     replace (fun x => x*real_1) with (fun (x : ^Real) => x) by (apply fun_ext;intros;ring). *)
- (*     apply derivative_id_fun. *)
- (*  - replace (fun x => Nreal (S (S n)) * npow x (S n)) with (fun (x : ^Real) => x*(Nreal (S n) * npow x n) + real_1 * npow x ((S n))) by (apply fun_ext;intros;simpl;ring). *)
- (*    simpl. *)
- (*    apply product_rule. *)
- (*    apply derivative_id_fun. *)
- (*    apply IHn. *)
- (* Qed. *)
-
  Lemma monomial_poly a n : {p : poly | forall x, eval_poly p x == a * npow x n}.
  Proof.
    exists ((repeat 0 n) ++ [a]).
@@ -613,13 +585,6 @@ Qed.
    ring.
  Defined.
 
- (* Lemma derive_poly_helper p1 p2 p1' p2' r : uniform_derivative_fun (eval_poly p1) (eval_poly p1') r -> uniform_derivative_fun (fun x => (npow x (length p1)) * (eval_poly p2 x)) (eval_poly p2') r -> uniform_derivative_fun (eval_poly (p1++p2)) (fun x => (eval_poly p1' x + eval_poly p2' x)) r. *)
- (* Proof. *)
- (*   intros H1 H2. *)
- (*   apply (derive_ext_fun _ (fun x => eval_poly p1 x + npow x (length p1) * eval_poly p2 x)); [intros;rewrite !eval_eval2;apply eval_poly2_app | ]. *)
- (*   apply sum_rule;auto. *)
- (* Qed. *)
-
 
  Lemma derive_monomial (a : A) (n : nat) : (poly (A:=A)).
  Proof.
@@ -628,10 +593,6 @@ Qed.
    apply p.
  Defined.
 
- (* Lemma derive_monomial_spec a n : (projT1  (derive_monomial a (S n))) = (pr1 _ _ (monomial_poly (a * Nreal (S n)) n)).  *)
- (* Proof. *)
- (*   induction n;simpl;auto. *)
- (* Qed. *)
  Lemma rev_app1 {X : Type} (l : list X) a : (rev (l ++ [a])) = a :: (rev l).
  Proof.
    induction l.
@@ -687,68 +648,6 @@ Qed.
  Defined.
 
  Definition derive_poly p := (proj1_sig  (poly_deriv_exists p)).
- (* Lemma derive_poly_app p a : forall x, eval_poly (derive_poly (p ++ [a])) x  == eval_poly (derive_poly p) x + eval_poly (derive_monomial a (length p)) x. *)
- (* Proof. *)
- (*   intros. *)
- (*   unfold derive_poly. *)
- (*   destruct (poly_deriv_exists p) as [p1 [H1 H2]]. *)
- (*   destruct (poly_deriv_exists (p ++ [a])) as [p2 [H1' H2']]. *)
- (*   assert (p1 = [] /\ p2 = [] \/ (length p > 0)%nat /\ p2 = p1 ++ [ntimes (S (length p1)) a]). *)
- (*   { *)
- (*     destruct p; [left;rewrite length_zero_iff_nil in H1;rewrite length_zero_iff_nil in H1';auto|right]. *)
- (*     split;[simpl;lia|]. *)
- (*     apply (nth_ext _ _ 0 0); [rewrite H1', !app_length, H1;simpl;lia|]. *)
- (*     intros. *)
- (*     rewrite H2'. *)
- (*     simpl. *)
- (*     assert (length p1 = length p) by (simpl in H1;lia). *)
- (*     rewrite app_length in H1'; simpl in H1'. *)
- (*     destruct (Nat.lt_ge_cases n (length p)). *)
- (*     rewrite !app_nth1;try lia;rewrite H2;auto. *)
- (*     destruct H3. *)
- (*     rewrite <-H0 at 4. *)
- (*     rewrite !nth_middle. *)
- (*     rewrite H0;auto. *)
-
- (*     rewrite !nth_overflow; try rewrite ntimes_zero; try ring; try lia. *)
-
- (*   } *)
- (*   destruct H as [[-> ->] | [H ->]]; [simpl; replace (length p) with 0%nat;simpl;[ring|simpl in H1';rewrite H1';rewrite app_length;simpl;lia]|]. *)
- (*   simpl. *)
- (*   rewrite eval_eval2, eval_poly2_app, <-!eval_eval2. *)
- (*   rewrite !(addC (eval_poly p1 x)). *)
- (*   apply ring_eq_plus_eq;auto. *)
- (*   destruct (length p);try lia. *)
- (*   unfold  derive_monomial. *)
- (*   destruct (monomial_poly (ntimes (S n) a) n) as [m M]. *)
- (*   simpl;rewrite M. *)
- (*   rewrite H1. *)
- (*   simpl. *)
- (*   replace (n-0)%nat with n by lia. *)
- (*   ring. *)
- (* Qed. *)
-
-(*  Lemma derive_poly_spec p : forall r, uniform_derivative_fun (eval_poly p) (eval_poly (derive_poly p)) r. *)
-(*  Proof. *)
-(*    unfold derive_poly. *)
-(*    induction p as [| a p IH] using poly_rev_ind. *)
-(*    - intros. *)
-(*      destruct (poly_deriv_exists []) as [p' [H1 H2]]. *)
-(*      simpl;replace p' with (@nil ^Real) by (rewrite length_zero_iff_nil in H1;auto). *)
-(*      simpl;apply derivative_const_fun. *)
-(*    - intros x. *)
-(*      pose proof (derive_poly_app p a). *)
-(*      apply (derive_ext_fun2 _  (fun x =>  eval_poly (derive_poly p) x + *)
-(*       eval_poly (projT1 (derive_monomial a (length p))) x *)
-(* )  _ x);auto. *)
-(*      apply derive_poly_helper;auto. *)
-(*      intros. *)
-(*      destruct (derive_monomial a (length p)) as [m M]. *)
-(*      simpl. *)
-(*      apply (derive_ext_fun _ (fun x => a * npow x (length p))); [intros;ring|]. *)
-(*      apply M. *)
-(*  Qed. *)
-
 
    Lemma mult_coefficients0 a b : nth 0 (mult_coefficients a b) 0 == nth 0 a 0 * nth 0 b 0.
    Proof.
@@ -1019,6 +918,19 @@ Qed.
     apply mult_poly_distr.
  Defined.
 
+  Lemma shift_poly p1 (c : A) : {p2 | forall x, eval_poly p2 x == eval_poly p1 (x + c)}.
+  Proof.
+    induction p1 as [| a0 p1' IH]; [exists []; intros; simpl; try ring | ].
+    destruct IH as [p2 IH].
+    destruct (mult_poly [c; 1] p2) as [q Q].
+    destruct (sum_poly [a0] q) as [q' Q'].
+    exists q'.
+    intros.
+    rewrite Q', Q, IH.
+    simpl.
+    ring.
+ Qed.
+   
 End Polynomial.
 
 Section MultiRawPoly.
@@ -1676,7 +1588,6 @@ Section Evaluation.
       apply mpoly_mul_spec.
   Defined.
 
-
   Lemma poly_total {n } (p : A{x^n}) (x : A^n) : (in_domain  p x).
   Proof.
     simpl;auto.
@@ -1688,6 +1599,41 @@ Section Evaluation.
   Qed.
 
 
+  (* Lemma shift_mpoly_composer {d} (c : A^(S d))  :  {p | forall x, eval_poly_rec p x == x + c}. *)
+  (* Lemma shift_mpoly_composer {d} (c : A^(S d))  :  {p | forall x, eval_tuple_rec p x == (x + c)}. *)
+  (* Proof. *)
+  (*   induction d.  *)
+  (*   exists t([c\_0;1]). *)
+  (*   intros. *)
+  (*   simpl. *)
+  (*   destruct (destruct_tuple_cons x) as [hx [tx Px]]. *)
+  (*   destruct (destruct_tuple_cons c) as [hc [tc Pc]]. *)
+  (*   destruct (destruct_tuple x) as [h [t X]]. *)
+  (*   apply eqlistA_cons;auto. *)
+  (*   unfold eval_mpoly. *)
+  (*   simpl. *)
+  (*   rewrite Pc. *)
+  (*   rewrite tuple_nth_cons_hd. *)
+  (*   simpl. *)
+  (*   rewrite Px in X. *)
+  (*   rewrite proj1_sig_tuple_cons in X. *)
+  (*   injection X; intros. *)
+  (*   rewrite H1;ring. *)
+  (*   destruct (destruct_tuple_cons c) as [hd [tl P]]. *)
+  (*   destruct (IHd tl) as [p0 P0]. *)
+    
+  (*   exists [(const_to_mpoly _ c\_i) ; 1]. *)
+  (*   intros. *)
+  (*   simpl. *)
+  (*   unfold eval_mpoly. *)
+  (*   setoid_rewrite (vec_plus_spec x c);auto. *)
+  (*   simpl. *)
+  (*   destruct (destruct_tuple x) as [hd [tl P]]. *)
+  (*   rewrite mpoly_add_spec. *)
+  (*   rewrite const_to_mpoly_eval. *)
+  (*   rewrite addC. *)
+
+  (*   rewrite  *)
   Lemma eval_tuple_rec_spec {n m} (g : A{x^n}^m) x Px : eval_tuple_rec g x == g @ (x;Px).
   Proof.
       Opaque SetoidClass.equiv.
@@ -1736,22 +1682,4 @@ Section Bounds.
  (*             end *)
  (*     end. *)
                      
- Definition poly_norm {d} (p : A{x^d}) : A.
- Proof.
-   induction d.
-   apply (norm p).
-   induction p.
-   apply 0.
-   apply ((IHd a) + IHp).
- Defined.
- Lemma poly_bound_spec {d} (p : A{x^d}) (k : nat^d) : ((derive_rec p k) @ (0; (poly_total (derive_rec p k) 0))) <= t[k]! * poly_norm p.
- Admitted.
-
- Definition poly_normt {d} {e} (p : A{x^d}^e) : A.
- Proof.
-   induction e.
-   apply 0.
-   destruct (destruct_tuple_cons p) as [p0 [tl P]].
-   apply ((poly_norm p0) + (IHe tl)).
- Defined.
 End Bounds.

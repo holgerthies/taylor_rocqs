@@ -18,6 +18,7 @@ Require Import tuple.
    intros a b c H1 H2  n.
    rewrite H1;apply H2.
  Defined.
+ 
 Section Powerseries.
 Context `{A_semiRing : SemiRing}.
 Add Ring ARing: ComSemiRingTheory.
@@ -357,6 +358,7 @@ Section MultiPowerseries.
     | (S n) => (fun m => match m with | 0 => const_to_mps n x | _ => 0 end)
    end.
 
+    
   Definition multips_composition {n m} (a : mps n) (bs : @tuple n (mps (S m))) : (mps (S m)).
   Proof.
     revert a bs.

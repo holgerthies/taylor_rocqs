@@ -112,6 +112,7 @@ Defined.
     exists (fun x y => (x <= y)).
     intros a b eq1 c d eq2.
     rewrite eq1, eq2;reflexivity.
+    
     intros.
     apply CRle_refl.
     intros;split;auto.
@@ -187,39 +188,66 @@ Defined.
     rewrite CRabs_mult.
     apply CRle_refl.
   Defined.
-  Open Scope fun_scope.
 
-  Require Import odebounds.
-  Lemma cauchy_neighboring_to_mod_helper  xn k i j : fast_cauchy_neighboring xn ->   (Nat.log2_up (Pos.to_nat (k+1)) <= i)%nat -> (Nat.log2_up (Pos.to_nat (k+1)) <= j)%nat ->  CRabs R (xn i - xn j)%ConstructiveReals  <=  CR_of_Q R {| Qnum := 1; Qden := k |}.
+  Lemma ntimes_CReal n : ntimes n 1 == CR_of_Q R ({| Qnum := Z.of_nat n; Qden := 1 |}).
+  Proof.
+    induction n.
+    simpl.
+    reflexivity.
+    assert ({| Qnum := Z.of_nat (S n); Qden := 1 |} == ({| Qnum := Z.of_nat n; Qden := 1 |} + 1))%Q.
+    simpl.
   Admitted.
 
-  Lemma cauchy_neighboring_to_mod   xn : fast_cauchy_neighboring xn ->  (CR_cauchy R xn).
-  Proof.
-    intros.
-    intros k.
-    exists (Nat.log2_up ((Pos.to_nat (k+1)))).
-    intros.
-    apply cauchy_neighboring_to_mod_helper;auto.
- Defined.
+  (* #[global] Instance R_ArchimedeanField :ArchimedeanField (A := CRcarrier R). *)
+  (* Proof. *)
+  (*   unshelve eapply Build_ArchimedeanField. *)
+  (*   - intros. *)
+  (*     simpl. *)
+  (*     apply CRabs_right. *)
+  (*     apply H. *)
+  (*  -  intros. *)
+  (*     destruct (CR_archimedean _ x). *)
+  (*     exists (Pos.to_nat x0). *)
+  (*     rewrite ntimes_CReal. *)
+  (*     simpl. *)
+  (*     apply CRlt_asym. *)
+  (*     rewrite positive_nat_Z. *)
+  (*     apply c. *)
+  (*  Defined. *)
+  (* Open Scope fun_scope. *)
 
-  Lemma npow_inv2 n :  npow (CR_of_Q R (/ inject_Z 2)) n == CR_of_Q R (2^(- Z.of_nat n))%Q.
-  Proof.
-  Admitted.
+ (*  Require Import odebounds. *)
+ (*  Lemma cauchy_neighboring_to_mod_helper  xn k i j : fast_cauchy_neighboring xn ->   (Nat.log2_up (Pos.to_nat (k+1)) <= i)%nat -> (Nat.log2_up (Pos.to_nat (k+1)) <= j)%nat ->  CRabs R (xn i - xn j)%ConstructiveReals  <=  CR_of_Q R {| Qnum := 1; Qden := k |}. *)
+ (*  Admitted. *)
 
-  Lemma fast_cauchy_fast_limit xn x n : CR_cv R xn x -> fast_cauchy_neighboring xn -> norm (x - xn n) <= npow inv2 n.
-  Admitted.
+ (*  Lemma cauchy_neighboring_to_mod   xn : fast_cauchy_neighboring xn ->  (CR_cauchy R xn). *)
+ (*  Proof. *)
+ (*    intros. *)
+ (*    intros k. *)
+ (*    exists (Nat.log2_up ((Pos.to_nat (k+1)))). *)
+ (*    intros. *)
+ (*    apply cauchy_neighboring_to_mod_helper;auto. *)
+ (* Defined. *)
 
-  #[global] Instance R_complete : ConstrComplete (A := CRcarrier R).
-  Proof.
-    constructor.
-    intros.
-    destruct (CR_complete _ xn).
-    apply cauchy_neighboring_to_mod;auto.
-    intros.
-    exists x.
-    intros.
-    apply fast_cauchy_fast_limit;auto.
-  Qed.
+ (*  Lemma npow_inv2 n :  npow (CR_of_Q R (/ inject_Z 2)) n == CR_of_Q R (2^(- Z.of_nat n))%Q. *)
+ (*  Proof. *)
+ (*  Admitted. *)
+
+ (*  Lemma fast_cauchy_fast_limit xn x n : CR_cv R xn x -> fast_cauchy_neighboring xn -> norm (x - xn n) <= npow inv2 n. *)
+ (*  Admitted. *)
+
+ (*  #[global] Instance R_complete : ConstrComplete (A := CRcarrier R). *)
+ (*  Proof. *)
+ (*    constructor. *)
+ (*    intros. *)
+ (*    apply (CReal_from_cauchy (fun n => inject_Q 1)). *)
+ (*    destruct (CR_complete R xn). *)
+ (*    apply cauchy_neighboring_to_mod;auto. *)
+ (*    intros. *)
+ (*    exists x. *)
+ (*    intros. *)
+ (*    apply fast_cauchy_fast_limit;auto. *)
+ (*   Defined. *)
     
 End ConstructiveReals.
 

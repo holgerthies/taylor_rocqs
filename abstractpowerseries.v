@@ -48,7 +48,7 @@ Section AbstractPowerSeries.
 
   Context `{CompositionalDiffAlgebra (A := ps) (H := _)}.
 
-  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}.
+  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _) (H0 := _)}.
 
   Class AbstractPowerSeries := {
   ps_derive : forall {d} (a : (nat^d -> A)) (k j : nat^d),  (Dx[k] a) j == t[j+1!k] * a (k+j);
@@ -64,7 +64,6 @@ End AbstractPowerSeries.
 
 Section AbstractPowerSeriesProperties.
   Context `{AbstractPowerSeries}.
-  Context `{SemiRing (A := A) (H:=H) (R_rawRing := R_rawRing)}.
 
   Definition index {d} (a : nat^d -> A) n := a n.
 

@@ -8,5 +8,6 @@ polynomial.v
 abstractpowerseries.v
 ode.v
 odebounds.v
+realanalytic.v
 coqreals.v
 examples.v

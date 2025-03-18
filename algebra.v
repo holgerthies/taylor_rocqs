@@ -406,6 +406,15 @@ Section RingTheory.
    rewrite IHm.
    ring.
  Qed.
+
+   Lemma npow0 k : npow 0 (S k) == 0.
+   Proof.
+     induction k.
+     simpl.
+     ring.
+     simpl.
+     ring.
+  Qed.
   Lemma ComRingTheory  : ring_theory 0 1 add mul minus opp  equiv.
   Proof.
 
@@ -910,5 +919,16 @@ Qed.
 End PartialDiffAlgebraTheory.
 
 
+(* Archimedean Field with some useful functions *)
 
+  Class Sn_invertible `{SemiRing} := {
+      inv_Sn  (n : nat) : A; 
+      inv_Sn_spec : forall n, (ntimes (S n) 1) * inv_Sn n == 1
+  }.
+
+  Class ArchimedeanField `{R_Field :TotallyOrderedField} `{normK : (NormedSemiRing (A := A) (B:=A) (H := H) (H0 := H) (R_rawRing := _) (R_rawRing0 := _) (R_TotalOrder := _) )} `{invSn : (Sn_invertible (A:=A) (H:=H) (H0 := _) (R_rawRing := _))}  := {
+      norm_abs : forall x, 0 <= x -> norm x == x;
+      upper : forall (x : A), {n : nat | x <= ntimes n 1}
+     
+     }.
 Infix "\o" := multi_composition (at level 2).

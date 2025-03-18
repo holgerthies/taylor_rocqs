@@ -100,7 +100,7 @@ Open Scope fun_scope.
 Section TaylorSequence.
 
   Context `{AbstractFunctionSpace }.
-  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
+  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat)) (H0 := _)}.
   Context {d : nat} (f : (A d)^d)  (y0 : (A 0)^d) (dom_f : y0 \in_dom f).
 
 
@@ -231,7 +231,6 @@ End TaylorSequence.
 Section PowerSeriesSolution.
   
   Context `{AbstractPowerSeries}.
-  Context `{SemiRing (A := A) (H:=H) (R_rawRing := R_rawRing)}.
 
   Add Ring ARing: (ComSemiRingTheory (A := A)). 
   Context {d : nat} {f : (nat^(S d) -> A)^(S d)}.
@@ -407,151 +406,3 @@ Section PowerSeriesSolution.
   (*   rewrite (yt_spec k i). *)
   (*   specialize (F_spec _ 1 _ H6). *)
 End PowerSeriesSolution.
-
-(* Section Taylorindex. *)
-
-(*   Context `{A_comRing : SemiRing}. *)
-
-
-(*  Definition ps_index {d} (n : nat^d) (a : @mps A d) : A. *)
-(*  Proof. *)
-(*    induction d. *)
-(*    apply a. *)
-(*    destruct (destruct_tuple_cons n) as [hd [tl P]]. *)
-(*    apply (IHd tl (a hd)). *)
-(*  Defined. *)
-
-
-
-(*    #[global] Instance ps_index_proper d n : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (@ps_index d n). *)
-(*    Proof. *)
-(*    Admitted. *)
-
-(*     Lemma ps_index_0 {d} ix :  ps_index (d := d) ix 0 ==0. *)
-(*     Proof. *)
-(*       induction d. *)
-(*       simpl. *)
-(*       reflexivity. *)
-(*       simpl. *)
-(*       destruct (destruct_tuple_cons ix) as [hd [tl P]]. *)
-(*       apply IHd. *)
-(*     Qed. *)
-
-(*     Lemma ps_index_1 {d} ix :  ps_index (d := d) ix 1 == match (order ix) with  0 => 1 | _ => 0 end. *)
-(*     Proof. *)
-(*       induction d. *)
-(*       simpl;reflexivity. *)
-(*       simpl. *)
-(*       destruct (destruct_tuple_cons ix) as [hd [tl ->]]. *)
-(*       destruct hd. *)
-(*       simpl. *)
-(*       apply IHd. *)
-(*       simpl. *)
-(*       rewrite ps_index_0. *)
-(*       reflexivity. *)
-(*     Qed. *)
-
-
-(*    Instance single_index_proper {d}  (n : nat) : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (fun (a : @mps A (S d)) => (a n)). *)
-(*    Proof. *)
-(*      intros a b Heq. *)
-(*      apply seq_A_setoid. *)
-(*      rewrite Heq. *)
-(*      reflexivity. *)
-(*    Defined. *)
-(*    Lemma ps_index_plus {d} (a b : @mps A d) n : ps_index n (a+b) == ps_index n a + ps_index n b.  *)
-(*    Proof. *)
-(*      induction d. *)
-(*      simpl. *)
-(*      reflexivity. *)
-(*      Opaque add. *)
-(*      simpl. *)
-(*      destruct (destruct_tuple_cons n) as [hd [tl P]]. *)
-(*      enough ((a+b) hd == a hd + b hd) as ->. *)
-(*      apply IHd. *)
-(*      Transparent add. *)
-(*      simpl. *)
-(*      unfold sum_ps. *)
-(*      reflexivity. *)
-(*   Qed. *)
-
-(*     Lemma ps_index_comp1 {d} ix i :  ps_index (d := d) ix (comp1  i) == match (order ix) with *)
-(*                                                                          | 1 => match (tuple_nth i ix 0%nat) with *)
-(*                                                                                |  1 => 1 | _ => 0  end *)
-(*                                                                          | _ => 0 *)
-(*                                                                           end. *)
-(*     Proof. *)
-(*       generalize dependent d. *)
-(*       induction i;intros;try (simpl;reflexivity). *)
-(*       - simpl. *)
-(*         destruct d;simpl;try reflexivity. *)
-(*         destruct (destruct_tuple_cons ix) as [hd [tl P]]. *)
-(*         simpl. *)
-(*         destruct hd eqn:E. *)
-(*         simpl. *)
-(*         rewrite ps_index_0. *)
-(*         rewrite P. *)
-(*         rewrite tuple_nth_cons_hd. *)
-(*         destruct (order tl); try destruct n;try reflexivity. *)
-(*         simpl. *)
-(*         destruct n;simpl;[|rewrite ps_index_0;reflexivity]. *)
-(*         rewrite P. *)
-(*         rewrite tuple_nth_cons_hd. *)
-(*         rewrite ps_index_1. *)
-(*         reflexivity. *)
-(*       - simpl. *)
-(*         destruct d; simpl; try reflexivity. *)
-(*         destruct (destruct_tuple_cons ix) as [hd [tl P]]. *)
-(*         simpl. *)
-(*         destruct hd. *)
-(*         + simpl. *)
-(*           rewrite P. *)
-(*           rewrite tuple_nth_cons_tl. *)
-(*           apply IHi. *)
-(*         + rewrite ps_index_0. *)
-(*           rewrite P. *)
-(*           rewrite tuple_nth_cons_tl. *)
-(*           simpl. *)
-(*           destruct (order tl) eqn:E. *)
-(*           simpl;rewrite order_zero; try lia; destruct hd; simpl;try reflexivity. *)
-(*           destruct hd;simpl;try reflexivity. *)
-(*     Qed. *)
-
-(*     Lemma ntimes_index {d} (a : @mps A (S d)) n i : (ntimes n a) i == ntimes n (a i).  *)
-(*     Proof. *)
-(*       induction n. *)
-(*       simpl. *)
-(*       reflexivity. *)
-(*       intros . *)
-(*       simpl ntimes. *)
-(*       Transparent add. *)
-(*       simpl add. *)
-(*       unfold sum_ps. *)
-(*       rewrite IHn. *)
-(*       reflexivity. *)
-(*     Qed. *)
-
-(*     Lemma ntimes_ps_index {d} (a : @mps A d) n i : ps_index i (ntimes n a) == ntimes n (ps_index i a ).  *)
-(*     Proof. *)
-(*       induction n. *)
-(*       simpl. *)
-(*       rewrite ps_index_0. *)
-(*       reflexivity. *)
-(*       simpl. *)
-(*       rewrite ps_index_plus. *)
-(*       rewrite IHn. *)
-(*       reflexivity. *)
-(*     Qed. *)
-(* End Taylorindex. *)
-
-
-Section IVP_Record.
-  Open Scope fun_scope.
-  Context `{AbstractFunctionSpace }.
-  Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat))}.
-  Record IVP {d} := {
-      f : (A d)^d;
-      y0 : (A 0)^d;
-      in_dom : y0 \in_dom f
-    }.
-End IVP_Record.

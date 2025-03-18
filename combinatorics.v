@@ -120,17 +120,16 @@ Section Multiindex.
      apply (tuple_nth_ext' _ _ 0 0).
      intros; lia.
    Qed.
+
+   Lemma ntimes_int (n m : nat): ntimes n #m == #(n*m).
+   Admitted.
  End Multiindex.
 
 (* factorial, inverse factorial and rising factorials *)
 Section factorial.
   Context `{SemiRing}.
-  Class Sn_invertible := {
-      inv_Sn  (n : nat) : A; 
-      inv_Sn_spec : forall n, (ntimes (S n) 1) * inv_Sn n == 1
-  }.
-
-  Definition inv_factorial `{Sn_invertible} (n : nat) : A.
+  Context `{Sn_invertible (A := A) (H := H) (R_rawRing := R_rawRing) (H0 := H0)}.
+  Definition inv_factorial  (n : nat) : A.
   Proof.
     induction n.
     apply 1.
@@ -144,7 +143,7 @@ Section factorial.
     apply  ((ntimes (S n) 1)  * IHn).
   Defined.
 
-  Definition rising_factorial `{Sn_invertible} k n := factorial(k+n-1) * inv_factorial(k-1).
+  Definition rising_factorial  k n := factorial(k+n-1) * inv_factorial(k-1).
 
   Definition factorialt {d} (n : nat^d) : A.
   Proof.
@@ -153,14 +152,14 @@ Section factorial.
     destruct (destruct_tuple_cons n) as [n0 [nt P]].
     apply (factorial n0 * (IHd nt)).
   Defined.
-  Definition inv_factorialt `{Sn_invertible}  {d} (n : nat^d) : A.
+  Definition inv_factorialt  {d} (n : nat^d) : A.
   Proof.
     induction d.
     apply 1.
     destruct (destruct_tuple_cons n) as [n0 [nt P]].
     apply (inv_factorial n0 * (IHd nt)).
   Defined.
-  Definition rising_factorialt `{Sn_invertible}  {d} (k n : nat^d) : A.
+  Definition rising_factorialt   {d} (k n : nat^d) : A.
   Proof.
     induction d.
     apply 1.
@@ -168,6 +167,8 @@ Section factorial.
     destruct (destruct_tuple_cons n) as [n0 [nt P]].
     apply ((rising_factorial k0 n0) * (IHd kt nt)).
   Defined.
+
+  Definition inv2 := inv_Sn 1%nat.
 End factorial.
 
 Notation "[ k ! n ]" := (rising_factorial k n).
@@ -179,7 +180,7 @@ Notation "t![ n ]" := (inv_factorialt n).
 Notation "t[ n ]!" := (factorialt n).
 Section factorialTheorems.
   Context `{SemiRing}.
-  Context `{invSn : (Sn_invertible (A := A) (H:=_) (R_rawRing := _))}.
+  Context `{invSn : (Sn_invertible (A := A) (H:=_) (R_rawRing := _) (H0 := H0))}.
   Add Ring TRing: (ComSemiRingTheory (A := A)). 
 
   #[global] Instance rising_factorial_proper {d}: Proper (equiv ==> equiv ==> equiv) (rising_factorialt (d:=d)).
@@ -438,7 +439,7 @@ Qed.
 Section FactorialOrderTheorems.
   Context `{TotallyOrderedField}.
  Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
-  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _)}. (* Replace by proof *)
+  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _) (H0 := _)}. (* Replace by proof *)
 
   Add Ring TRing: (ComSemiRingTheory (A := A)). 
   Lemma ntimes_nonneg x n: (0 <= x) -> 0 <= ntimes n x.
@@ -522,5 +523,4 @@ Section EmbedNat.
      rewrite inv_Sn_spec.
      ring.
    Qed.
-   Definition inv2  := inv_Sn 1.
 End EmbedNat.
