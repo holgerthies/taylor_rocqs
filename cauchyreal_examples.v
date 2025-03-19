@@ -20,39 +20,7 @@ Open Scope fun_scope.
 Open Scope Q_scope.
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 Definition RQ := CRcarrier CRealConstructive.
-  Context `{AbstractPowerSeries (A := RQ) (H := (R_setoid )) (R_rawRing := R_rawRing) (H0 := _) (invSn := invSn) }.
-
-   Lemma magic : False.
-   Admitted.
-  Lemma cauchy_neighboring_to_mod   (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  (Un_cauchy_mod xn).
-  Proof.
-    intros H k.
-    exists (Nat.log2_up ((Pos.to_nat (k+1)))).
-    intros.
-    contradict magic.
-   Defined.
-
-  #[global] Instance ArchimedeanFieldRQ : algebra.ArchimedeanField (A := RQ).
-  Proof.
-    unshelve eapply algebra.Build_ArchimedeanField.
-    - intros.
-      simpl.
-
-      apply CReal_abs_right.
-      apply H0.
-   -  intros.
-      pose proof (seq x (-1)).
-      exists (Z.to_nat (Qceiling H0+1)).
-      contradict magic.
-  Defined.
-  #[global] Instance constrComplete : (ConstrComplete (A := RQ)).
-  Proof.
-    constructor.
-    intros.
-    exists (CReal_from_cauchy  xn (cauchy_neighboring_to_mod _ H0)).
-    intros.
-    contradict magic.
-   Defined.
+Context `{AbstractPowerSeries (A := RQ) (H := (R_setoid )) (R_rawRing := R_rawRing) (H0 := _) (invSn := invSn) }.
 
  Definition  seq_tuple {d} (p : (RQ * tuple d RQ))  (z : Z): Q * list Q.
  Proof.
@@ -61,177 +29,127 @@ Definition RQ := CRcarrier CRealConstructive.
    apply ((seq r z) , (map (fun x => (seq x z)) x)).
  Defined.
  Definition  seq_trajectory {d} (p : list (RQ * tuple d RQ))  (z : Z) :=  map (fun p => seq_tuple p z) p.
-  Definition exp_example := exp_ivp (A := RQ).
 
-  Check @analytic_poly.
-  Definition p1  := analytic_poly (invSn := invSn) (normK := (@R_norm CRealConstructive)) exp_example.(pf) exp_example.(py0).
+ (*** Examples start here ***)
 
+(** exponential function (1d) **)
 
-  Definition approx1 := approx (A := RQ) (invSn := invSn)  p1 (inject_Q (1 # 2)) 0 0.
-  Set Printing Implicit.
-Check @approx1.
-Compute (seq approx1 3).
+Definition exp_example := exp_ivp (A := RQ).
 
-   Definition ap1 := ivp_solution_i_max (norm_abs := (norm_abs CRealConstructive)) p1 0%nat.
+Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 
-   Compute (seq (fst ap1) (-10)).
+(* First compute finite Taylor polynomial *)
 
-   Definition test_exp := pivp_solution_max  (norm_abs := (norm_abs CRealConstructive)) exp_example.(examples.f)  exp_example.(examples.y0).
-   Compute (seq_tuple test_exp (-10)).
-   Definition a0 := (nth 0 (snd (seq_tuple test_exp (-20))) 0).
-   Compute a0.
-   Definition y1 := (snd (test_exp )).
-   Definition test_exp2 := pivp_solution_max  (norm_abs := (norm_abs CRealConstructive)) exp_example.(examples.f) t(inject_Q a0).
-   Check test_exp2.
-   Compute (seq_tuple (test_exp2) (-2)).
-Definition Q_to_pair (q : Q) : Z * positive :=
-  let n := Qnum q in
-  let d := Qden q in
-  (n, d).
-Definition a1 := map Q_to_pair (snd (seq_tuple test_exp2 (-2))).
-Require ExtrHaskellBasic.
-Require ExtrHaskellNatInteger.
-Require ExtrHaskellZInteger.
-Extraction Language Haskell.
-Unset Extraction SafeImplicits.
-Extraction "exp2"  a1.
+(* order 20 approximation *)
+Definition exp_taylor := taylor_poly exp_analytic 0 20.
 
+(*evaluate at 1/2 *)
+Definition exp_approx := (eval_poly exp_taylor (inject_Q (1#2 ))).
+Compute (seq (exp_approx) (-10)).
 
+(* now with guaranteed error bound  at max time *)
+Definition exp_exact := (ivp_solution_max exp_analytic).
 
+(* prints the time and the value as pair *)
+Compute (seq_tuple (exp_exact) (-15)).
 
+(** sine/cosine  (2d) **)
 
+Definition sin_cos_example := sin_cos_ivp (A := RQ).
 
-   
-   Definition r := (algebra.mul combinatorics.inv2  (combinatorics.inv_Sn   (proj1_sig (analytic_solution_r (norm_abs := (norm_abs CRealConstructive)) p1)))).
-   Compute (seq r 2).
+Definition sin_cos_analytic  := analytic_poly sin_cos_example.(pf) sin_cos_example.(py0).
 
-   Definition r' := ivp_r_max (norm_abs := (norm_abs CRealConstructive)) p1.
-Check CReal_from_cauchy.
-   Definition test : RQ.
-   Proof.
-   
-      destruct (has_limit (ConstrComplete := constrComplete) (fun n => inject_Q 1)).
-      contradict magic.
-      apply x.
-   Defined.
+(* First compute finite Taylor polynomial *)
 
-   Eval vm_compute in (seq (test) 2).
-   Compute (seq (fst ap1) (-10)).
+(* order 10 approximation *)
+Definition sin_taylor := taylor_poly sin_cos_analytic 0 10.
+Definition cos_taylor := taylor_poly sin_cos_analytic 1 10.
 
+(*evaluate at 1/2 *)
+Definition sin_approx := (eval_poly sin_taylor (inject_Q (1#2 ))).
+Definition cos_approx := (eval_poly cos_taylor (inject_Q (1#2 ))).
+Compute (seq (sin_approx) (-10)).
+Compute (seq (cos_approx) (-10)).
 
-  (** one dimensional examples **)
-  Definition exp_example := exp_ivp (A := @mpoly RQ).
-  Definition exp_approx := AIVP_nth_approx exp_example.
-  kk
-  (* radius for exp *)
-  Compute (seq (y_radius exp_example) (-2)).
-  (* 10th approximation of exp at 1/4 *)
-  Compute (eval_Q (exp_approx 10) (1#4)).
+(* now with guaranteed error bound  at max time *)
+Definition sin_cos_exact := (ivp_solution_max sin_cos_analytic).
 
-  Definition tan_example := tan_ivp (A := @mpoly RQ).
-  Definition tan_approx := AIVP_nth_approx tan_example.
+(* prints the time and the value as pair *)
+Compute (seq_tuple (sin_cos_exact) (-5)).
 
-  (* radius for tan *)
-  Compute (seq (y_radius tan_example) -2).
-  (* 3rd approximation of exp at 1/8 *)
-  Compute (eval_Q (tan_approx 3) (1#8)).
+(** tan function (1d) **)
 
-  (** two dimensional examples **)
+Definition tan_example := tan_ivp (A := RQ).
 
-  Definition sin_cos_example := sin_cos_ivp (A := @mpoly RQ).
-  Definition sin_cos_approx := AIVP_nth_approx sin_cos_example.
-  (* radius  *)
-  Compute (seq (y_radius sin_cos_example) -2).
-  (* 6th approximation of sine/cosine at 1/16 *)
-  Compute (eval_Q (sin_cos_approx 6) (1#16)).
+Definition tan_analytic  := analytic_poly tan_example.(pf) tan_example.(py0).
 
-  Definition vdp_example := vdp_ivp (inject_Q (1#10)) (A := @mpoly RQ).
+(* First compute finite Taylor polynomial *)
 
-  Definition vdp_approx := AIVP_nth_approx vdp_example.
-  (* radius  *)
-  Compute (seq (y_radius vdp_example) -2).
-  
-  
-  (* 2nd approximation of vdp at 1/16 *)
-  (* already takes a while, so commented out for now *)
+(* order 5 approximation *)
+Definition tan_taylor := taylor_poly tan_analytic 0 5.
 
-  (* Compute (eval_Q (vdp_approx 2) (1#16)). *)
-  
+(*evaluate at 1/2 *)
+Definition tan_approx := (eval_poly tan_taylor (inject_Q (1#2 ))).
+Compute (seq (tan_approx) (-10)).
 
-(* code extraction *)
-  
-Require Import Extraction.
-Require ExtrHaskellBasic.
-Require ExtrHaskellNatInteger.
-Require ExtrHaskellZInteger.
-Extraction Language Haskell.
-Unset Extraction SafeImplicits.
-Definition Q_to_pair (q : Q) : Z * positive :=
-  let n := Qnum q in
-  let d := Qden q in
-  (n, d).
-Definition vdp_val := Q_to_pair (nth 0 (eval_Q (vdp_approx 4) (1#16) 2) 0).
-Extraction "vdp" vdp_val.
-  (* Lemma un_cauchy_mod_exp : un_cauchy_mod . *)
-  (* Definition w (n : nat) := inject_Q 2. *)
-  (* Print Un_cauchy_mod. *)
-  (* Check (Rcauchy_limit w). *)
-Check ccDecimal.
-  
-  Definition minus1_poly : (@mpoly (CRcarrier CRealConstructive) 2).
-  Proof.
-    apply [[];[inject_Q (q (-1) 1)]].
-  Defined.
+(* now with guaranteed error bound  at max time *)
+Definition tan_exact := (ivp_solution_max tan_analytic).
 
-  
+(* prints the time and the value as pair *)
 
-  Definition sin_cos_taylor  := IVP_taylor (A := @mpoly RQ ) sin_cos_ivp.
-
-  Definition vdp_taylor  := IVP_taylor (A := @mpoly RQ) (vdp_ivp (inject_Q (q 1  10))).
-
-  Definition eval_tuple_poly {d} (p : (@poly (tuple d (@mpoly (CRcarrier CRealConstructive) 0)))) (t : CReal)  : list Q.
-  Proof.
-    pose proof (seq_to_tuple (fun n => t) d (def := t)).
-    destruct X.
-    pose proof (eval_poly p x).
-    destruct X.
-    apply (map (fun a => seq a 10) x0).
-  Defined.
-
-  Definition t0 := (t(inject_Q 3;inject_Q 1) : (tuple 2 RQ)).
-  Definition t1 := (t(inject_Q 3;inject_Q 1;inject_Q 2) : (tuple 3 RQ)).
-  Definition poly2 := const_to_mpoly 3 (inject_Q 3).
-  Check poly2.
-  Definition ppoly2 : (tuple 3 CReal {x^3}) := t(poly2;poly2;poly2).
-  Lemma a : t0  \in_dom minus1_poly. 
-  Proof.
-    apply poly_total.
-  Qed.
-
-  Definition norm_poly := (poly_normt (vdp_ivp (inject_Q (q 1  10)) (A:=@mpoly RQ)).(f)).
-  Eval vm_compute in (seq (norm_poly) 5).
-  Search "limit".
-  Check Rcauchy_limit.
-  Print Un_cauchy_mod.
-  Definition eval1 := (minus1_poly @ (t0;a)).
-  Definition eval_s := (sin_cos_ivp (A:=@mpoly RQ)).(f) @ (sin_cos_ivp.(y0);sin_cos_ivp.(in_dom)).
-  Eval vm_compute in  (eval_tuple_poly (vdp_taylor 1) (inject_Q (q 2 10))).
-
-  Lemma ab : t1  \in_dom ppoly2.
-  Proof.
-    apply poly_total.
-  Qed.
-  Definition eval0 := poly2 @ (t1;ab).
-
-  
-  Definition eval_s := (sin_cos_ivp (A:=@mpoly RQ)).(f) @ (sin_cos_ivp.(y0);sin_cos_ivp.(in_dom)).
-  Definition eval_t := (tan_ivp (A:=@mpoly RQ)).(f) @ (tan_ivp.(y0);tan_ivp.(in_dom)).
-  Definition eval1 := (minus1_poly @ (t0;a)).
-  Definition aa := (tuple_nth 0%nat eval_t (inject_Q 0)).
-   
-  
+Compute (seq_tuple (tan_exact) (-1)).
 
 
+(** van der pol oscillator (2d) **)
+
+Definition vdp_example := vdp_ivp (A := RQ) (inject_Q (1#2)).
+
+Definition vdp_analytic  := analytic_poly vdp_example.(pf) vdp_example.(py0).
+
+(* First compute finite Taylor polynomial *)
+
+(* order 5 approximation *)
+Definition vdp_taylor1 := taylor_poly vdp_analytic 0 5.
+Definition vdp_taylor2 := taylor_poly vdp_analytic 1 5.
+
+(*evaluate at 1/2 *)
+Definition vdp1_approx := (eval_poly vdp_taylor1 (inject_Q (1#2 ))).
+Definition vdp2_approx := (eval_poly vdp_taylor1 (inject_Q (1#2 ))).
+Compute (seq (vdp1_approx) (-10)).
+Compute (seq (vdp2_approx) (-10)).
+
+(* now with guaranteed error bound  at max time *)
+Definition vdp_exact := (ivp_solution_max vdp_analytic).
+
+(* prints the time and the value as pair *)
+(* This takes a while and thus commented out *)
+
+ (* Compute (seq_tuple (vdp_exact) 0). *)
+
+(** Lorenz system (3d) **)
+
+Definition lorenz_example := lorenz_ivp (A := RQ) (inject_Q (10)) (inject_Q 28) (inject_Q (8#3)).
+
+Definition lorenz_analytic  := analytic_poly lorenz_example.(pf) lorenz_example.(py0).
+
+(* compute finite Taylor polynomial *)
+
+(* order 5 approximation *)
+Definition lorenz_taylor1 := taylor_poly lorenz_analytic 0 5.
+Definition lorenz_taylor2 := taylor_poly lorenz_analytic 1 5.
+Definition lorenz_taylor3 := taylor_poly lorenz_analytic 2 5.
+
+(*evaluate at 1/2 *)
+Definition l1_approx := (eval_poly lorenz_taylor1 (inject_Q (1#4 ))).
+Definition l2_approx := (eval_poly lorenz_taylor2 (inject_Q (1#4 ))).
+Definition l3_approx := (eval_poly lorenz_taylor3 (inject_Q (1#4 ))).
+Compute (seq (l1_approx) (-10)).
+Compute (seq (l2_approx) (-10)).
+Compute (seq (l3_approx) (-10)).
 
 
+Definition lorenz_exact := (ivp_solution_max lorenz_analytic).
 
+(* prints the time and the value as pair *)
+(* This takes a while and thus commented out *)
+ (* Compute (seq_tuple (lorenz_exact) 0).  *)

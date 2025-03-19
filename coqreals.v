@@ -13,6 +13,7 @@ Require Import Psatz.
 Require Import List.
 Require Import ConstructiveRcomplete.
 Require Import ConstructiveLimits.
+Require Import Classical.
 
 (* Require Import examples. *)
 Require Import ConstructiveAbs.
@@ -103,9 +104,19 @@ Defined.
     apply CRzero_lt_one.
   Defined.
 
+  (* requires classical reasoning in Prop*)
   Lemma R_total (x y : (CRcarrier R)): (x <= y) \/ (y <= x). 
   Proof.
-  Admitted.
+    destruct (classic (x == y)).
+    left.
+    rewrite H.
+    apply CRle_refl.
+    destruct (neq_apart _ _ H).
+    left.
+    apply CRlt_asym;auto.
+    right.
+    apply CRlt_asym;auto.
+  Qed.
 
   #[global] Instance R_totalOrder : TotalOrder.
   Proof.
@@ -170,7 +181,21 @@ Defined.
 
   Lemma CRabs_zero x :   CRabs R x == zero <-> x == zero.
   Proof.
-  Admitted.
+    split.
+    intros.
+    - destruct (le_total x 0).
+      simpl in H0.
+      rewrite CRabs_left in H;auto.
+      rewrite <-CRopp_involutive.
+      rewrite H.
+      apply CRopp_0.
+      rewrite CRabs_right in H;auto.
+   - intros.
+     rewrite H.
+     rewrite CRabs_right;auto.
+     reflexivity.
+     apply CRle_refl.
+  Qed.
 
   #[global] Instance R_norm : NormedSemiRing (A := CRcarrier R) (B := CRcarrier R) (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_totalOrder). 
   Proof.
@@ -189,70 +214,81 @@ Defined.
     apply CRle_refl.
   Defined.
 
-  Lemma ntimes_CReal n : ntimes n 1 == CR_of_Q R ({| Qnum := Z.of_nat n; Qden := 1 |}).
-  Proof.
-    induction n.
-    simpl.
-    reflexivity.
-    assert ({| Qnum := Z.of_nat (S n); Qden := 1 |} == ({| Qnum := Z.of_nat n; Qden := 1 |} + 1))%Q.
-    simpl.
-  Admitted.
 
-  (* #[global] Instance R_ArchimedeanField :ArchimedeanField (A := CRcarrier R). *)
-  (* Proof. *)
-  (*   unshelve eapply Build_ArchimedeanField. *)
-  (*   - intros. *)
-  (*     simpl. *)
-  (*     apply CRabs_right. *)
-  (*     apply H. *)
-  (*  -  intros. *)
-  (*     destruct (CR_archimedean _ x). *)
-  (*     exists (Pos.to_nat x0). *)
-  (*     rewrite ntimes_CReal. *)
-  (*     simpl. *)
-  (*     apply CRlt_asym. *)
-  (*     rewrite positive_nat_Z. *)
-  (*     apply c. *)
-  (*  Defined. *)
-  (* Open Scope fun_scope. *)
 
- (*  Require Import odebounds. *)
- (*  Lemma cauchy_neighboring_to_mod_helper  xn k i j : fast_cauchy_neighboring xn ->   (Nat.log2_up (Pos.to_nat (k+1)) <= i)%nat -> (Nat.log2_up (Pos.to_nat (k+1)) <= j)%nat ->  CRabs R (xn i - xn j)%ConstructiveReals  <=  CR_of_Q R {| Qnum := 1; Qden := k |}. *)
- (*  Admitted. *)
-
- (*  Lemma cauchy_neighboring_to_mod   xn : fast_cauchy_neighboring xn ->  (CR_cauchy R xn). *)
- (*  Proof. *)
- (*    intros. *)
- (*    intros k. *)
- (*    exists (Nat.log2_up ((Pos.to_nat (k+1)))). *)
- (*    intros. *)
- (*    apply cauchy_neighboring_to_mod_helper;auto. *)
- (* Defined. *)
-
- (*  Lemma npow_inv2 n :  npow (CR_of_Q R (/ inject_Z 2)) n == CR_of_Q R (2^(- Z.of_nat n))%Q. *)
- (*  Proof. *)
- (*  Admitted. *)
-
- (*  Lemma fast_cauchy_fast_limit xn x n : CR_cv R xn x -> fast_cauchy_neighboring xn -> norm (x - xn n) <= npow inv2 n. *)
- (*  Admitted. *)
-
- (*  #[global] Instance R_complete : ConstrComplete (A := CRcarrier R). *)
- (*  Proof. *)
- (*    constructor. *)
- (*    intros. *)
- (*    apply (CReal_from_cauchy (fun n => inject_Q 1)). *)
- (*    destruct (CR_complete R xn). *)
- (*    apply cauchy_neighboring_to_mod;auto. *)
- (*    intros. *)
- (*    exists x. *)
- (*    intros. *)
- (*    apply fast_cauchy_fast_limit;auto. *)
- (*   Defined. *)
+  
     
 End ConstructiveReals.
 
 
 
+(** A few more things needed for working with the Cauchy reals **)
+(** As the modulus definitons in our reals and the Cauchy reals are different we need to relate them **)
+(** Most of the things are admitted for now **)
+
+Require Import odebounds.
+Require Import realanalytic.
+From Coq.Reals Require Import ConstructiveCauchyReals.
+From Coq.Reals.Cauchy Require Import ConstructiveRcomplete.
+Require Import ConstructiveCauchyAbs.
+Require Import Qpower.
+Require Import Qabs.
+Require Import Qround.
+Require Import QArith.
+Section CauchyReals.
+
+Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
+(* Need to relate our definition of fast Cauchy sequence to the modulus definition *)
+(* Admitted for now *)
+Definition RQ := CRcarrier CRealConstructive.
+Lemma cauchy_neighbor_helper (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  forall k (i j : nat),(Nat.log2_up (Pos.to_nat (k + 1)) <= i)%nat -> (Nat.log2_up (Pos.to_nat (k + 1)) <= j)%nat -> (CReal_abs (xn i - xn j) <= inject_Q (q 1 k))%CReal.
+ Admitted.
+
+Lemma cauchy_neighboring_to_mod   (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  (Un_cauchy_mod xn).
+Proof.
+   intros H k.
+   exists (Nat.log2_up ((Pos.to_nat (k+1)))).
+   intros.
+   apply cauchy_neighbor_helper;auto.
+ Defined.
+
+ (* Archimedean for Q seems to be opaque, so we built our own for now (correctness admitted for now) *)
+  Lemma archimedean_bound (x : RQ) : algebra.le x (algebra.ntimes (Z.to_nat (Qceiling (seq x (-1)) + 1)) algebra.one).
+  Admitted.
+
+ #[global] Instance ArchimedeanFieldRQ : algebra.ArchimedeanField (A := RQ).
+  Proof.
+    unshelve eapply algebra.Build_ArchimedeanField.
+    - intros.
+      simpl.
+
+      apply CReal_abs_right.
+      apply H.
+   -  intros.
+      exists (Z.to_nat (Qceiling (seq x (-1))+1)).
+      apply archimedean_bound.
+  Defined.
 
 
+  Lemma  completeness_helper xn H0 n:  @algebra.le RQ (@R_setoid CRealConstructive) (@R_totalOrder CRealConstructive)
+    (@algebra.norm RQ RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
+       (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive) (@R_totalOrder CRealConstructive)
+       (@R_norm CRealConstructive)
+       (@algebra.minus RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
+          (@R_comSemiRing CRealConstructive) (@R_comRing CRealConstructive)
+          (CReal_from_cauchy xn (cauchy_neighboring_to_mod xn H0)) (xn n)))
+    (@algebra.npow RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
+       (@combinatorics.inv2 RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
+          (@R_comSemiRing CRealConstructive) (@invSn CRealConstructive)) n).
+  Proof.
+  Admitted.
 
+  #[global] Instance constrComplete : (ConstrComplete (A := RQ)).
+  Proof.
+    constructor.
+    intros.
+    exists (CReal_from_cauchy  xn (cauchy_neighboring_to_mod _ H)).
+    intros.
+    apply completeness_helper.
+   Defined.
+End CauchyReals.

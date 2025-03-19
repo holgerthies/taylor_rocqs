@@ -317,7 +317,6 @@ Section Bounds.
       reflexivity.
     Qed.
 
-    (*** move ***)
   Lemma norm_n_le_n n : norm (ntimes n 1) <= ntimes n 1.
   Proof.
     induction n.
@@ -600,7 +599,6 @@ Section Bounds.
 
    Lemma f_shift1 C1 r : (coeff_shift1 (to_ps (f_bound C1 r))) == (to_ps (f_bound (C1*r) r)).
    Proof.
-     Search coeff_shift1.
      intros k.
      destruct (destruct_tuple_cons k) as [hd [tl ->]].
      pose proof (coeff_shift1_spec (to_ps (f_bound C1 r)) hd tl).

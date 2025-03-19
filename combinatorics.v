@@ -121,8 +121,27 @@ Section Multiindex.
      intros; lia.
    Qed.
 
+    Lemma nemb_nat (n : nat):  #n == n.
+    Proof.
+      induction n.
+      simpl;reflexivity.
+      simpl.
+      rewrite IHn.
+      lia.
+    Qed.
    Lemma ntimes_int (n m : nat): ntimes n #m == #(n*m).
-   Admitted.
+   Proof.
+     rewrite !nemb_nat.
+     induction m.
+     simpl.
+     rewrite ntimes_zero;simpl;try lia.
+     simpl.
+     replace (S m) with (m+1)%nat by lia.
+     rewrite ntimes_plus.
+     rewrite IHm.
+     rewrite nemb_nat.
+     simpl;lia.
+   Qed.
  End Multiindex.
 
 (* factorial, inverse factorial and rising factorials *)
@@ -190,13 +209,19 @@ Section factorialTheorems.
     simpl.
     reflexivity.
     simpl.
-    destruct (destruct_tuple_cons a) as [k0 [kt Pk]].
-    destruct (destruct_tuple_cons e) as [n0 [nt P]].
-    destruct (destruct_tuple_cons b) as [k0' [kt' Pk']].
-    destruct (destruct_tuple_cons f) as [n0' [nt' P']].
-    enough (k0 = k0' /\ n0 = n0') as [-> ->].
-    rewrite (IHd kt kt'  ).
-  Admitted.
+    destruct (destruct_tuple_cons a) as [k0 [kt ->]].
+    destruct (destruct_tuple_cons e) as [n0 [nt ->]].
+    destruct (destruct_tuple_cons b) as [k0' [kt' ->]].
+    destruct (destruct_tuple_cons f) as [n0' [nt' ->]].
+    apply (tuple_cons_equiv) in eq.
+    apply (tuple_cons_equiv) in eq'.
+    destruct eq.
+    destruct eq'.
+    rewrite H1.
+    rewrite H3.
+    rewrite (IHd _ _ H2 _ _ H4).
+    reflexivity.
+  Defined.
   Lemma fact_invfact n : [n]! * ![n] == 1. 
   Proof.
     induction n.
@@ -466,7 +491,7 @@ Section FactorialOrderTheorems.
     
   Lemma inv_Sn_pos n : 0 <= inv_Sn n.
   Proof.
-  Admitted.    
+  Admitted.
 
   Lemma invfact_pos n : 0 <= ![n].
   Proof.

@@ -3,7 +3,6 @@ tuple.v
 algebra.v
 combinatorics.v
 functions.v
-powerseries.v
 polynomial.v
 abstractpowerseries.v
 ode.v

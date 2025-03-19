@@ -18,7 +18,6 @@ Require Import odebounds.
 
  Open Scope algebra_scope.
 Section Completeness.
-
   Class ConstrComplete `{ArchimedeanField} :=
   {
     has_limit : forall (xn : nat -> A), fast_cauchy_neighboring xn -> { x | forall n, norm (x - xn n) <= npow inv2 n}
@@ -140,7 +139,12 @@ Section Analytic.
 
    Lemma fast_cauchy_neighboring_proper f g: (forall n, f n == g n) -> fast_cauchy_neighboring f <-> fast_cauchy_neighboring g. 
    Proof.
-   Admitted.
+     intros.
+     split;unfold fast_cauchy_neighboring;intros.
+     rewrite <-!H12.
+     apply H13.
+     rewrite !H12; apply H13.
+   Qed.
 
    Lemma fast_cauchy_neighboring_ps_proper f g x: (forall n, f n == g n) -> fast_cauchy_neighboring (fun n => (partial_sum (to_ps f) x n)) <-> fast_cauchy_neighboring (fun n => (partial_sum (to_ps g) x n)). 
    Proof.
@@ -250,7 +254,6 @@ Section Analytic.
     intros C n.
     specialize (C (n)%nat).
     simpl.
-    Search partial_sum .
     replace (g + S n + 1)%nat with (S (g + n +1))%nat by lia.
     rewrite partial_sum_neighboring.
     simpl in C.
@@ -293,6 +296,13 @@ Section Analytic.
      replace (logM + n +1)%nat with ((n+1 + logM))%nat  by lia.
      apply H17.
  Qed.
+
+  Definition taylor_poly (F : Analytic) (i : nat) (n : nat)  : @poly ((A 0)).
+  Proof.
+    induction n.
+    apply [analytic_solution_ps F i 0%nat].
+    apply (IHn ++ [analytic_solution_ps F i (S n)]).
+  Defined.
 End Analytic.
 
 Section AnalyticPoly.
@@ -350,24 +360,26 @@ Section AnalyticPoly.
      apply ((poly_bound p0 y0) +  (IHe tl)).
    Defined.
 
-   Lemma poly_bound_spec {d} (p : A{x^S d}^S d) (k : nat^d) (y0 : A^(S d)) i : i < S d -> (( derive_rec p k) \_i) @ (y0; (poly_tot y0 (derive_rec p k)\_i)) <= t[k]! * #(proj1_sig (upper (poly_vec_bound p y0)))  * npow #1 (order k).
+   Lemma poly_bound_spec {d} (p : A{x^S d}^S d) (k : nat^d) (y0 : A^(S d)) i : i < S d -> (( derive_rec p k) \_i) @ (y0; (poly_tot y0 (derive_rec p k)\_i)) <= t[k]! *  #(proj1_sig (upper (poly_vec_bound p y0)))  * npow #1 (order k).
    Proof.
      intros.
    Admitted.
 
-  Lemma magic : False. Admitted.
   Definition analytic_poly {d} (p : (@mpoly A (S d))^(S d)) y0  : Analytic (A := mpoly) (d := d) (y0 := y0) (in_dom := poly_tot y0) .
   Proof.
     unshelve eapply Build_Analytic.
     apply p.
-    apply (proj1_sig (upper (norm #2))).
-    (* apply (proj1_sig (upper (poly_vec_bound p y0))). *)
+    apply (proj1_sig (upper (poly_vec_bound p y0))). 
     apply 1.
     intros.
     unfold eval0.
-    contradict magic.
-    (* apply poly_bound_spec;auto. *)
+    apply poly_bound_spec;auto. 
   Defined.
+
+  (** This part is only used for the demonstration and should not be used **)
+
+
+  (** end demonstration **)
 
    (* Definition ivp_solution_i  (F : (Analytic (A := mpoly))) (t : A) (i : nat)  :  norm t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r (A := mpoly) F)) -> A 0. *)
    (* Proof. *)
@@ -420,6 +432,11 @@ Section AnalyticPoly.
      apply ((ivp_r_max F), (ivp_solution_i F i (ivp_r_max F)) H7).
    Defined.
 
+   Definition ivp_solution_max  {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly)) : (A * ( A^(S d))).
+   Proof.
+     destruct (seq_to_tuple ((fun i => snd (ivp_solution_i_max F i))) (S d) (def := 0)).
+     apply ((ivp_r_max F) , x).
+   Defined.
    Record PIVP {d} := {
        pf : ((@mpoly A d)^d);
        py0 : A^d
