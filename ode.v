@@ -76,10 +76,6 @@ Section ODE_basic.
    Qed.
 
   
-  (* Definition Fi_spec {d} f i:  (i< d)%nat -> forall n y, @ODE_solution d f y -> (nth_derivative 0 y\_i n) == ((Fi f n i) \o1 y). *)
-  (* Proof. *)
-  (*   intros. *)
-  (* Admitted. *)
    Lemma  IVP_F1 {d} f k: k < d -> (@Fi d f 1 k) == f\_k. 
    Proof.
      intros.

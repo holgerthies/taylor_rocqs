@@ -1,28 +1,8 @@
-
-(* 
-   This file defines some useful algebraic structures.
-
-   - Definitions:
-     - `tuple`: A dependent type representing fixed-length lists.
-     - `tuple_cons`: Construction of a tuple by adding an element to an existing tuple.
-     - `nil_tuple`: The empty tuple.
-     - `tuple_nth`: Element access by index, with a default value.
-
-   - Equivalence and Setoid Instances:
-     - `tuple_equivalence`: Defines element-wise equivalence for tuples.
-     - `tuple_setoid`: Establishes a proper setoid structure for tuples.
-     - Proper instances for key functions such as `tuple_cons`, `tuple_nth`, and `tuple_map`.
-
-   - Lemmas and Proofs:
-     - Properties about `tuple_nth`, `tuple_cons`, and tuple equivalence.
-     - Extensionality lemmas ensuring that tuples are uniquely determined by their components.
-     - `tuple_map`: Maps a function over all elements of a tuple with proper equivalence handling.
-
-   - Notations:
-     - `A ^ d`: Denotes tuples of length `d` with elements of type `A`.
-     - `t(x ; y ; ... ; z)`: Tuple construction notation.
-     - `t()` and `t(x)`: Convenient notations for empty and single-element tuples.
-
+(*
+   This file defines algebraic structures such as semirings, rings,
+   and fields and structures supporting differentiation
+    and composition of functions, designed to model spaces of 
+    differentiable functions or power series
 *)
 Require Import Psatz.
 Require Import List.
@@ -821,6 +801,8 @@ Class CompositionalDiffAlgebra := {
     composition_mult_comp : forall {m n} x y (z :(A (S n))^m) , composition (x*y) z == (composition x z) * (composition y z);
     pdiff_chain : forall {m n d} (x : A m) (y : (A (S n))^m), D[d] (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m);
     composition_proper {m n}:: Proper (equiv ==> equiv ==> equiv) (@composition m n);
+    diff_id_same {d} i : i<d ->  D[i] (comp1 (m:=d) i) == 1;
+    diff_id_distinct {d} i j : (i <> j)%nat -> D[i] (comp1 (m:=d) j) == 0
   }.
 
 
@@ -921,27 +903,6 @@ Qed.
     reflexivity.
   Qed.
 
-  Lemma diff_id_same {d} i : i<d ->  D[i] (comp1 (m:=d) i) == 1.
-  Admitted.
-  Lemma diff_id_distinct {d} i j : (i <> j)%nat -> D[i] (comp1 (m:=d) j) == 0.
-  Admitted.
-  (* Proof. *)
-  (*   intros. *)
-  (*    assert ((comp1 (m:=(S d)) i) \o1 (id (S d)) == comp1 i). *)
-  (*    { *)
-  (*      rewrite composition_id. *)
-  (*      rewrite id_nth;auto. *)
-  (*      reflexivity. *)
-  (*    } *)
-  (*    rewrite <-H5. *)
-  (*    rewrite pdiff_chain. *)
-  (*    rewrite sum_ext. *)
-  (*    admit. *)
-  (*    intros;rewrite id_nth;auto. *)
-  (*    pose proof (pdiff_chain (d := i) (comp1 (m:=(S d)) i) (id (S d))). *)
-  (*    apply one_unique. *)
-  (*    intros. *)
-  (*    assert  *)
 End PartialDiffAlgebraTheory.
 
 

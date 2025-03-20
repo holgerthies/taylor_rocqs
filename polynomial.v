@@ -1503,6 +1503,11 @@ Defined.
   Lemma poly_composition_mult_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x*y) z == (mpoly_composition x z) * (mpoly_composition y z).
   Admitted.
 
+  Lemma poly_comp_diff1 {m}  (i : nat) : D[i] (@poly_comp1 m i) == 1.
+  Admitted.
+
+  Lemma poly_comp_diff0 {m}  (i : nat) (j : nat) : (i <> j)%nat -> D[i] (@poly_comp1 m j) == 0.
+  Admitted.
   Lemma poly_id_spec {m} hd (tl : A^m) :   ([0; 1] : mpoly (S m)) .[ tuple_cons hd tl] == hd. 
     simpl.
     destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
@@ -1566,6 +1571,9 @@ Defined.
    - intros;apply poly_composition_mult_comp.
    - intros;apply mpoly_pdiff_chain.
    - intros;  apply mpoly_composition_proper.
+   - intros.
+     apply poly_comp_diff1.
+   - intros. apply poly_comp_diff0;auto.
   Defined. 
 End PartialDiffAlgebra.
 Notation "A {x ^ d }" := (@mpoly A d) (at level 2).

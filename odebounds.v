@@ -60,6 +60,15 @@ Section Bounds.
 
    Definition partial_eval {d} (a : nat^(S d) -> A) (n : nat) := (fun k => a (tuple_cons n k)).
 
+   Definition partial_eval_ps1 {d} (a : nat^(S d) -> A) k  (n : nat^1) := (partial_eval a n\_0 k).
+
+   Lemma partial_eval_ps1_spec {d} (a : nat^(S d) -> A) n k : partial_eval a n k = partial_eval_ps1 a k t(n).
+   Proof.
+     unfold partial_eval_ps1.
+     rewrite tuple_nth_cons_hd.
+     reflexivity.
+   Qed.
+
    Instance partial_eval_proper {d} : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (partial_eval (d := d)).
    Proof.
      intros a b eq a' b' eq'.
@@ -91,21 +100,72 @@ Section Bounds.
       apply P1.
   Qed.
 
-  Lemma partial_eval_mul0 {d} (a b : nat^(S d) -> A) : partial_eval (a*b) 0 == partial_eval a 0 * partial_eval b 0.
+(* Fixpoint convolution_coeff_rec {d} (a b : nat^(S d) -> A) n i := *)
+(*      (partial_eval a (n-i)%nat) * (partial_eval b i%nat) + match i with *)
+(*      | 0 => 0 *)
+(*      | S i' => convolution_coeff_rec a b n i' *)
+(*     end. *)
+ 
+(*  Definition convolution_coeff {d} a b  n := convolution_coeff_rec (d:=d) a b n n. *)
+
+(*    Lemma convolution_coeff_rec_S {d} a b n i  : (i <= n)%nat -> convolution_coeff_rec (d:=d) a b (S n) i == convolution_coeff_rec (fun n => (partial_eval a (S n))) b n i. *)
+(*   Proof. *)
+(*    intros. *)
+(*    induction i. *)
+(*    - simpl. *)
+(*      rewrite Nat.sub_0_r;unfold nth;simpl. *)
+(*      ring. *)
+(*    - simpl. *)
+(*      assert (i < n)%nat by lia. *)
+(*      destruct (n-i)%nat eqn: E; [lia|]. *)
+(*      rewrite IHi; try lia. *)
+(*      assert ((n - S i)%nat = n0) as -> by lia. *)
+(*      ring. *)
+(*  Qed.  *)
+
+
+  
+ (* Lemma convolution_coeff_S a b n : convolution_coeff a b (S n) == (a 0%nat) * (b (S n)) + convolution_coeff (fun n=> (a (S n))) b n. *)
+ (* Proof. *)
+  Lemma partial_eval_nil  (a : nat^1->A) i (k : nat^0): partial_eval a i k == a t(i).
   Proof.
     unfold partial_eval.
-    intros k.
-    rewrite (ps_property_backwards).
-    rewrite (ps_property_backwards _ k).
-    rewrite inv_factt_cons.
-    simpl inv_factorial.
-    ring_simplify.
-    apply ring_eq_mult_eq; try reflexivity.
-    unfold derive_rec.
-    rewrite derive_rec_helper_next.
-    simpl nth_derivative.
+    apply index_proper;try reflexivity.
+    rewrite zero_tuple_zero.
+    reflexivity.
+  Qed.
+
+  Lemma partial_eval_mul_nil  (a : nat^0->A) b (k : nat^0): (a * b) k == a 0  * b 0 .
+  Proof.
+     rewrite index_proper; try rewrite zero_tuple_zero;try reflexivity.
+     rewrite ps_mul0.
+     reflexivity.
+  Qed.
+
+
+  Lemma mul_convolution {d} (a b : nat^(S d) -> A) n : partial_eval (a*b) n == sum (fun i => (partial_eval a i) * (partial_eval b (n-i)%nat)) (S n).
+  Proof.
     induction d.
-   Admitted.
+    - simpl.
+      intros.
+      rewrite partial_eval_nil.
+      rewrite index_sum.
+      induction n.
+      + rewrite ps_mul0.
+        rewrite sum_1.
+        rewrite partial_eval_mul_nil.
+        reflexivity.
+      + rewrite deriv_next_backwards.
+        rewrite index_proper; try apply pdiff_mult;try reflexivity.
+  Admitted.
+
+  Lemma partial_eval_mul0 {d} (a b : nat^(S d) -> A) : partial_eval (a*b) 0 == partial_eval a 0 * partial_eval b 0.
+  Proof.
+    rewrite mul_convolution.
+    rewrite sum_1.
+    replace (0 - 0)%nat with 0%nat by lia.
+    reflexivity.
+  Qed.
 
   Lemma partial_eval_mul0_k {d} (a b : nat^(S d) -> A) k : partial_eval (a*b) 0 k == (partial_eval a 0 * partial_eval b 0) k.
   Proof.
@@ -173,16 +233,26 @@ Section Bounds.
     apply le_refl.
   Qed.
 
-  Lemma coeff_shift_mul {d} (a b : nat^(S d) ->A ) i : partial_eval (a*b) (S i)  == partial_eval ((coeff_shift1 a)*b) i + partial_eval ((coeff_shift1 b)*a) i.
+  Lemma coeff_shift1_p {d} {a : nat^(S d) -> A} i : partial_eval (coeff_shift1 a) i == partial_eval a (S i).
   Proof.
     intros k.
-    rewrite index_plus.
-    (* rewrite <-coeff_shift1_spec. *)
-    (* rewrite partial_eval_proper; try apply coeff_shift_inner; try reflexivity. *)
-    rewrite partial_eval_S.
-    rewrite partial_eval_D_prod.
-    rewrite distrL.
-    apply ring_eq_plus_eq.
+    apply coeff_shift1_spec.
+  Qed.
+
+  Lemma coeff_shift_mul {d} (a b : nat^(S d) ->A ) i : partial_eval (a*b) (S i)  == partial_eval ((coeff_shift1 a)*b) i + partial_eval ((coeff_shift1 b)*a) i.
+  Proof.
+    rewrite !mul_convolution.
+    induction i.
+    - rewrite sum_S.
+      rewrite !sum_1.
+      rewrite !coeff_shift1_p.
+      replace (1-0)%nat with 1%nat by lia.
+      replace (1-1)%nat with 0%nat by lia.
+      replace (0-0)%nat with 0%nat by lia.
+      rewrite addC.
+      rewrite (mulC (partial_eval a 0)).
+      reflexivity.
+   - rewrite sum_S.
  Admitted.
 
   Lemma coeff_shift_mul1  (a b : nat^1 ->A ) i : (a*b) t(S i)  == ((coeff_shift1 a)*b) t(i) +  ((coeff_shift1 b)*a) t(i).
@@ -471,9 +541,24 @@ Section Bounds.
     apply le_refl.
   Qed.
 
-    Lemma comp1_bound {d : nat} i :  |comp1 (m:=d) i| <= comp1 0. 
+    Lemma comp1_order {d : nat} i k : (order k > 1) ->  comp1 (m:=d) i k == 0.
+    Proof.
+      intros.
+      rewrite ps_property_backwards.
+      induction d.
+      assert (k == 0) by (rewrite zero_tuple_zero;reflexivity).
+      simpl.
+      unfold derive_rec.
+      simpl.
+      rewrite comp1_0.
+      ring.
+      destruct (destruct_tuple_cons k) as [hd [tl ->]].
+  Admitted.
+   Lemma comp1_bound {d : nat} i :  |comp1 (m:=d) i| <= comp1 0. 
     Proof.
       intros k.
+      rewrite ps_property_backwards.
+      rewrite (ps_property_backwards (comp1 0)).
     Admitted.
 
     Lemma F_monotone {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n : (mps_tuple_bound a b\_0) -> (mps_tuple_bound (F a n) (tuple_nth 0 (F (ntimes d b) n) 0)).
@@ -733,7 +818,6 @@ Section Bounds.
      rewrite to_ps_simpl.
      rewrite order1d.
      rewrite <-(DFn_boundg _ _ n k0).
-     Check DFn_bound_spec.
      pose proof (DFn_bound_spec M r a n H7 t(k0)).
      rewrite order1d, to_ps_simpl in H8.
      apply H8.

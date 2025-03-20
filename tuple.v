@@ -1,28 +1,6 @@
 (* 
    Definitions and Lemmas for working with tuples (fixed-length lists)
    and a setoid structure for them.
-
-   - Definitions:
-     - `tuple`: A dependent type representing fixed-length lists.
-     - `tuple_cons`: Construction of a tuple by adding an element to an existing tuple.
-     - `nil_tuple`: The empty tuple.
-     - `tuple_nth`: Element access by index, with a default value.
-
-   - Equivalence and Setoid Instances:
-     - `tuple_equivalence`: Defines element-wise equivalence for tuples.
-     - `tuple_setoid`: Establishes a proper setoid structure for tuples.
-     - Proper instances for key functions such as `tuple_cons`, `tuple_nth`, and `tuple_map`.
-
-   - Lemmas and Proofs:
-     - Properties about `tuple_nth`, `tuple_cons`, and tuple equivalence.
-     - Extensionality lemmas ensuring that tuples are uniquely determined by their components.
-     - `tuple_map`: Maps a function over all elements of a tuple with proper equivalence handling.
-
-   - Notations:
-     - `A ^ d`: Denotes tuples of length `d` with elements of type `A`.
-     - `t(x ; y ; ... ; z)`: Tuple construction notation.
-     - `t()` and `t(x)`: Convenient notations for empty and single-element tuples.
-
 *)
 
 Require Import Setoid.

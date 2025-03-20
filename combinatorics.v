@@ -466,7 +466,7 @@ Section FactorialOrderTheorems.
  Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
   Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _) (H0 := _)}. (* Replace by proof *)
 
-  Add Ring TRing: (ComSemiRingTheory (A := A)). 
+  Add Ring TRing: (ComRingTheory (A := A)). 
   Lemma ntimes_nonneg x n: (0 <= x) -> 0 <= ntimes n x.
   Proof.
     intros.
@@ -491,7 +491,19 @@ Section FactorialOrderTheorems.
     
   Lemma inv_Sn_pos n : 0 <= inv_Sn n.
   Proof.
-  Admitted.
+    destruct (le_total 0 (inv_Sn n));auto.
+    assert (#(S n) * inv_Sn n  <= 0).
+    {
+      setoid_replace 0 with (# (S n) * 0) by ring.
+      apply mul_le_compat_pos;auto.
+      apply ntimes_nonneg;apply le_0_1.
+    }
+    rewrite inv_Sn_spec in H2.
+    pose proof (distinct_0_1).
+    contradict H3.
+    apply le_anti_sym;auto.
+    apply le_0_1.
+ Qed.
 
   Lemma invfact_pos n : 0 <= ![n].
   Proof.

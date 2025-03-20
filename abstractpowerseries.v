@@ -190,29 +190,6 @@ Section AbstractPowerSeriesProperties.
     apply IHd;lia.
   Qed.
 
-  (* Lemma nth1_plus_nth1 d x i: i < d -> (x + (nth1 d i))\_i = x\_i + 1. *)
-  (* Proof. *)
-  (*   intros. *)
-  (* Admitted. *)
-  (* Lemma nth1_plus_nth0 d x i j: i < d -> i<>j -> (x + (nth1 d i))\_j = x\_j. *)
-  (* Proof. *)
-  (*   intros. *)
-  (* Admitted. *)
-  (* Lemma deriv_next_nth {d} (f: nat^(S d) -> A) k : forall i, i < d -> D[i] f k == #(k\_i + 1) * f (k+(nth1 (S d) i)). *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   induction i. *)
-  (* Admitted. *)
-
-  (* Lemma comp1_index {d} i k : k == nth1 d i -> (comp1 i) k == 1 /\  (not (k == nth1 d i) -> (comp1 i) k == 0). *)
-  (* Admitted. *)
-
-  (* Lemma comp1_zero_one {d} i k : (comp1 (m:=d)  i) k == 0 \/ (comp1 (m:=d) i ) k == 1. *)
-  (* Proof. *)
-  (* Admitted. *)
-  (* Lemma comp1_0 {d} i : (comp1 (m:=d)  i) 0 == 0. *)
-  (* Proof. *)
-  (* Admitted. *)
   Lemma deriv_next_backwards {d} (f : nat^(S d) -> A) hd tl : f (tuple_cons (S hd) tl) == (inv_Sn hd) * (D[0] f) (tuple_cons hd tl).
   Proof.  
     pose proof (inv_Sn_spec hd).
