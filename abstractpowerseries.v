@@ -49,7 +49,6 @@ Section AbstractPowerSeries.
   Context `{CompositionalDiffAlgebra (A := ps) (H := _)}.
 
   Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _) (H0 := _)}.
-
   Class AbstractPowerSeries := {
   ps_derive : forall {d} (a : (nat^d -> A)) (k j : nat^d),  (Dx[k] a) j == t[j+1!k] * a (k+j);
   ps0 : forall d  (k : nat^d), (0 : (nat^d -> A)) k == 0;
@@ -58,8 +57,10 @@ Section AbstractPowerSeries.
   ps_comp0 : forall {d e} (a : (nat^d -> A)) (bs : (nat^(S e) -> A)^d), (a \o1 bs) 0 ==  (a 0);
   index_proper : forall {d}, Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun (a : nat^d -> A) n => a n);
   comp1_0 {d} i : (comp1 (m:=d)  i) 0 == 0;
+  cauchy_product {d} (a b : nat^(S d) -> A) n k : (a*b) (tuple_cons n k) == sum (fun i => (fun k0 => a (tuple_cons i k0)) * (fun k0 => b (tuple_cons (n-i)%nat k0))) (S n) k
   }.
   
+  (* todo: show cauchy product from other properties *)
 End AbstractPowerSeries.
 
 

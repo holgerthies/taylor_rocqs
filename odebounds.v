@@ -119,19 +119,10 @@ Section Bounds.
 
   Lemma mul_convolution {d} (a b : nat^(S d) -> A) n : partial_eval (a*b) n == sum (fun i => (partial_eval a i) * (partial_eval b (n-i)%nat)) (S n).
   Proof.
-    induction d.
-    - simpl.
-      intros.
-      rewrite partial_eval_nil.
-      rewrite index_sum.
-      induction n.
-      + rewrite ps_mul0.
-        rewrite sum_1.
-        rewrite partial_eval_mul_nil.
-        reflexivity.
-      + rewrite deriv_next_backwards.
-        rewrite index_proper; try apply pdiff_mult;try reflexivity.
-  Admitted.
+    unfold partial_eval.
+    intros k.
+    apply cauchy_product.
+  Qed.
 
   Lemma partial_eval_mul0 {d} (a b : nat^(S d) -> A) : partial_eval (a*b) 0 == partial_eval a 0 * partial_eval b 0.
   Proof.
@@ -277,11 +268,17 @@ Section Bounds.
      assert (x0 = []) as ->; (apply length_zero_iff_nil;auto).
    Qed.
 
-   (* Lemma ps_mul1_shift (a b : nat^1 -> A) k n :sum  (fun j => ((fun i => a (t(j)+i)) * (fun i => b (t(n -j)%nat+ i))) t(k)) (S n) == (a * b) t(n + k)%nat. *)
-   (* Proof. *)
-   
-     Lemma sum_norm : forall f i, norm (sum f i) <= sum (fun n => (norm (f n))) i.
-    Admitted.
+  Lemma sum_norm : forall f i, norm (sum f i) <= sum (fun n => (norm (f n))) i.
+  Proof.
+    intros.
+    induction i.
+    unfold sum;simpl.
+    rewrite (proj2 (norm_zero 0)); try apply le_refl;try reflexivity.
+    rewrite !sum_S.
+    apply (le_trans _ _ _ (norm_triangle _ _)).
+    apply le_plus_compat.
+    apply IHi.
+  Qed.
 
   Lemma mult_monotone1  (a b : nat^1 -> A) (A1 B1 : nat^1 -> A) : (|a| <= A1) -> |b| <= B1 -> |a*b| <= A1*B1.
   Proof.
@@ -504,8 +501,6 @@ Section Bounds.
      Transparent add.
   Qed.
 
-   Lemma sum_le_same  (a : nat -> A) b N : (forall n, (n < N) -> a n <= b) -> (sum a N) <= ntimes N b. 
-   Admitted.
     Lemma Fi_S {d :nat} (a : (nat ^d -> A)^d) (i n : nat) : (Fi (H3:=H4) a (S n) i) == (sum (fun j => (tuple_nth j a 0) * (D[j] (Fi (H3 := H4) a n i))) d).
     Proof.
       simpl;auto.
@@ -1060,12 +1055,22 @@ Section Bounds.
      apply H10.
   Qed.
 
-
  
   Lemma Fn_bound_spec1 M r n k : (0 <= M) -> (0 <= r) ->  norm (Fi (H3 := H4) t(a_bound_series M r)  (S n) 0 t(k)) <= Fn_bound M r n k.
+  Proof.
+    intros.
+    assert (M == (ntimes 1 M)) by (simpl;ring).
+    assert (t(a_bound_series M r) == (ntimes 1 t(a_bound_series M r))).
+    unfold ntimes;rewrite add0;reflexivity.
+
+    (* apply Fn_bound_spec;auto. *)
+    (* unfold ntimes. *)
   Admitted.
+
   (** multivariate case **)
 
+   Lemma sum_le_same  (a : nat -> A) b N : (forall n, (n < N) -> a n <= b) -> (sum a N) <= ntimes N b. 
+   Admitted.
   Lemma partial_eval_D_S {d} (a: nat^(S d) -> A) n k i : partial_eval (D[S i] a) n k == (D[i] (partial_eval a n)) k.
   Proof.
     intros.

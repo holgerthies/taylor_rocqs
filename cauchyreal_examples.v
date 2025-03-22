@@ -152,4 +152,4 @@ Definition lorenz_exact := (ivp_solution_max lorenz_analytic).
 (* prints the time and the value as pair *)
 (* This takes a while and thus commented out *)
 
- (* Compute (seq_tuple (lorenz_exact) 0).  *)
+  (* Compute (seq_tuple (lorenz_exact) 0).   *)
