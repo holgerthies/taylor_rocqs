@@ -158,25 +158,25 @@ Section Analytic.
      rewrite H12.
      reflexivity.
    Qed.
-   Lemma calc1 F :   npow #2 (S d) * # (M F) * # (r F) <= # (Init.Nat.max 1 (Nat.pow 2 (S d) * M F * r F)).
+   Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)).
    Admitted.
 
-   Lemma calc2 F :  #(S d) * # (M F) <= npow # 2 (Nat.log2_up (S d * M F)).
+   Lemma calc2 F :  ntimes (S d) # (M F) <= npow # 2 (Nat.log2_up (S d * M F)).
    Admitted.
 
-   Definition analytic_solution_r F : {ry : nat | npow #2 (S d) * # (M F)  * #F.(r) <= #ry /\ 0 < ry   }.
+   Definition analytic_solution_r F : {ry : nat | #2 * (ntimes (S d) #F.(M)) * #F.(r) <= #ry /\ 0 < ry   }.
    Proof.
-     exists (max 1 (Nat.pow 2 (S d) * M F * r F))%nat.
+     exists (max 1 (2*(S d) * F.(M) * F.(r)))%nat.
      split;try lia.
      pose proof (ntimes_int (S d ) (M F)).
      apply calc1.
    Defined.
-
-   Definition analytic_solution_logM (F : Analytic) : {logM : nat | #(S d) * #F.(M) <= npow (#2) logM }.
+   Definition analytic_solution_logM (F : Analytic) : {logM : nat | ntimes (S d) #F.(M) <= npow (#2) logM }.
     Proof.
       exists (Nat.log2_up ((S d) * F.(M))).
       apply calc2.
     Defined.
+
 
    Definition to_ps_remove0 (f : nat -> A 0) := to_ps (fun n => match n with 0 => 0 | _ => f n end).
 
@@ -188,7 +188,7 @@ Section Analytic.
    Proof.
    reflexivity.
    Qed.
-   Lemma f_mps_bound F :mps_tuple_bound (f_to_ps F) t( a_bound_series #F.(M) #F.(r))\_0. 
+   Lemma f_mps_bound F :tuple_bound_strong (f_to_ps F) t( a_bound_series #F.(M) #F.(r))\_0. 
    Proof.
    Admitted.
 
@@ -235,14 +235,13 @@ Section Analytic.
      Transparent ntimes.
      destruct a.
      apply mul_le_le_compat_pos; try apply npow_pos; try apply mul_pos_pos;try apply ntimes_nonneg; try apply ntimes_nonneg;try apply mul_pos_pos; try apply ntimes_nonneg;try apply le_0_1;try apply le_0_n.
-     apply mul_pos_pos; try apply npow_pos; try apply ntimes_nonneg;try apply le_0_1.
      apply l.
      enough (#1 <= #x0).
      simpl in H16.
      ring_simplify in H16.
      apply (le_trans _ (npow #x0 k0 * 1)).
      ring_simplify;apply npow_monotone;auto.
-     apply mul_pos_pos; try apply mul_pos_pos;try apply mul_pos_pos; try apply npow_pos; try apply ntimes_nonneg;try apply le_0_1.
+     apply mul_pos_pos; try apply mul_pos_pos;try apply mul_pos_pos; try apply npow_pos; try apply ntimes_nonneg;try apply ntimes_nonneg;try apply le_0_1.
      rewrite (mulC #x0).
      apply mul_le_compat_pos;try apply npow_pos;try apply le_0_n;auto.
      destruct x0; try lia;auto.
