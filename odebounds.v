@@ -1062,6 +1062,8 @@ Section Bounds.
 
 
  
+  Lemma Fn_bound_spec1 M r n k : (0 <= M) -> (0 <= r) ->  norm (Fi (H3 := H4) t(a_bound_series M r)  (S n) 0 t(k)) <= Fn_bound M r n k.
+  Admitted.
   (** multivariate case **)
 
   Lemma partial_eval_D_S {d} (a: nat^(S d) -> A) n k i : partial_eval (D[S i] a) n k == (D[i] (partial_eval a n)) k.
@@ -1139,7 +1141,7 @@ Section Bounds.
     Admitted.
 
 
-    Lemma F_monotone' {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n  : forall i, i<d -> (mps_tuple_bound a b\_0) -> forall k, norm ((Fi a n) i k) <= npow #2 (n * (order k + d -1)) * (Fi b n 0 t(order k)).
+    Lemma F_monotone {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n  : forall i, i<d -> (mps_tuple_bound a b\_0) -> forall k, norm ((Fi a n) i k) <= #d * npow #2 (n * (order k + d -1)) * (Fi b n 0 t(order k)).
     Admitted.
     (* Lemma F_monotone' {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n  : forall i, i<d -> (mps_tuple_bound a b\_0) -> forall k, norm ((Fi a n) i k) <= Fi t(F_major d b\_0) n 0 t(order k). *)
     (* Proof. *)
@@ -1203,8 +1205,36 @@ Section Bounds.
     (*      rewrite index_proper; try apply fi_s; try reflexivity. *)
     (*      enough (forall j, j < d -> |(tuple_nth j a 0) * (d[j] (fi (h3 := h4) a n i))| <= (tuple_nth 0 b 0 * d[0] (fi  (h3 := h4) (ntimes d b) n 0))). *)
 
-    Lemma F_monotone {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n : (mps_tuple_bound a b\_0) -> (mps_tuple_bound (F a n) (tuple_nth 0 (F (ntimes d b) n) 0)).
-   Admitted.
+  Definition Fn_bound_mv M r d n k :=  #d * (npow #2 (n * (k + d -1))) * (Fn_bound M r n k).
+
+  Lemma Fn_bound_spec_mv M r d n k : (0 <= M) -> (0 <= r) ->  norm (#d * (npow #2 (n * (k + d -1))) * (Fi (H3 := H4) t(a_bound_series M r)  (S n) 0 t(k))) <= (Fn_bound_mv M r  d n k).
+  Admitted.
+
+    Lemma npow_mul_pow  x n m: npow x (n*m) == npow (npow x m) n.
+    Admitted.
+
+   (*  Lemma F_monotone {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n : (mps_tuple_bound a b\_0) -> (mps_tuple_bound (F a n) (tuple_nth 0 (F (ntimes d b) n) 0)). *)
+   (* Admitted. *)
+    Lemma Fn_bound_mv0  M r d : (0 <= M) -> (0 <= r) -> (0 < d) -> forall n, Fn_bound_mv M r  d n 0 <= [n]! *  (#d*M) * npow ((npow #2 d)*M*r) n.
+    Proof.
+      intros.
+      unfold Fn_bound_mv.
+      pose proof (Fn_bound0 _ _ H7 H8 n).
+      replace ((n*(0+d-1))%nat) with (n*(d-1))%nat by lia.
+      rewrite npow_mul_pow.
+      rewrite mulA.
+      assert ((npow (npow #2 d *  M * r) n) == npow ((npow #2 ((d-1)%nat) * (#2 * M * r))) n) as ->.
+      {
+        apply npow_proper.
+        replace (d) with (S (d -1))%nat at 1 by lia.
+        simpl;ring.
+      }
+      rewrite npow_mult.
+      setoid_replace ([n ]! * (# d * M) * ((npow (npow #2 (d-1)) n) * (npow (#2 * M * r) n))) with (# d * ((npow (npow #2 (d-1)) n) * ([n ]! * ( M) * npow (# 2 * M * r) n))) by ring.
+      apply mul_le_compat_pos; try apply ntimes_nonneg;try apply le_0_1.
+      apply mul_le_compat_pos; try apply npow_pos; try apply npow_pos; try apply ntimes_nonneg; try apply le_0_1.
+      apply H10.
+   Qed.
 End Bounds.
 
 Section Bounded_PS.

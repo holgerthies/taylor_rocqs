@@ -376,11 +376,6 @@ Section AnalyticPoly.
     apply poly_bound_spec;auto. 
   Defined.
 
-  (** This part is only used for the demonstration and should not be used **)
-
-
-  (** end demonstration **)
-
    (* Definition ivp_solution_i  (F : (Analytic (A := mpoly))) (t : A) (i : nat)  :  norm t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r (A := mpoly) F)) -> A 0. *)
    (* Proof. *)
    (*   intros. *)
