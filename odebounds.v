@@ -1207,7 +1207,7 @@ Section Bounds.
 
   Definition Fn_bound_mv M r d n k :=  #d * (npow #2 (n * (k + d -1))) * (Fn_bound M r n k).
 
-  Lemma Fn_bound_spec_mv M r d n k : (0 <= M) -> (0 <= r) ->  norm (#d * (npow #2 (n * (k + d -1))) * (Fi (H3 := H4) t(a_bound_series M r)  (S n) 0 t(k))) <= (Fn_bound_mv M r  d n k).
+  Lemma Fn_bound_spec_mv M r d n k : (0 <= M) -> (0 <= r) ->   norm (#d * (npow #2 ((S n) * (k + d -1))) * (Fi (H3 := H4) t(a_bound_series M r)  (S n) 0 t(k))) <= (Fn_bound_mv M r  d n k).
   Admitted.
 
     Lemma npow_mul_pow  x n m: npow x (n*m) == npow (npow x m) n.
@@ -1263,13 +1263,14 @@ Section Bounded_PS.
     rewrite comp1_0;reflexivity.
   Defined.
 
-  Lemma y_bound_Fn i n: i < (S d) -> norm ((y\_i) t(S n))  <= ![S n] * Fn_bound (ntimes (S d) M) r n 0.  
+  Lemma y_bound_Fn i n: i < (S d) -> norm ((y\_i) t(S n))  <= ![S n] * Fn_bound_mv M r (S d) n 0.  
   Proof.
    intros.
-   pose proof (F_monotone  _ _ (S n) f_bounded i H7).
-   rewrite !F_nth in H8; try lia.
-   rewrite (F_nth (H3 := H4)) in H8;auto.
-   pose proof (Fn_bound_spec  (S d) M r n 0 Mpos rpos).
+   pose proof (F_monotone  _ _ (S n) i H7 f_bounded).
+   pose proof (Fn_bound_spec_mv   M r (S d) n 0 Mpos rpos).
+   (* rewrite !F_nth in H8; try lia. *)
+   (* rewrite (F_nth (H3 := H4)) in H8;auto. *)
+   (* pose proof (Fn_bound_spec_mv  (S d) M r n 0 Mpos rpos). *)
    unfold y.
    rewrite yt_spec;auto.
    unfold y_i.
@@ -1278,37 +1279,40 @@ Section Bounded_PS.
    apply mul_le_compat_pos;try apply invfact_pos.
    apply (le_trans _ _ _ (H8 0)).
    rewrite zero_order.
-   rewrite norm_abs in H9; try apply (bound_nonneg _ _ H8);auto.
+   unfold Fn_bound_mv.
+   rewrite norm_abs in H9;auto.
+   specialize (H8 0).
+   rewrite zero_order in H8.
+   apply (le_trans _ (norm (Fi (H3:=H4) f (S n) i 0)));try apply norm_nonneg;auto.
  Qed.
 
-
-  Lemma y_bound i n: i < (S d) -> norm (y\_i t(S n)) <= ntimes (S d) M  * npow (ntimes 2 1 * ntimes (S d) M * r) n.
+  Lemma y_bound i n: i < (S d) -> norm (y\_i t(S n)) <= (# (S d)) * M  * npow (npow #2 (S d) * M * r) n.
   Proof.
      intros.
      apply (le_trans _ _ _ (y_bound_Fn _ _ H7)).
-     assert (0 <= ntimes (S d) M )by (apply ntimes_nonneg;auto).
-    pose proof (mul_le_compat_pos (invfact_pos (S n)) (Fn_bound0 (ntimes (S d) M) r H8 rpos n)).
+     assert (0 < (S d) )%nat by lia.
+    pose proof (mul_le_compat_pos (invfact_pos (S n)) (Fn_bound_mv0 M r (S d) Mpos rpos H8 n)).
        apply (le_trans _ _ _ H9).
        rewrite <-!mulA.
-       enough (![ S n] * [n ]! * ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n  <= ( [S n ]! * ![ S n]) * ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n ).
+       enough (![ S n] * [n ]! * #(S d) * M * npow (npow #2 (S d) *  M * r) n  <= ( [S n ]! * ![ S n]) * #(S d) * M * npow (npow #2 (S d) * M * r) n ).
        {
          apply (le_trans _ _ _ H10).
          rewrite fact_invfact.
          ring_simplify.
          apply le_refl.
        }
-       setoid_replace (([S n ]! * ![ S n]) * ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n ) with (![ S n] * ([S n ]! * (ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n ))) by ring.
+       setoid_replace (([S n ]! * ![ S n]) * #(S d) * M * npow (npow (#2) (S d) * M * r) n ) with (![ S n] * ([S n ]! * (#(S d)* (M * npow (npow #2 (S d) * M * r) n )))) by ring.
        rewrite !mulA.
        apply mul_le_compat_pos; try apply invfact_pos.
        rewrite mulC.
        rewrite (mulC [S n]!).
        apply mul_le_compat_pos; try apply invfact_pos.
        apply mul_pos_pos.
-       apply ntimes_nonneg;auto.
+       apply ntimes_nonneg;apply le_0_1;auto.
+       apply mul_pos_pos;auto.
        apply npow_pos.
        apply mul_pos_pos;auto.
-       apply mul_pos_pos; apply ntimes_nonneg;auto.
-       apply le_0_1.
+       apply mul_pos_pos; try apply npow_pos; try apply ntimes_nonneg; try apply le_0_1;auto.
        simpl.
        rewrite mulC.
        setoid_replace ([n]!) with ([n]!*1) at 1 by ring.
