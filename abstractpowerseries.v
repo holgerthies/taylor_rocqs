@@ -57,6 +57,8 @@ Section AbstractPowerSeries.
   ps_comp0 : forall {d e} (a : (nat^d -> A)) (bs : (nat^(S e) -> A)^d), (a \o1 bs) 0 ==  (a 0);
   index_proper : forall {d}, Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun (a : nat^d -> A) n => a n);
   comp1_0 {d} i : (comp1 (m:=d)  i) 0 == 0;
+  comp1_1d  k : ((k == 1%nat) -> (comp1 (m:=1)  0) t(k) == 1) /\ ((k <> 1%nat) -> (comp1 (m:=1)  0) t(k) == 0);
+
   cauchy_product {d} (a b : nat^(S d) -> A) n k : (a*b) (tuple_cons n k) == sum (fun i => (fun k0 => a (tuple_cons i k0)) * (fun k0 => b (tuple_cons (n-i)%nat k0))) (S n) k
   }.
   

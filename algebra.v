@@ -596,6 +596,16 @@ Defined.
    simpl.
    apply mul_pos_pos;auto.
  Qed.
+
+ Lemma sum_le (f g : nat -> A) d : (forall i, i < d -> (f i) <= (g i)) -> sum f d <= sum g d.
+ Proof.
+   intros.
+   induction d.
+   unfold sum;simpl.
+   apply le_refl.
+   rewrite !sum_S.
+   apply le_le_plus_le;auto.
+Qed.
 End OrderTheory.
 
 Section VectorRawRing.
