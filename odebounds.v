@@ -304,150 +304,6 @@ Section Bounds.
       apply (mul_le_le_compat_pos); try apply norm_nonneg;auto.
    Qed.
 
-  (* Lemma mult_monotone {d} (a b : nat^d -> A) (A1 B1 : nat^1 -> A) : (|a| <= A1) -> |b| <= B1 -> |a*b| <= A1*B1. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   generalize dependent B1. *)
-  (*   generalize dependent A1. *)
-  (*   generalize dependent b. *)
-  (*   generalize dependent a. *)
-  (*   induction d;intros. *)
-  (*   - intros k. *)
-  (*     rewrite index_proper; [|reflexivity|apply zero_tuple_zero]. *)
-  (*     assert (t(order k) == 0) by (rewrite (zero_tuple_zero k);rewrite zero_order;reflexivity). *)
-  (*     setoid_rewrite (index_proper (A1*B1) (A1*B1) _ t(order k) 0); [|reflexivity|apply H9]. *)
-  (*     rewrite !ps_mul0. *)
-  (*     apply (le_trans _ _ _ (norm_mult _ _)). *)
-  (*     apply mul_le_le_compat_pos; try apply norm_nonneg. *)
-  (*     apply H7. *)
-  (*     apply H8. *)
-  (*   - intros. *)
-  (*     apply partial_eval_bound. *)
-  (*     intros i. *)
-  (*     rewrite !mul_convolution. *)
-  (*     intros k. *)
-  (*     rewrite index_sum. *)
-  (*     assert (sum_norm : forall f i, norm (sum f i) <= sum (fun n => (norm (f n))) i). *)
-  (*     admit. *)
-  (*     assert (sum_monotone : forall f g i, (forall j, j < i -> f j <= g j) ->  (sum f i) <= sum g i). *)
-  (*     admit. *)
-  (*     assert (forall j, j < (S i) -> (norm ((partial_eval a j * (partial_eval b (i-j))) k)) <= ((fun k0 => (A1 (t(j)%nat + k0))) * (fun (k0 : nat^1) => (B1 (t(i-j)%nat + k0)))) t(order k)). *)
-  (*     admit. *)
-  (*     apply (le_trans _ _ _ (sum_norm _ _)). *)
-  (*     apply (le_trans _ _ _ (sum_monotone _ _ _ H9)). *)
-  (*     rewrite index1_add. *)
-  (*     apply le_eq. *)
-  (*     apply ps_mul1_shift. *)
-  (*     generalize dependent B1. *)
-  (*     generalize dependent A1. *)
-  (*     induction (order k);intros. *)
-  (*     { *)
-  (*       enough (forall j, (((fun k => A1 (t(j) + k ))) * (fun k => B1 (t(i-j)%nat + k))) t(0) == A1 t(j) * B1 t(i-j)%nat  ). *)
-  (*       rewrite sum_ext; try (intros;apply H7;auto). *)
-  (*       rewrite <-mul_convolution1. *)
-  (*       setoid_replace (i+0)%nat with i by (simpl;lia). *)
-  (*       reflexivity. *)
-  (*       intros. *)
-  (*       rewrite ps_mul0. *)
-  (*       rewrite index_proper; try apply add0;try reflexivity. *)
-  (*       rewrite (exchange_index B1); try apply add0. *)
-  (*       reflexivity. *)
-  (*     } *)
-  (*     assert (forall j, (((fun k => A1 (t(j) + k ))) * (fun k => B1 (t(i-j)%nat + k))) t(S n) == (((fun k => (coeff_shift1 A1) (t(j) + k ))) * (fun k => B1 (t(i-j)%nat + k))) t(n) +  A1 t(j) * B1 t(i-j + S n)%nat). *)
-  (*     { *)
-  (*       intros. *)
-  (*       rewrite coeff_shift_mul1. *)
-  (*       apply ring_eq_plus_eq. *)
-  (*       apply index_proper; try reflexivity. *)
-  (*       apply ring_eq_mult_eq; try reflexivity. *)
-  (*       intros k0. *)
-  (*       destruct (destruct_tuple1 k0) as [n0  ->]. *)
-  (*       rewrite index1_add. *)
-  (*       rewrite <-!(partial_eval_nil _ _ 0). *)
-  (*       rewrite !coeff_shift1_spec. *)
-  (*       rewrite !partial_eval_nil. *)
-  (*       rewrite index1_add. *)
-  (*       setoid_replace (j + S n0)%nat with (S (j + n0))%nat by (simpl;lia). *)
-  (*       reflexivity. *)
-  (*       rewrite index1_add. *)
-  (*       setoid_replace ((i-j)+S n)%nat with (i-j + S n)%nat by (simpl;lia). *)
-  (*       apply ring_eq_mult_eq; try reflexivity. *)
-  (*       apply index_proper;try rewrite add0; try reflexivity. *)
-  (*     } *)
-  (*     rewrite sum_ext; try (intros;apply H7). *)
-  (*     assert (sum_sum : forall f f1 f2 n , (forall j, j < i -> f j == f1 j + f2 j) -> sum f n == sum f1 n + sum f2 n). *)
-  (*     admit. *)
-  (*     rewrite (sum_sum _ (fun j => ((fun k => ((coeff_shift1 A1 (t(j) + k )))) * (fun k => B1 (t(i-j)%nat + k))) t(n)) (fun j => A1 t(j) * B1 (t(i-j+S n)%nat)));[|intros;reflexivity]. *)
-  (*     rewrite IHn. *)
-  (*     setoid_replace (i + S n)%nat with (S (i+n))%nat by (simpl;lia). *)
-  (*     rewrite coeff_shift_mul1. *)
-  (*     apply ring_eq_plus_eq; try reflexivity. *)
-      
-  (*     rewrite sum_S. *)
-  (*     rewrite <-(partial_eval_nil _ _ 0). *)
-  (*     Check mul_convolution. *)
-  (*     simpl add. *)
-  (*     rewrite (mul_convolution A1 B1 (i+order k) 0). *)
-      
-  (*     generalize dependent B1. *)
-  (*     generalize dependent A1. *)
-  (*     generalize dependent b. *)
-  (*     generalize dependent a. *)
-  (*     induction i;intros. *)
-  (*     {        *)
-  (*       rewrite partial_eval_mul0. *)
-  (*      specialize (IHd (partial_eval a 0) (partial_eval b 0)). *)
-  (*      assert ((fun n => (A1 * B1) (t(0)+n)) == A1*B1) as ->. *)
-  (*      { *)
-  (*        intros n. *)
-  (*        apply index_proper; try reflexivity. *)
-  (*        setoid_rewrite <-zero_tuple1. *)
-  (*        rewrite addC,add0;reflexivity. *)
-  (*      } *)
-  (*      apply IHd;auto. *)
-  (*       + intros k. *)
-  (*         apply (le_trans _ _ _ (H7 _)). *)
-  (*         rewrite order_cons. *)
-  (*         replace (0+order k)%nat with (order k) by lia. *)
-  (*         apply le_refl. *)
-  (*       + intros k. *)
-  (*         apply (le_trans _ _ _ (H8 _)). *)
-  (*         rewrite order_cons. *)
-  (*         replace (0+order k)%nat with (order k) by lia. *)
-  (*         apply le_refl. *)
-  (*     } *)
-  (*     rewrite coeff_shift_mul. *)
-  (*     intros k. *)
-  (*     rewrite index1_add. *)
-  (*     setoid_replace (S i + order k)%nat with (S (i+order k)%nat) by (simpl;lia). *)
-  (*     rewrite coeff_shift_mul1. *)
-  (*     rewrite index_plus. *)
-  (*     apply (le_trans _ _ _ (norm_triangle _ _ )). *)
-  (*     apply le_le_plus_le. *)
-  (*   + specialize (IHi _  _ _ (coeff_shift1_bound _ _ H7) _ H8 k). *)
-  (*     apply (le_trans _ _ _ IHi). *)
-  (*     rewrite index1_add. *)
-  (*     apply le_refl. *)
-  (*   + apply (le_trans  _ _ _ (coeff_shift0 _ _ _ _)). *)
-  (*     pose proof (proj2 (partial_eval_bound a A1) H7 0). *)
-  (*     pose proof (proj2 (partial_eval_bound b B1) H8 (S i)). *)
-  (*     specialize (IHd (partial_eval a 0) (partial_eval b (S i)) _ H9 _ H10 k). *)
-  (*     apply (le_trans _ _ _ IHd). *)
-  (*     (* assert (((fun n => A1 (t( 0) + n)) *(fun n => B1 (t( S i) + n))) t( order k) == A1 * (fun B1 t(S ))) *) *)
-  (*     clear H9 IHi IHd. *)
-  (*     induction (order k). *)
-  (*     rewrite ps_mul0. *)
-  (*     apply le_refl. *)
-  (*     rewrite coeff_shift_mul1. *)
-  (*     rewrite <-(add0 ((A1 0) *_)). *)
-  (*     rewrite (addC ((A1 0) *_)). *)
-  (*     apply le_plus_compat. *)
-      
-  (*     specialize (IHi _  _ _ (coeff_shift1_bound _ _ H8) _ H7 k). *)
-  (*     apply (le_trans _ _ _ IHi). *)
-  (*     rewrite index1_add. *)
-  (*     apply le_refl. *)
-  (*   Qed. *)
 
   
     Lemma norm_zero_eq : norm 0 == 0.
@@ -1056,16 +912,6 @@ Section Bounds.
   Qed.
 
  
-  Lemma Fn_bound_spec1 M r n k : (0 <= M) -> (0 <= r) ->  norm (Fi (H3 := H4) t(a_bound_series M r)  (S n) 0 t(k)) <= Fn_bound M r n k.
-  Proof.
-    intros.
-    assert (M == (ntimes 1 M)) by (simpl;ring).
-    assert (t(a_bound_series M r) == (ntimes 1 t(a_bound_series M r))).
-    unfold ntimes;rewrite add0;reflexivity.
-
-    (* apply Fn_bound_spec;auto. *)
-    (* unfold ntimes. *)
-  Admitted.
 
   (** multivariate case **)
 
@@ -1079,11 +925,6 @@ Section Bounds.
   (*   induction d; [apply True|]. *)
   (*   apply (forall n, IHd (sum (fun n => partial_eval a n) (fun k =>  b)). *)
   (* Admitted. *)
-  Definition inv_ncr (n r : nat) : A.
-  Admitted.
-
-  Lemma inv_ncr_nonneg n r: (0 <= inv_ncr n r).
-  Admitted.
 
   Definition sum_order {d} (a : nat^d -> A ) (n : nat) : A.
   Proof.
@@ -1223,10 +1064,10 @@ Section Bounds.
      Transparent add.
   Qed.
 
-  Lemma partial_eval_D_S {d} (a: nat^(S d) -> A) n k i : partial_eval (D[S i] a) n k == (D[i] (partial_eval a n)) k.
-  Proof.
-    intros.
-  Admitted.
+  (* Lemma partial_eval_D_S {d} (a: nat^(S d) -> A) n k i : partial_eval (D[S i] a) n k == (D[i] (partial_eval a n)) k. *)
+  (* Proof. *)
+    
+  (* Admitted. *)
 
   Lemma diff0_strong_monotone {d} (a : (nat^(S d) ->A)) b : |a| << b ->  (|pdiff 0 a| <<  pdiff 0 b).
   Proof.
@@ -1244,32 +1085,32 @@ Section Bounds.
        (* apply Hb. *)
  Admitted.
 
-  Lemma diff_monotone {d} (a : nat^d -> A) b i : (i <d) -> (|a| <= b) -> (|pdiff i a| <= pdiff 0 b).
-    generalize dependent i .
-    generalize dependent b .
-    induction d;try lia.
-    intros.
-    revert H8.
-    destruct i; [apply diff0_monotone|].
-    intros H8 k.
-    apply partial_eval_bound.
-    intros hd tl.
-    rewrite partial_eval_D_S.
-    assert (i < d)%nat by lia.
-    pose proof (proj2 (partial_eval_bound a b)  H8 hd).
-    rewrite index1_add.
-    specialize (IHd _ _ _ H9 H10 tl).
-    apply (le_trans _ _ _ IHd).
-    rewrite !deriv_next.
+  (* Lemma diff_monotone {d} (a : nat^d -> A) b i : (i <d) -> (|a| <= b) -> (|pdiff i a| <= pdiff 0 b). *)
+  (*   generalize dependent i . *)
+  (*   generalize dependent b . *)
+  (*   induction d;try lia. *)
+  (*   intros. *)
+  (*   revert H8. *)
+  (*   destruct i; [apply diff0_monotone|]. *)
+  (*   intros H8 k. *)
+  (*   apply partial_eval_bound. *)
+  (*   intros hd tl. *)
+  (*   rewrite partial_eval_D_S. *)
+  (*   assert (i < d)%nat by lia. *)
+  (*   pose proof (proj2 (partial_eval_bound a b)  H8 hd). *)
+  (*   rewrite index1_add. *)
+  (*   specialize (IHd _ _ _ H9 H10 tl). *)
+  (*   apply (le_trans _ _ _ IHd). *)
+  (*   rewrite !deriv_next. *)
 
-    simpl.
-    replace (hd + (order tl +1))%nat with (hd + order tl + 1)%nat by (simpl;lia).
+  (*   simpl. *)
+  (*   replace (hd + (order tl +1))%nat with (hd + order tl + 1)%nat by (simpl;lia). *)
 
-    apply mul_le_le_compat_pos; try apply ntimes_nonneg; try apply le_0_1;try apply (bound_nonneg a);auto.
-    apply ntimes_pos_monotone; try apply le_0_1.
-    lia.
-    apply le_refl.
-  Qed.
+  (*   apply mul_le_le_compat_pos; try apply ntimes_nonneg; try apply le_0_1;try apply (bound_nonneg a);auto. *)
+  (*   apply ntimes_pos_monotone; try apply le_0_1. *)
+  (*   lia. *)
+  (*   apply le_refl. *)
+  (* Qed. *)
 
   Lemma diff_monotone_strong {d} (a : nat^d -> A) b i : (i <d) -> (|a| << b) -> (|pdiff i a| << pdiff 0 b).
     (* generalize dependent i . *)
@@ -1324,9 +1165,6 @@ Section Bounds.
      rewrite npow_plus.
      ring.
    Qed.
-    Lemma mul_nonneg (a b : nat^1 -> A) : (forall k, 0 <= a k) -> (forall k, 0 <= b k) -> (forall k, 0 <= (a*b) k).
-    Admitted.
-
    Definition tuple_bound_strong {d} {e} (a : (nat^d -> A )^e) (b : (nat^1 -> A)):=  forall i, i < e -> |a\_i| << b.
 
 

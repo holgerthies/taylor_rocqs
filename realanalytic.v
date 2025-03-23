@@ -43,14 +43,15 @@ Section Analytic.
 
   Notation "f {y0}" := (eval0 f) (at level 2).
 
+   Definition fun_ps (f : (A (S d))) (k : nat^(S d)) :=  t![k] * (Dx[k] (f)){y0}.
   Record Analytic  := {
       f : (A (S d))^(S d);
       M : nat;
       r : nat;
-      deriv_bound : forall (k : nat^d) i , i<(S d) -> ((Dx[k] f)\_i){y0} <= t[k]! * #M * npow #r (order  k) 
+      deriv_bound : forall i , i<(S d) -> strong_bound (fun_ps f\_i) (a_bound_series #M #r)
     }.
 
-   Definition fi_to_ps (F : Analytic) i (k : nat^(S d)) :=  t![k] * (Dx[k] (F.(f))\_i){y0}.
+   Definition fi_to_ps (F : Analytic) i (k : nat^(S d)) :=  fun_ps (F.(f)\_i) k.
 
    Definition f_to_ps  (F : (Analytic))  :=  proj1_sig (seq_to_tuple (fi_to_ps F) (S d) (def := 0)).
 
@@ -120,6 +121,7 @@ Section Analytic.
   Proof.
     intros.
     unfold fi_to_ps.
+    unfold fun_ps.
     rewrite inv_factt0.
     setoid_rewrite derive_rec_0.
     ring_simplify.
@@ -188,9 +190,14 @@ Section Analytic.
    Proof.
    reflexivity.
    Qed.
-   Lemma f_mps_bound F :tuple_bound_strong (f_to_ps F) t( a_bound_series #F.(M) #F.(r))\_0. 
+   Lemma f_mps_bound F :tuple_bound_strong (f_to_ps F) t( a_bound_series #F.(M) #F.(r))\_0.
    Proof.
-   Admitted.
+      unfold tuple_bound_strong.
+      intros;auto.
+      pose proof (deriv_bound F).
+      rewrite f_to_ps_spec;auto.
+      apply H13;auto.
+   Qed.
 
    Definition bound_ps F := (a_bound_series (A := (A 0)) (npow #2 (proj1_sig (analytic_solution_logM F))) #(proj1_sig (analytic_solution_r F))).
 
@@ -359,21 +366,19 @@ Section AnalyticPoly.
      destruct (destruct_tuple_cons p) as [p0 [tl P]].
      apply ((poly_bound p0 y0) +  (IHe tl)).
    Defined.
-
-   Lemma poly_bound_spec {d} (p : A{x^S d}^S d) (k : nat^d) (y0 : A^(S d)) i : i < S d -> (( derive_rec p k) \_i) @ (y0; (poly_tot y0 (derive_rec p k)\_i)) <= t[k]! *  #(proj1_sig (upper (poly_vec_bound p y0)))  * npow #1 (order k).
-   Proof.
-     intros.
+Check @fun_ps.
+   Lemma poly_bound_spec {d} (p : A{x^S d}^S d)  (y0 : A^(S d)) i : i < S d -> strong_bound (fun_ps (A := @mpoly A) (in_dom := poly_tot y0) (y0 := y0) p\_i) (to_ps (fun n => #(proj1_sig (upper (poly_vec_bound p y0)))  * npow #1 n)).
    Admitted.
+
 
   Definition analytic_poly {d} (p : (@mpoly A (S d))^(S d)) y0  : Analytic (A := mpoly) (d := d) (y0 := y0) (in_dom := poly_tot y0) .
   Proof.
     unshelve eapply Build_Analytic.
     apply p.
-    apply (proj1_sig (upper (poly_vec_bound p y0))). 
+    apply (proj1_sig (upper (poly_vec_bound p y0))).
     apply 1.
     intros.
-    unfold eval0.
-    apply poly_bound_spec;auto. 
+    apply poly_bound_spec;auto.
   Defined.
 
    (* Definition ivp_solution_i  (F : (Analytic (A := mpoly))) (t : A) (i : nat)  :  norm t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r (A := mpoly) F)) -> A 0. *)
