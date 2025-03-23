@@ -89,49 +89,49 @@ Section AbstractPowerSeriesProperties.
     rewrite add0;reflexivity.
   Qed.
 
-   Lemma nth_deriv_independent {d} (f : nat^d -> A) i n : nth_derivative (S i) D[0] f n  == D[0] (nth_derivative (S i) f n).
-   Proof.
-     induction n.
-     simpl.
-     intros;reflexivity.
-     simpl.
-     intros.
-     apply index_proper; try reflexivity.
-     rewrite IHn.
-     rewrite pdiff_comm.
-     reflexivity.
-   Qed.
+  (*  Lemma nth_deriv_independent {d} (f : nat^d -> A) i n : nth_derivative (S i) D[0] f n  == D[0] (nth_derivative (S i) f n). *)
+  (*  Proof. *)
+  (*    induction n. *)
+  (*    simpl. *)
+  (*    intros;reflexivity. *)
+  (*    simpl. *)
+  (*    intros. *)
+  (*    apply index_proper; try reflexivity. *)
+  (*    rewrite IHn. *)
+  (*    rewrite pdiff_comm. *)
+  (*    reflexivity. *)
+  (*  Qed. *)
   
-   Lemma deriv_next_helper {d e} (f : nat^d -> A) i (k : nat^e) : derive_rec_helper (S i) D[0] f k == D[0] (derive_rec_helper (S i) f k).
-   Proof.
-     revert f i.
-     induction e;intros.
-     simpl.
-     intros;reflexivity.
-     simpl.
-     destruct (destruct_tuple_cons k) as [hd [tl P]].
-     intros.
-     specialize (IHe tl f (S i)).
-     apply index_proper; try reflexivity.
-     rewrite nth_derivative_proper; try apply IHe.
-     apply nth_deriv_independent.
-  Qed.
+  (*  Lemma deriv_next_helper {d e} (f : nat^d -> A) i (k : nat^e) : derive_rec_helper (S i) D[0] f k == D[0] (derive_rec_helper (S i) f k). *)
+  (*  Proof. *)
+  (*    revert f i. *)
+  (*    induction e;intros. *)
+  (*    simpl. *)
+  (*    intros;reflexivity. *)
+  (*    simpl. *)
+  (*    destruct (destruct_tuple_cons k) as [hd [tl P]]. *)
+  (*    intros. *)
+  (*    specialize (IHe tl f (S i)). *)
+  (*    apply index_proper; try reflexivity. *)
+  (*    rewrite nth_derivative_proper; try apply IHe. *)
+  (*    apply nth_deriv_independent. *)
+  (* Qed. *)
 
-  Lemma deriv_rec_next {d e} (f : nat^d -> A) hd (tl : nat^e) : (derive_rec (D[0]f) (tuple_cons hd tl)) == (derive_rec f (tuple_cons (S hd) tl)).
-  Proof.
-    Opaque SetoidClass.equiv.
-    unfold derive_rec;simpl.
-    destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]].
-    destruct (destruct_tuple_cons (tuple_cons (S hd) tl)) as [hd'' [tl'' P']].
-    apply tuple_cons_ext in P.
-    apply tuple_cons_ext in P'.
-    destruct P as [<- <-].
-    destruct P' as [<- <-].
-    rewrite nth_derivative_proper; try apply deriv_next_helper.
-    rewrite nth_derivative_S.
-    reflexivity.
-    Transparent SetoidClass.equiv.
-  Qed.
+  (* Lemma deriv_rec_next {d e} (f : nat^d -> A) hd (tl : nat^e) : (derive_rec (D[0]f) (tuple_cons hd tl)) == (derive_rec f (tuple_cons (S hd) tl)). *)
+  (* Proof. *)
+  (*   Opaque SetoidClass.equiv. *)
+  (*   unfold derive_rec;simpl. *)
+  (*   destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]]. *)
+  (*   destruct (destruct_tuple_cons (tuple_cons (S hd) tl)) as [hd'' [tl'' P']]. *)
+  (*   apply tuple_cons_ext in P. *)
+  (*   apply tuple_cons_ext in P'. *)
+  (*   destruct P as [<- <-]. *)
+  (*   destruct P' as [<- <-]. *)
+  (*   rewrite nth_derivative_proper; try apply deriv_next_helper. *)
+  (*   rewrite nth_derivative_S. *)
+  (*   reflexivity. *)
+  (*   Transparent SetoidClass.equiv. *)
+  (* Qed. *)
       
   Lemma deriv_next {d} (f : nat^(S d) -> A) hd tl : (D[0] f) (tuple_cons hd tl) == # (hd+1) * f (tuple_cons (hd+1)%nat tl). 
   Proof.  
@@ -303,4 +303,5 @@ Section AbstractPowerSeriesProperties.
     rewrite IHn.
     reflexivity.
  Qed.
+
 End AbstractPowerSeriesProperties.

@@ -10,3 +10,4 @@ odebounds.v
 realanalytic.v
 coqreals.v
 examples.v
+cauchyreal_examples.v

@@ -915,16 +915,6 @@ Section Bounds.
 
   (** multivariate case **)
 
-  (* Definition sum_coeff_order {d} (a : nat^(S d) -> A) (n : nat) : A. *)
-  (* Proof. *)
-  (*   induction n. *)
-  (*   - apply (a 0). *)
-  (*   - apply (sum (fun i =>  partial_eval a ) *)
-  (* Definition sum_bound {d} (a : nat^(S d) -> A) (b : nat^1 -> A) : Prop. *)
-  (* Proof. *)
-  (*   induction d; [apply True|]. *)
-  (*   apply (forall n, IHd (sum (fun n => partial_eval a n) (fun k =>  b)). *)
-  (* Admitted. *)
 
   Definition sum_order {d} (a : nat^d -> A ) (n : nat) : A.
   Proof.

@@ -222,6 +222,22 @@ Section factorialTheorems.
     rewrite (IHd _ _ H2 _ _ H4).
     reflexivity.
   Defined.
+
+  #[global] Instance inv_fact_t_proper {d}: Proper (equiv ==> equiv) (inv_factorialt (d:=d)).
+  Proof.
+    intros a b eq.
+    induction d.
+    simpl.
+    reflexivity.
+    simpl.
+    destruct (destruct_tuple_cons a) as [k0 [kt ->]].
+    destruct (destruct_tuple_cons b) as [n0 [nt ->]].
+    apply (tuple_cons_equiv) in eq.
+    destruct eq.
+    rewrite H1.
+    rewrite (IHd _ _ H2).
+    reflexivity.
+  Defined.
   Lemma fact_invfact n : [n]! * ![n] == 1. 
   Proof.
     induction n.
@@ -549,6 +565,16 @@ Section EmbedNat.
       ring.
     Qed.
 
+    Lemma nat_pow_compat a b: npow #a b == #((a ^ b)%nat).
+    Proof.
+      induction b.
+      simpl.
+      ring.
+      simpl.
+      rewrite nat_mult_compat.
+      rewrite IHb.
+      reflexivity.
+    Qed.
     Lemma rat_plus1 a b c : #a +  inv_Sn c * #b == #(a*(c+1) + b) * inv_Sn c.
     Proof.
      simpl.

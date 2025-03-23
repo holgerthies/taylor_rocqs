@@ -148,6 +148,16 @@ Section Sums.
     ring.
   Qed.
 
+  Lemma sum_mult (f : nat -> A) (x : A) d : x * (sum f d) ==  (sum (fun n=> x * f n) d).
+  Proof.
+    induction d.
+    unfold sum;simpl.
+    ring.
+    rewrite !sum_S.
+    ring_simplify.
+    rewrite IHd.
+    ring.
+  Qed.
   Lemma sum_single (f : nat -> A) j d : (j < d) -> (forall i, i < d -> (not (i = j)) -> f i == 0) -> (sum f d) == f j. 
   Proof.
     intros.
@@ -275,7 +285,6 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
     unfold derive_rec.
     apply derive_helper_proper.
   Defined.
-
  Lemma derive_rec_helper_plus  `{PartialDifferentialRing }  {m} (k : nat^m) a b i :  derive_rec_helper i (a+b) k == derive_rec_helper i a k + derive_rec_helper i b k.
  Proof.
    revert i.
@@ -304,6 +313,47 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    rewrite IHd.
    reflexivity.
  Defined.
+
+   Lemma nth_deriv_independent `{PartialDifferentialRing }   f i n : nth_derivative (S i) (pdiff 0 f) n  == pdiff 0 (nth_derivative (S i) f n).
+   Proof.
+     induction n.
+     simpl.
+     intros;reflexivity.
+     simpl.
+     intros.
+     rewrite IHn.
+     rewrite pdiff_comm.
+     reflexivity.
+   Qed.
+
+   Lemma deriv_next_helper `{PartialDifferentialRing }  {m} f  i (k : nat^m)  : derive_rec_helper (S i) (pdiff 0 f) k == pdiff 0 (derive_rec_helper (S i) f k).
+   Proof.
+     revert f i.
+     induction m;intros.
+     simpl.
+     intros;reflexivity.
+     simpl.
+     destruct (destruct_tuple_cons k) as [hd [tl P]].
+     specialize (IHm tl f (S i)).
+     rewrite nth_derivative_proper; try apply IHm.
+     rewrite nth_deriv_independent.
+     reflexivity.
+  Qed.
+  Lemma deriv_rec_next `{PartialDifferentialRing }  {m} f  hd (tl : nat^m) : (derive_rec (pdiff 0 f) (tuple_cons hd tl)) == (derive_rec f (tuple_cons (S hd) tl)).
+  Proof.
+    Opaque SetoidClass.equiv.
+    unfold derive_rec;simpl.
+    destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]].
+    destruct (destruct_tuple_cons (tuple_cons (S hd) tl)) as [hd'' [tl'' P']].
+    apply tuple_cons_ext in P.
+    apply tuple_cons_ext in P'.
+    destruct P as [<- <-].
+    destruct P' as [<- <-].
+    rewrite nth_derivative_proper; try apply deriv_next_helper.
+    rewrite nth_derivative_S.
+    reflexivity.
+    Transparent SetoidClass.equiv.
+  Qed.
 Notation "D[ i ] f" := (pdiff i f) (at level 4) : algebra_scope.
 Notation "Dx[ x ] f" := (derive_rec f x) (at level 4) : algebra_scope.
 (* Notation "D[ i ]n f" := (nth_derivative i f n) (at level 4) : algebra_scope. *)

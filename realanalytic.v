@@ -88,6 +88,7 @@ Section Analytic.
 
   Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (H1 0) H7 H8 H9 H10 invSn d  (f_to_ps F).
 
+
   Lemma eval_sum_compat f N :  (sum f N){y0} == (sum (fun n => (f n){y0}) N).
   Proof.  
    intros.
@@ -127,17 +128,140 @@ Section Analytic.
     ring_simplify.
     reflexivity.
   Qed.
-    
+   Definition ps_add_y0 (F: Analytic) k i:= match k with
+                                            | 0 => y0\_i
+                                            | (S k') => powerseries_yi F k i
+                                            end.
+   
 
-  Lemma y_ps_same (F : Analytic): forall i k, (i < S d) -> (0 < k) ->  analytic_solution_ps F i k  == powerseries_yi F k i.
+  #[global] Instance derive_helper_proper_full `{PartialDifferentialRing } {e} j : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (derive_rec_helper j (d:=e)).
+  Proof.
+    intros a b eq n n' eq'.
+    rewrite derive_helper_proper; try apply eq.
+    revert j.
+    induction e.
+    simpl;reflexivity.
+    simpl.
+    destruct (destruct_tuple_cons n) as [n0 [nt ->]].
+    destruct (destruct_tuple_cons n') as [n'0 [n't ->]].
+    apply (tuple_cons_equiv) in eq'.
+    destruct eq'.
+    rewrite H14.
+    intros.
+    specialize (IHe _ _ H15 (S j)).
+    rewrite nth_derivative_proper; try apply IHe.
+    reflexivity.
+  Defined.
+
+  #[global] Instance derive_rec_proper_full `{PartialDifferentialRing } {e}  : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (derive_rec (d:=e)).
+  Proof.
+     unfold derive_rec.
+     apply derive_helper_proper_full.
+   Defined.
+
+  Instance fun_ps_proper : Proper (SetoidClass.equiv ==> SetoidClass.equiv) fun_ps. 
+  Proof.
+    intros a b eq.
+    unfold fun_ps.
+    intros k.
+    rewrite eq.
+    reflexivity.
+  Defined.
+
+  Lemma fun_ps_sum (f : nat -> (A (S d))) N : fun_ps (sum f (S N)) == sum (fun n=> (fun_ps (f n))) (S N).
+  Proof.
+    intros k.
+    unfold fun_ps.
+    rewrite index_sum.
+    rewrite derive_rec_sum.
+    rewrite eval_sum_compat.
+    induction N.
+    rewrite !sum_1.
+    ring.
+    rewrite sum_mult.
+    reflexivity.
+  Qed.
+
+  Lemma fun_ps_mult  (f : (A (S d))) (g : (A (S d))) : (fun_ps (f*g)) == (fun_ps f) * (fun_ps g).
+  Proof.
+    intros k.
+    unfold fun_ps.
+  Admitted.
+
+  Lemma fun_ps_D0  (f : (A (S d))):  (fun_ps (D[0] f)) == D[0] (fun_ps f).
+  Proof.
+    unfold fun_ps.
+    intros k.
+    destruct (destruct_tuple_cons k) as [i [t ->]].
+    rewrite deriv_next.
+    rewrite <-!mulA.
+    replace (i+1)%nat with (S i) at 2 by lia.
+    rewrite inv_factt_S_reverse.
+    apply ring_eq_mult_eq; try reflexivity.
+    rewrite deriv_rec_next.
+    replace (S i) with (i+1)%nat by lia.
+    reflexivity.
+  Qed.
+
+  Lemma fun_ps_D  (f : (A (S d)))  j: (j < (S d)) -> (fun_ps (D[j] f)) == D[j] (fun_ps f).
+  Proof.
+    intros.
+    destruct j.
+    apply fun_ps_D0.
+    intros k.
+    unfold fun_ps.
+ Admitted.
+
+  Lemma F_ps_same (F : Analytic): forall n  i , (i < S d) ->  (fun_ps (Fi F.(f) (S n) i))  ==  (Fi (d:=(S d)) (A := ps) (f_to_ps F) (S n) i).
+  Proof.
+    intros n.
+    induction n.
+    - intros.
+      intros k.
+      unfold fun_ps.
+      rewrite IVP_F1;auto.
+      setoid_rewrite (index_proper (A := (A 0)));  try rewrite IVP_F1; try reflexivity;auto.
+      rewrite f_to_ps_spec;auto.
+      unfold fi_to_ps, fun_ps.
+      reflexivity.
+    - intros.
+       assert ((Fi (f F) (S (S n)) i) == (sum (fun j => (f F)\_j * (D[j] (Fi (f F) (S n) i))) (S d))) by (simpl;reflexivity).
+       rewrite H13.
+       rewrite Fi_S.
+       rewrite fun_ps_sum.
+       apply sum_ext.
+       intros.
+       rewrite fun_ps_mult.
+       rewrite f_to_ps_spec;auto.
+       unfold fi_to_ps.
+       apply ring_eq_mult_eq; try reflexivity.
+       rewrite fun_ps_D;auto.
+       apply pdiff_proper.
+       apply IHn;auto.
+  Qed.
+
+  Lemma y_ps_same (F : Analytic): forall i k, (i < S d) ->   analytic_solution_ps F i k  == ps_add_y0 F k i.
    Proof.  
      intros.
+     unfold ps_add_y0.
      unfold analytic_solution_ps.
      unfold powerseries_yi.
-     pose proof (yi_spec (f := (f_to_ps F)) k 0 i H12).
-     setoid_rewrite yt_spec in H14;auto.
-     rewrite <-H14.
-  Admitted.
+     destruct k.
+     - simpl.
+       ring_simplify.
+       unfold eval0.
+       rewrite eval_id;auto.
+       reflexivity.
+     - 
+       unfold y_i.
+       pose proof (F_ps_same F k i H12 0).
+       rewrite <-H13.
+       apply ring_eq_mult_eq;try reflexivity.
+       unfold fun_ps.
+       rewrite inv_factt0.
+       rewrite derive_rec_0.
+       ring.
+  Qed.
 
    Lemma fast_cauchy_neighboring_proper f g: (forall n, f n == g n) -> fast_cauchy_neighboring f <-> fast_cauchy_neighboring g. 
    Proof.
@@ -161,10 +285,32 @@ Section Analytic.
      reflexivity.
    Qed.
    Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)).
-   Admitted.
+   Proof.
+     setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
+     rewrite <-!(nat_mult_compat (A := A 0)).
+     apply ntimes_monotone;lia.
+     setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring.
+     rewrite ntimes_mult.
+     ring.
+   Qed.
 
    Lemma calc2 F :  ntimes (S d) # (M F) <= npow # 2 (Nat.log2_up (S d * M F)).
-   Admitted.
+   Proof.
+      rewrite nat_pow_compat.
+     setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
+     rewrite <-!(nat_mult_compat (A := A 0)).
+     destruct (M F).
+     simpl.
+     replace (d * 0)%nat with 0%nat by lia.
+     simpl.
+     ring_simplify.
+     apply le_0_1.
+     apply ntimes_monotone.
+     apply Nat.log2_up_le_pow2; try lia.
+     setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring.
+     rewrite ntimes_mult.
+     ring.
+   Qed.
 
    Definition analytic_solution_r F : {ry : nat | #2 * (ntimes (S d) #F.(M)) * #F.(r) <= #ry /\ 0 < ry   }.
    Proof.
@@ -219,6 +365,7 @@ Section Analytic.
        unfold to_ps.
        simpl.
        ring_simplify.
+       simpl.
        apply npow_pos.
        apply le_0_n.
      }
@@ -366,7 +513,6 @@ Section AnalyticPoly.
      destruct (destruct_tuple_cons p) as [p0 [tl P]].
      apply ((poly_bound p0 y0) +  (IHe tl)).
    Defined.
-Check @fun_ps.
    Lemma poly_bound_spec {d} (p : A{x^S d}^S d)  (y0 : A^(S d)) i : i < S d -> strong_bound (fun_ps (A := @mpoly A) (in_dom := poly_tot y0) (y0 := y0) p\_i) (to_ps (fun n => #(proj1_sig (upper (poly_vec_bound p y0)))  * npow #1 n)).
    Admitted.
 
@@ -388,11 +534,11 @@ Check @fun_ps.
    (*   destruct (X (fast_cauchy_neighboring_approx F t i H15 H14 )). *)
    (*   apply x. *)
    (* Defined. *)
-   Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps (invSn := invSn) (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t ((proj1_sig (analytic_solution_logM (H3 := mpoly_comp_diff_algebra) F )) + n + 1).
+   Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps (invSn := invSn) (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t ((proj1_sig (analytic_solution_logM  F )) + n + 1).
 
 
 
-   Lemma fast_cauchy_neighboring_approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) t i : norm t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r (H3 := mpoly_comp_diff_algebra)  F))-> i < S d -> fast_cauchy_neighboring (approx F t i).
+   Lemma fast_cauchy_neighboring_approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) t i : norm t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r   F))-> i < S d -> fast_cauchy_neighboring (approx F t i).
    Proof.
      intros.
      apply (analytic_modulus (H3 := mpoly_comp_diff_algebra));auto.
