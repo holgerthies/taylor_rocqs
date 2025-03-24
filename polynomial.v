@@ -373,7 +373,26 @@ Import ListNotations.
       rewrite IHb;auto.
       rewrite H1;ring.
  Qed.
-
+ #[global] Instance eval_proper2 : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (eval_poly)).
+ Proof.
+   intros.
+   intros a b H0 c d H1.
+   generalize dependent a.
+   induction b;intros.
+   - apply nil_equiv in H0.
+     rewrite H0.
+     simpl;reflexivity.
+   -  destruct a0.
+      symmetry in H0.
+      apply nil_equiv in H0.
+      discriminate H0.
+      simpl.
+      destruct (eqlistA_destruct _ _ _ _ H0).
+      rewrite IHb;auto.
+      rewrite H1.
+      rewrite H2.
+      ring.
+ Qed.
  Lemma mult_coefficients_eval_single a0 b x : eval_poly (mult_coefficients (cons  a0 nil) b) x == a0 * eval_poly b x.
  Proof.
    pose proof (eval_proper x). 
@@ -1050,9 +1069,41 @@ Section MultiPolyComposition.
     apply IHn.
     apply eval_proper;auto.
   Defined.
+  #[global] Instance const_to_mpoly_proper n : (Proper  (SetoidClass.equiv ==>  SetoidClass.equiv) (const_to_mpoly n)).
+  Proof.
+     intros a b eq.
+   Admitted.
+     
   #[global] Instance pmeval_proper2 n : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (eval_tuple (n := n))).
   Proof.
-  Admitted.
+     intros a b H0 c d H1.
+     generalize dependent c.
+     generalize dependent d.
+     induction n;intros.
+     simpl;auto.
+     simpl.
+     destruct (destruct_tuple c) as [c0 [ctl Pc]].
+     destruct (destruct_tuple d) as [d0 [dtl Pd]].
+     destruct (destruct_tuple_cons c) as [ch [t0 ->]].
+     destruct (destruct_tuple_cons d) as [dh [t1 ->]].
+     rewrite <-proj1_sig_tuple_cons in Pc.
+     rewrite <-proj1_sig_tuple_cons in Pd.
+     apply Subset.subset_eq in Pc.
+     apply Subset.subset_eq in Pd.
+     apply tuple_cons_ext in Pc.
+     apply tuple_cons_ext in Pd.
+     destruct Pc as [eq1 ->].
+     destruct Pd as [eq2 ->].
+     apply tuple_cons_equiv in H1.
+     enough (a.{c0} == b.{d0}).
+     apply IHn;auto.
+     apply H1.
+     unfold eval_mpoly.
+     apply eval_proper2;auto.
+     rewrite <-eq1, <-eq2.
+     apply const_to_mpoly_proper;auto.
+     apply H1.
+  Qed.
   Lemma const_to_mpoly_spec n p x0 : (eval_poly p (const_to_mpoly n x0)) == p.{x0}.
   Proof.
     induction n;simpl;reflexivity.
@@ -1677,17 +1728,3 @@ Defined.
 
 End Evaluation.
 
-Section Bounds.
-  Context `{TotallyOrderedField}.
- Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
-
- (* Fixpoint poly_norm {d} (p : A{x^d}) := *)
- (*   match d with *)
- (*     | 0 => 0 *)
- (*   | (S n) => match p with *)
- (*             | nil => 0 *)
- (*             | hd :: tl => poly_norm hd + poly_norm tl *)
- (*             end *)
- (*     end. *)
-                     
-End Bounds.

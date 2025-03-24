@@ -30,8 +30,11 @@ Section Analytic.
   Context `{AbstractFunctionSpace }.
   Context `{ArchimedeanField (A:=A 0) (H:=H 0) (R_rawRing := H0 0) (R_semiRing := H1 0) }.
 
+
   Context `{CompositionalDiffAlgebra (A := (ps (A := (A 0)))) (H := (ps_set)) }.
   Context `{@AbstractPowerSeries (A 0) (H 0) (H0 0) (H1 0) H7 H8 H9 H10 invSn}.
+
+  Context `{cs_exists : CoeffSum (A := A 0) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := R_Field) (R_Field0 := R_Field0) (H5 := _) }.
    Add Ring KRing: (ComRingTheory (A := (A 0))).
   (* Context `{AbstractPowerseries (A := (A 0)) (H := (H 0))  (H1 := _)   }. *)
   (* Context `{norm_abs : forall x, 0 <= x -> norm x == x}. *)
@@ -464,6 +467,7 @@ Section AnalyticPoly.
   Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (A_Ring := _ ) (R_Field0 := _) (R_Field := R_Field) (R_TotalOrder := _) (normK := _)  (H0 := H0) (invSn := _)}.
   Context `{AbstractPowerSeries (A := A) (H := H) (R_rawRing := R_rawRing) (H0 := _) (invSn := invSn) }.
 
+  Context `{cs_exists : CoeffSum (A := A) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := R_Field) (R_Field0 := R_Field0) (H5 := _) }.
    Add Ring KRing: (ComRingTheory (A :=A)).
   Lemma poly_tot {d} (y0 : A^(S d)) : forall (f : @mpoly A (S d)), y0 \in_dom f.
   Proof.

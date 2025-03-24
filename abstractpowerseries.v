@@ -49,6 +49,20 @@ Section AbstractPowerSeries.
   Context `{CompositionalDiffAlgebra (A := ps) (H := _)}.
 
   Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _) (H0 := _)}.
+  (* coefficient norm is currently formalized abstractly *)
+  Class CoeffSum `{ArchimedeanField (A:=A) (H:=_) (R_rawRing := _) (R_semiRing := _) (invSn := _)}:= {
+      sum_order {d} (a : nat^d -> A ) (n : nat) : A;
+      sum_order_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (@sum_order d);
+      sum_order_mult {d} (a b : nat^d -> A) n : sum_order (a * b) n == sum (fun j => sum_order a j * sum_order b (n-j)) (S n);
+      sum_order_nonneg {d} (a : nat^d -> A) n : 0 <= sum_order a n;
+      sum_order_sum {d} (a : nat -> nat^d -> A) m n :  sum_order (sum a m) n == sum (fun i => (sum_order (a i) n)) m;
+      sum_order_diff_le {d} (a :  nat^d -> A) i n : i < d -> sum_order (D[i] a) n <= #(n+1)%nat * sum_order a (n+1)%nat;
+      sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0);
+      sum_order1d  (a :  nat^1 -> A)  k :  sum_order (d:=1) a k == norm (a t(k));
+      sum_order0  {d} (a :  nat^d -> A):  sum_order  a 0 == norm (a 0);
+      cauchy_product {d} (a b : nat^(S d) -> A) n k : (a*b) (tuple_cons n k) == sum (fun i => (fun k0 => a (tuple_cons i k0)) * (fun k0 => b (tuple_cons (n-i)%nat k0))) (S n) k
+    }.
+
   Class AbstractPowerSeries := {
   ps_derive : forall {d} (a : (nat^d -> A)) (k j : nat^d),  (Dx[k] a) j == t[j+1!k] * a (k+j);
   ps0 : forall d  (k : nat^d), (0 : (nat^d -> A)) k == 0;
@@ -59,7 +73,6 @@ Section AbstractPowerSeries.
   comp1_0 {d} i : (comp1 (m:=d)  i) 0 == 0;
   comp1_1d  k : ((k == 1%nat) -> (comp1 (m:=1)  0) t(k) == 1) /\ ((k <> 1%nat) -> (comp1 (m:=1)  0) t(k) == 0);
 
-  cauchy_product {d} (a b : nat^(S d) -> A) n k : (a*b) (tuple_cons n k) == sum (fun i => (fun k0 => a (tuple_cons i k0)) * (fun k0 => b (tuple_cons (n-i)%nat k0))) (S n) k
   }.
   
   (* todo: show cauchy product from other properties *)

@@ -21,7 +21,7 @@ Section Bounds.
 
   Context `{AbstractPowerSeries}.
   Context `{ArchimedeanField (A:=A) (H:=_) (R_rawRing := _) (R_semiRing := _) (invSn := _)}.
-
+  Context `{cs_exists : CoeffSum (A := A) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := R_Field) (R_Field0 := R_Field0) (H5 := _) }.
   (* Context `{TotallyOrderedField (A := A) (H := _) (R_rawRing := _) (R_semiRing := H0)}. *)
  (* Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }. *)
   
@@ -916,41 +916,41 @@ Section Bounds.
   (** multivariate case **)
 
 
-  Definition sum_order {d} (a : nat^d -> A ) (n : nat) : A.
-  Proof.
-    revert n.
-    induction d;intros.
-    apply (norm (a t())).
-    destruct d.
-    apply (norm (a t(n))).
-    apply (sum (fun j => (IHd (partial_eval a j) (n-j)%nat)) (S n)).
-  Defined.
+  (* Definition sum_order {d} (a : nat^d -> A ) (n : nat) : A. *)
+  (* Proof. *)
+  (*   revert n. *)
+  (*   induction d;intros. *)
+  (*   apply (norm (a t())). *)
+  (*   destruct d. *)
+  (*   apply (norm (a t(n))). *)
+  (*   apply (sum (fun j => (IHd (partial_eval a j) (n-j)%nat)) (S n)). *)
+  (* Defined. *)
 
   (* Definition strong_bound {d} (a : nat^d -> A) (b : nat^1 -> A):= |a| <= (fun k => (inv_ncr (k\_0+d-1)%nat (d-1)%nat) * (b k)). *)
 
   Definition strong_bound {d} (a : nat^d -> A) (b : nat^1 -> A):= forall n, sum_order a n <= b t(n).
 
- #[global]Instance sum_order_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (@sum_order d).
- Proof.
-   intros a b eq a0 b0 eq'.
-   simpl in eq'.
-   rewrite eq'.
-   clear eq'.
-   revert b0.
-   induction d;intros.
-   simpl.
-   apply norm_proper.
-   apply index_proper;auto;try reflexivity.
-   simpl.
-   destruct d.
-   apply norm_proper.
-   apply index_proper;auto;try reflexivity.
-   apply sum_ext.
-   intros.
-   apply IHd.
-   rewrite eq.
-   reflexivity.
- Defined.
+ (* #[global]Instance sum_order_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (@sum_order d). *)
+ (* Proof. *)
+ (*   intros a b eq a0 b0 eq'. *)
+ (*   simpl in eq'. *)
+ (*   rewrite eq'. *)
+ (*   clear eq'. *)
+ (*   revert b0. *)
+ (*   induction d;intros. *)
+ (*   simpl. *)
+ (*   apply norm_proper. *)
+ (*   apply index_proper;auto;try reflexivity. *)
+ (*   simpl. *)
+ (*   destruct d. *)
+ (*   apply norm_proper. *)
+ (*   apply index_proper;auto;try reflexivity. *)
+ (*   apply sum_ext. *)
+ (*   intros. *)
+ (*   apply IHd. *)
+ (*   rewrite eq. *)
+ (*   reflexivity. *)
+ (* Defined. *)
  
  #[global]Instance strong_bound_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (@strong_bound d).
    Proof.
@@ -958,11 +958,11 @@ Section Bounds.
      unfold strong_bound.
      split.
      - intros.
-       rewrite <-eq.
+       rewrite sum_order_proper; try rewrite <-eq; try reflexivity.
        symmetry in eq'.
        rewrite (index_proper b0 a0 eq' t(n) t(n));try reflexivity;auto.
      - intros.
-       rewrite eq.
+       rewrite sum_order_proper; try rewrite eq; try reflexivity.
        rewrite (index_proper a0 b0 eq' t(n) t(n));try reflexivity;auto.
    Defined.
 
@@ -972,26 +972,6 @@ Section Bounds.
   Proof.
     reflexivity.
   Qed.
-
-  Lemma sum_order_mult {d} (a b : nat^d -> A) n : sum_order (a * b) n == sum (fun j => sum_order a j * sum_order b (n-j)) (S n).
-  Admitted.
-
-  Lemma sum_order_nonneg {d} (a : nat^d -> A) n : 0 <= sum_order a n.
-  Admitted.
-
-  Lemma sum_order_sum {d} (a : nat -> nat^d -> A) m n :  sum_order (sum a m) n == sum (fun i => (sum_order (a i) n)) m.
-  Admitted.
-
-  Lemma sum_order_diff_le {d} (a :  nat^d -> A) i n : i < d -> sum_order (D[i] a) n <= #(n+1)%nat * sum_order a (n+1)%nat.
-  Admitted.
-  Lemma sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0).
-  Admitted. 
-
-  Lemma sum_order1d  (a :  nat^1 -> A)  k :  sum_order (d:=1) a k == norm (a t(k)).
-  Admitted. 
-
-  Lemma sum_order0  {d} (a :  nat^d -> A):  sum_order  a 0 == norm (a 0).
-  Admitted. 
 
   Lemma mult_monotone {d} (a b : nat^d -> A) (A1 B1 : nat^1 -> A) : (|a| << A1) -> |b| << B1 -> |(a * b)| << (A1 * B1).
   Proof.
@@ -1117,8 +1097,8 @@ Section Bounds.
       destruct (destruct_tuple1 k) as [k0 -> ].
       specialize (H7 k0).
       rewrite order1d.
-      simpl in H7.
-      apply H7.
+      rewrite sum_order1d in H7.
+     apply H7.
     Qed.
 
 
@@ -1134,7 +1114,7 @@ Section Bounded_PS.
 
   Context `{AbstractPowerSeries}.
   Context `{ArchimedeanField (A:=A) (H:=_) (R_rawRing := _) (R_semiRing := _) (invSn := _)}.
-
+  Context `{cs_exists : CoeffSum (A := A) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := R_Field) (R_Field0 := R_Field0) (H5 := _) }.
   Context {d : nat} {f : (nat^(S d) -> A)^(S d)}.
   Context {M r : A} {Mpos : 0 <= M} {rpos : 0 <= r}.
   Context {f_bounded : tuple_bound_strong f t(a_bound_series M r)\_0}.

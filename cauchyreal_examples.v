@@ -21,7 +21,8 @@ Open Scope Q_scope.
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 Definition RQ := CRcarrier CRealConstructive.
 Context `{AbstractPowerSeries (A := RQ) (H := (R_setoid )) (R_rawRing := R_rawRing) (H0 := _) (invSn := invSn) }.
-
+Context `{cs_exists : CoeffSum (A := RQ) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := _) (R_Field0 := _) (H5 := _) }.
+ 
  Definition  seq_tuple {d} (p : (RQ * tuple d RQ))  (z : Z): Q * list Q.
  Proof.
    destruct p.
