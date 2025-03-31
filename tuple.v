@@ -4,12 +4,12 @@
 *)
 
 Require Import Setoid.
-Require Import Coq.Lists.SetoidList.
-Require Import Coq.Classes.SetoidClass.
-Require Import Psatz.
-Require Import Classical.
-Require Import List.
-Require Import ZArith.
+Require Import Stdlib.Sorting.SetoidList.
+Require Import Stdlib.Classes.SetoidClass.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import Classical.
+From Stdlib Require Import List.
+From Stdlib Require Import ZArith.
 Import ListNotations.
 
  Definition tuple n A := {t : list A | length t = n}.

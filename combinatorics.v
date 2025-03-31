@@ -1,10 +1,10 @@
-Require Import Psatz.
-Require Import Setoid.
-Require Import Coq.Classes.SetoidClass.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import Setoid.
+Require Import Stdlib.Classes.SetoidClass.
 Require Import algebra.
-Require Import ZArith.
+From Stdlib Require Import ZArith.
 Require Import tuple.
-Require Import List.
+From Stdlib Require Import List.
 
 Open Scope algebra_scope.
 

@@ -1,19 +1,19 @@
 Require Import combinatorics.
-Require Import Coq.Reals.Abstract.ConstructiveReals.
+Require Import Stdlib.Reals.Abstract.ConstructiveReals.
 Require Import algebra.
 Require Import polynomial.
 Require Import functions.
 Require Import ode.
-Require Import Setoid.
-Require Import Coq.Classes.SetoidClass.
-Require Import QArith.
+From Stdlib Require Import Setoid.
+Require Import Stdlib.Classes.SetoidClass.
+From Stdlib Require Import QArith.
 Require Import tuple.
 
-Require Import Psatz.
-Require Import List.
-Require Import ConstructiveRcomplete.
-Require Import ConstructiveLimits.
-Require Import Classical.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import List.
+From Stdlib Require Import ConstructiveRcomplete.
+From Stdlib Require Import ConstructiveLimits.
+From Stdlib Require Import Classical.
 
 (* Require Import examples. *)
 Require Import ConstructiveAbs.
@@ -241,13 +241,13 @@ Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 (* Need to relate our definition of fast Cauchy sequence to the modulus definition *)
 (* Admitted for now *)
 Definition RQ := CRcarrier CRealConstructive.
-Lemma cauchy_neighbor_helper (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  forall k (i j : nat),(Nat.log2_up (Pos.to_nat (k + 1)) <= i)%nat -> (Nat.log2_up (Pos.to_nat (k + 1)) <= j)%nat -> (CReal_abs (xn i - xn j) <= inject_Q (q 1 k))%CReal.
+Lemma cauchy_neighbor_helper (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  forall k (i j : nat),(Nat.log2 (Pos.to_nat (k + 1)) <= i)%nat -> (Nat.log2 (Pos.to_nat (k + 1)) <= j)%nat -> (CReal_abs (xn i - xn j) <= inject_Q (q 1 k))%CReal.
  Admitted.
 
 Lemma cauchy_neighboring_to_mod   (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  (Un_cauchy_mod xn).
 Proof.
    intros H k.
-   exists (Nat.log2_up ((Pos.to_nat (k+1)))).
+   exists (Nat.log2 ((Pos.to_nat (k+1)))).
    intros.
    apply cauchy_neighbor_helper;auto.
  Defined.

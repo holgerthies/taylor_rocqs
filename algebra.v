@@ -4,14 +4,14 @@
     and composition of functions, designed to model spaces of 
     differentiable functions or power series
 *)
-Require Import Psatz.
-Require Import List.
-Require Import ZArith.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import List.
+From Stdlib Require Import ZArith.
 Import ListNotations.
-Require Import Setoid.
-Require Import Coq.Lists.SetoidList.
-Require Import Coq.Classes.SetoidClass.
-Require Import Classical.
+From Stdlib Require Import Setoid.
+Require Import Stdlib.Sorting.SetoidList.
+Require Import Stdlib.Classes.SetoidClass.
+From Stdlib Require Import Classical.
 Require Import tuple.
 Declare Scope algebra_scope.
 Open Scope algebra_scope.

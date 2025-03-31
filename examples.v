@@ -3,10 +3,10 @@ We abstractly formalize some polynomial example ODEs so that they can be
 instantiated over an arbitrary type
  *)
 Require Import algebra ode polynomial functions.
-Require Import Psatz. 
+From Stdlib Require Import Psatz. 
 Require Import tuple.
-Require Import Setoid.
-Require Import Coq.Classes.SetoidClass.
+From Stdlib Require Import Setoid.
+Require Import Stdlib.Classes.SetoidClass.
 Require Import combinatorics.
 Require Import realanalytic.
 Section IVP_Examples.

@@ -1,25 +1,26 @@
 Require Import polynomial.
-Require Import Coq.Reals.Abstract.ConstructiveReals.
+Require Import Stdlib.Reals.Abstract.ConstructiveReals.
 Require Import coqreals.
 Require Import examples.
 Require Import tuple.
-Require Import List.
-Require Import Coq.Classes.SetoidClass.
-From Coq.Reals Require Import ConstructiveCauchyReals.
-From Coq.Reals.Cauchy Require Import ConstructiveRcomplete.
-Require Import QArith.
-Require Import Qpower.
-Require Import Qabs.
-Require Import Qround.
+From Stdlib Require Import List.
+From Stdlib Require Import Classes.SetoidClass.
+From Stdlib.Reals Require Import ConstructiveCauchyReals.
+From Stdlib.Reals.Cauchy Require Import ConstructiveRcomplete.
+From Stdlib Require Import QArith.
+From Stdlib Require Import Qpower.
+From Stdlib Require Import Qabs.
+From Stdlib Require Import Qround.
 Require Import odebounds.
 Require Import realanalytic.
 Require Import abstractpowerseries.
-Require Import ConstructiveCauchyAbs.
+From Stdlib Require Import ConstructiveCauchyAbs.
 Open Scope algebra_scope.
 Open Scope fun_scope.
 Open Scope Q_scope.
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 Definition RQ := CRcarrier CRealConstructive.
+Section Examples.
 Context `{AbstractPowerSeries (A := RQ) (H := (R_setoid )) (R_rawRing := R_rawRing) (H0 := _) (invSn := invSn) }.
 Context `{cs_exists : CoeffSum (A := RQ) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := _) (R_Field0 := _) (H5 := _) }.
  
@@ -149,8 +150,9 @@ Compute (seq (l3_approx) (-10)).
 
 
 Definition lorenz_exact := (ivp_solution_max lorenz_analytic).
-
 (* prints the time and the value as pair *)
 (* This takes a while and thus commented out *)
 
-  (* Compute (seq_tuple (lorenz_exact) 0).   *)
+Compute (seq_tuple (lorenz_exact) 0).  
+
+End Examples.

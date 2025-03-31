@@ -1,11 +1,11 @@
-Require Import Psatz.
-Require Import ZArith.
-Require Import Setoid.
-Require Import Coq.Classes.SetoidClass.
-Require Import Coq.Lists.SetoidList.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import ZArith.
+From Stdlib Require Import Setoid.
+Require Import Stdlib.Classes.SetoidClass.
+Require Import Stdlib.Sorting.SetoidList.
 Require Import algebra.
 Require Import functions.
-Require Import List.
+From Stdlib Require Import List.
 Require Import tuple.
 Require Import combinatorics.
 Import ListNotations.

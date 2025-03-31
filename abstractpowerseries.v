@@ -1,14 +1,14 @@
-Require Import Psatz.
-Require Import List.
-Require Import ZArith.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import List.
+From Stdlib Require Import ZArith.
 Import ListNotations.
 Require Import algebra.
 Require Import functions.
 Require Import polynomial.
-Require Import Setoid.
-Require Import Coq.Classes.SetoidClass.
-Require Import Coq.Lists.SetoidList.
-Require Import Classical.
+From Stdlib Require Import Setoid.
+Require Import Stdlib.Classes.SetoidClass.
+Require Import Stdlib.Sorting.SetoidList.
+From Stdlib Require Import Classical.
 Require Import tuple.
 Require Import combinatorics.
 Open Scope algebra_scope.
