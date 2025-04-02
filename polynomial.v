@@ -1265,6 +1265,19 @@ Section MultiPolyComposition.
     destruct k; reflexivity.
   Qed.
   
+  Lemma const_to_mpoly_plus n p1 p2 : (const_to_mpoly n (p1 + p2)) == const_to_mpoly n p1 + const_to_mpoly n p2.
+  Proof.
+    induction n.
+    simpl.
+    reflexivity.
+    simpl const_to_mpoly.
+    intros k.
+    destruct k.
+    simpl.
+    apply IHn.
+    simpl.
+    destruct k; reflexivity.
+  Qed.
   Lemma to_mmpoly_cons {n} m (p0 : mpoly n) (p : @mpoly A (S n)) : (to_mmpoly m ((p0 :: p) : @mpoly A (S n))) = (to_mmpoly m p0) :: (to_mmpoly m p).
   Proof.
     simpl to_mmpoly.
@@ -1281,6 +1294,33 @@ Section MultiPolyComposition.
     destruct k;simpl;reflexivity.
   Qed.
 
+  Lemma to_mmpoly_proper {n} m : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (to_mmpoly (n := n) m).
+  Proof.
+    induction n; intros a b eq.
+    simpl.
+    rewrite eq.
+    reflexivity.
+    induction a.
+    rewrite to_mmpoly_zero.
+    destruct b.
+    rewrite to_mmpoly_zero;reflexivity.
+    rewrite to_mmpoly_cons.
+    intros k.
+    destruct k.
+    simpl.
+    specialize (eq 0).
+    simpl in eq.
+    rewrite <-eq.
+    rewrite to_mmpoly_zero;reflexivity.
+    Opaque to_mmpoly.
+    simpl.
+    Transparent to_mmpoly.
+    assert (nth k b 0 == 0).
+    specialize (eq (S k)).
+    simpl in eq.
+    rewrite <-eq;reflexivity.
+    specialize (IHn (nth k b 0) _ H0).
+  Admitted.
   Lemma mpoly_composition_cons {n m}  (p0 : @mpoly A n) (p : @mpoly A (S n)) (q0 : @mpoly A m) (qs : @tuple n (@mpoly A m)) : mpoly_composition (p0 :: p : (@mpoly A (S n))) (tuple_cons q0 qs) == mpoly_composition p0 qs + q0 * mpoly_composition p (tuple_cons q0 qs).
   Proof.
     unfold mpoly_composition.
@@ -1892,6 +1932,14 @@ Defined.
     apply [IHn m].
  Defined.
 
+  #[global] Instance mpoly_composition_proper {n m}: (Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (mpoly_composition (n := n) (m := m))).
+  Proof.
+    intros a b eq c d eq'.
+    unfold mpoly_composition.
+    rewrite eq'.
+    apply pmeval_proper.
+    Search to_mmpoly.
+
   Lemma poly_comp1_composition {m n} (f : @tuple n (mpoly (S m))) (i : nat) : mpoly_composition (poly_comp1 i) f == tuple_nth i f 0.
   Proof.
     induction i.
@@ -1904,7 +1952,46 @@ Defined.
   Admitted.
 
   Lemma poly_composition_plus_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x+y) z == (mpoly_composition x z) + (mpoly_composition y z).
-  Admitted.
+  Proof.
+    intros.
+    induction m.
+    - simpl.
+      intros [].
+      apply const_to_mpoly_plus.
+      destruct n0;reflexivity.
+   - destruct (destruct_tuple_cons z) as [z0 [t ->]].
+     generalize dependent x.
+     induction y;intros.
+     rewrite add0.
+     unfold mpoly_composition at 3.
+     rewrite to_mmpoly_zero.
+     rewrite zero_poly_eval.
+     rewrite add0.
+     reflexivity.
+     destruct x.
+     rewrite addC.
+     rewrite add0.
+     unfold mpoly_composition at 2.
+     rewrite to_mmpoly_zero.
+     rewrite zero_poly_eval.
+     rewrite addC, add0.
+     reflexivity.
+     simpl mpoly_composition.
+     rewrite !mpoly_composition_cons.
+     rewrite IHm.
+     rewrite !addA.
+     apply ring_eq_plus_eq; try reflexivity.
+     rewrite (addC _ (_ + _)).
+     rewrite !addA.
+     apply ring_eq_plus_eq; try reflexivity.
+     rewrite <-distrL.
+     apply ring_eq_mult_eq; try reflexivity.
+     specialize (IHy x).
+     rewrite IHy.
+     rewrite addC.
+     reflexivity.
+  Qed.
+
   Lemma poly_composition_mult_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x*y) z == (mpoly_composition x z) * (mpoly_composition y z).
   Admitted.
 
@@ -2021,8 +2108,6 @@ Defined.
   
   Definition mpoly_comp'  {n m} := mpoly_composition (n := n) (m := (S m)).
 
-  #[global] Instance mpoly_composition_proper {n m}: (Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (mpoly_composition (n := n) (m := m))).
-  Admitted.
 
     Lemma mpoly_pdiff_chain : forall {m n d} (x : mpoly m) (y : @tuple m (mpoly (S n))), pdiff d (mpoly_composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) m).
     Admitted.
