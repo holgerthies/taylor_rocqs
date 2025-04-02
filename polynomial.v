@@ -1637,61 +1637,156 @@ Section PartialDiffAlgebra.
      lia.
    Qed.
 
+  Lemma poly_pdiff_plus m : forall (p : (mpoly m)) q n, poly_pdiff n (p + q) ==  poly_pdiff n p +  poly_pdiff n q.
+  Proof.
+      induction m;intros; destruct n;try (simpl; rewrite add0;reflexivity).
+      apply poly_sum_rule.
+      intros n0.
+      simpl.
+      setoid_rewrite <- (poly_pdiff0 _ n) at 1.
+      rewrite !map_nth.
+      rewrite !sum_coefficient_nth.
+      assert (forall r, nth n0 (map (@poly_pdiff m n) r) 0 = poly_pdiff n (nth n0 r 0)).
+      {
+        intros.
+        replace 0 with (@poly_pdiff m n 0) by apply poly_pdiff0.
+        rewrite map_nth.
+        rewrite poly_pdiff0;auto.
+      }
+      simpl.
+      rewrite !H1.
+      apply IHm.
+  Qed.
+
   Lemma poly_pdiff_mult m : forall (p : (mpoly m)) q n, poly_pdiff n (p * q) == q * poly_pdiff n p + p * poly_pdiff n q.
   Proof.
     intros.
     generalize dependent m.
     induction n;intros.
-    destruct m.
-    simpl.
-    rewrite !mul0.
-    rewrite add0.
-    reflexivity.
-    simpl poly_pdiff.
-    rewrite addC.
-    apply poly_product_rule.
-    destruct m.
-    simpl.
-    rewrite !mul0.
-    rewrite add0.
-    reflexivity.
-    intros n0.
-    simpl.
-    (* rewrite map_nth. *)
-    (* simpl; rewrite !map_nth. *)
-    (* rewrite sum_coefficient_nth. *)
-    (* rewrite !mult_polyf_convolution. *)
-   Admitted.
+    - destruct m.
+      simpl.
+      rewrite !mul0.
+      rewrite add0.
+      reflexivity.
+      simpl poly_pdiff.
+      rewrite addC.
+      apply poly_product_rule.
+   -  destruct m.
+      simpl.
+      rewrite !mul0.
+      rewrite add0.
+      reflexivity.
+      simpl poly_pdiff.
+      intros n0.
+     setoid_rewrite <- (poly_pdiff0 _ n) at 1.
+     simpl; rewrite !map_nth. 
+    rewrite sum_coefficient_nth.
+     rewrite !mult_polyf_convolution.
+     revert n0.
+     induction p;intros.
+     + unfold convolution_coeff.
+       simpl.
+       rewrite !convolution_coeff_rec_nil.
+       rewrite !convolution_coeff_rec_nil2.
+       rewrite poly_pdiff0;rewrite add0;reflexivity.
+     +  simpl.
+       destruct n0.
+      unfold convolution_coeff.
+      simpl.
+      rewrite add0.
+      rewrite IHn.
+      rewrite !add0.
+      apply ring_eq_plus_eq;try reflexivity.
+      rewrite ring_eq_mult_eq;try reflexivity.
+      setoid_rewrite <- (poly_pdiff0 _ n) at 2.
+      simpl; rewrite !map_nth. 
+      reflexivity.
+      rewrite !convolution_coeff_cons.
+      rewrite poly_pdiff_plus.
+      rewrite IHn.
+      rewrite IHp.
+      rewrite <-!addA.
+      apply ring_eq_plus_eq; try reflexivity.
+      rewrite (convolution_coeff_sym _ (poly_pdiff n a :: _)).
+      rewrite convolution_coeff_cons.
+      rewrite !addA.
+      apply ring_eq_plus_eq.
+      rewrite mulC;reflexivity.
+      rewrite addC.
+      apply ring_eq_plus_eq.
+      rewrite convolution_coeff_sym; reflexivity.
+      apply ring_eq_mult_eq; try reflexivity.
+     setoid_rewrite <- (poly_pdiff0 _ n) at 2.
+     rewrite map_nth.
+     reflexivity.
+  Qed.
+
+  Lemma poly_pdiff_ntimes d n m (p : (mpoly d)): poly_pdiff n (ntimes m p) == ntimes m (poly_pdiff n p).
+  Proof.
+   induction m.
+   simpl.
+   rewrite poly_pdiff0.
+   reflexivity.
+   simpl.
+   rewrite poly_pdiff_plus.
+   rewrite IHm.
+   reflexivity.
+  Qed.
 
   Lemma poly_pdiff_switch d : forall (p : (mpoly d)) m n, poly_pdiff n (poly_pdiff m p) == poly_pdiff m (poly_pdiff n p).
   Proof.
-  Admitted.                                                                    
+    intros.
+    generalize dependent d.
+    generalize dependent n.
+    induction m.
+    - destruct d.
+      simpl.
+      rewrite poly_pdiff0; reflexivity.
+      simpl.
+      intros.
+      apply nth_proper_list.
+      induction n.
+      + simpl.
+        intros n1; rewrite !derive_poly_nth.
+        reflexivity.
+     + simpl.
+       intros n1.
+       setoid_rewrite <- (poly_pdiff0 _ n) at 1.
+       rewrite !map_nth.
+        rewrite !derive_poly_nth.
+       setoid_rewrite <- (poly_pdiff0 _ n) at 2.
+       rewrite map_nth.
+        rewrite poly_pdiff_ntimes.
+        reflexivity.
+   - intros.
+      destruct d.
+      simpl.
+       rewrite poly_pdiff0;reflexivity.
+      simpl.
+      intros n0.
+      setoid_rewrite <- (poly_pdiff0 _ m) at 2.
+     rewrite map_nth.
+     destruct n.
+     + simpl.
+       rewrite !derive_poly_nth.
+        setoid_rewrite <- (poly_pdiff0 _ m) at 1.
+        rewrite map_nth.
+        rewrite poly_pdiff_ntimes.
+        reflexivity.
+    +  simpl.
+        setoid_rewrite <- (poly_pdiff0 _ n).
+        rewrite !map_nth.
+        rewrite <-IHm.
+        apply mpoly_pdiff_proper.
+        setoid_rewrite <- (poly_pdiff0 _ m) at 1.
+        rewrite !map_nth.
+        reflexivity.
+  Qed.
 
   #[global] Instance mpoly_pdiffring n : PartialDifferentialRing (A := (mpoly n)).
   Proof.
-    exists poly_pdiff.
-    - intros.
-      revert n r1 r2.
-      induction d;intros; destruct n;try (simpl; rewrite add0;reflexivity).
-      apply poly_sum_rule.
-      apply (nth_ext_A _ _ 0 0).
-      simpl.
-      rewrite map_length,!length_sum_coefficients, !map_length;auto.
-      intros.
-      rewrite (nth_indep _ _ (poly_pdiff d zero));auto.
-      simpl.
-      rewrite !map_nth.
-      rewrite !sum_coefficient_nth.
-      assert (forall r, nth n0 (map (@poly_pdiff n d) r) 0 = poly_pdiff d (nth n0 r 0)).
-      {
-        intros.
-        replace 0 with (@poly_pdiff n d 0) by apply poly_pdiff0.
-        rewrite map_nth.
-        rewrite poly_pdiff0;auto.
-      }
-      simpl.
-      rewrite !H2.
-      apply IHd.
+  exists poly_pdiff.
+  - intros; apply poly_pdiff_plus.
   - intros; apply poly_pdiff_mult.
   - intros; apply poly_pdiff_switch.
   - apply mpoly_pdiff_proper.
