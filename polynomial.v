@@ -1823,8 +1823,11 @@ Defined.
     - simpl;destruct m.
       simpl.
       rewrite tuple_nth_nil;reflexivity.
-      simpl.
-   Admitted.
+      destruct (destruct_tuple_cons x) as [hd [tl ->]].
+      rewrite eval_tuple_emb.
+      rewrite tuple_nth_cons_tl.
+      apply IHn.
+   Qed.
   
   Definition mpoly_comp'  {n m} := mpoly_composition (n := n) (m := (S m)).
 
