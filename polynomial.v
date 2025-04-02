@@ -1090,6 +1090,129 @@ Proof.
    apply (IHn p0 tl).
 Defined.
 
+  #[global] Instance pmeval_proper {R} `{R_semiRing : SemiRing (A:=R)} n t : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun p => eval_tuple (n := n) p t)).
+  Proof.
+    intros a b H0.
+    induction n; simpl;auto.
+    destruct (destruct_tuple t) as [x0 [tl P]].
+    apply IHn.
+    apply eval_proper;auto.
+  Defined.
+
+  #[global] Instance const_to_mpoly_proper {R} `{R_semiRing : SemiRing (A:=R)}  n : (Proper  (SetoidClass.equiv ==>  SetoidClass.equiv) (const_to_mpoly n)).
+  Proof.
+     intros a b eq.
+     induction n;simpl;auto.
+     intros n0.
+     destruct n0;auto.
+     destruct n0;auto;reflexivity.
+   Qed.
+  #[global] Instance pmeval_proper2 {R} `{R_semiRing : SemiRing (A:=R)}  n : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (eval_tuple (n := n))).
+  Proof.
+     intros a b H0 c d H1.
+     generalize dependent c.
+     generalize dependent d.
+     induction n;intros.
+     simpl;auto.
+     simpl.
+     destruct (destruct_tuple c) as [c0 [ctl Pc]].
+     destruct (destruct_tuple d) as [d0 [dtl Pd]].
+     destruct (destruct_tuple_cons c) as [ch [t0 ->]].
+     destruct (destruct_tuple_cons d) as [dh [t1 ->]].
+     rewrite <-proj1_sig_tuple_cons in Pc.
+     rewrite <-proj1_sig_tuple_cons in Pd.
+     apply Subset.subset_eq in Pc.
+     apply Subset.subset_eq in Pd.
+     apply tuple_cons_ext in Pc.
+     apply tuple_cons_ext in Pd.
+     destruct Pc as [eq1 ->].
+     destruct Pd as [eq2 ->].
+     apply tuple_cons_equiv in H1.
+     enough (a.{c0} == b.{d0}).
+     apply IHn;auto.
+     apply H1.
+     unfold eval_mpoly.
+     apply eval_proper2;auto.
+     rewrite <-eq1, <-eq2.
+     apply const_to_mpoly_proper;auto.
+     apply H1.
+  Qed.
+
+  Lemma const_to_mpoly_spec {R} `{R_semiRing : SemiRing (A:=R)}  n p x0 : (eval_poly p (const_to_mpoly n x0)) == p.{x0}.
+  Proof.
+    induction n;simpl;reflexivity.
+  Defined.
+
+  Lemma mpoly_add_spec {R} `{R_semiRing : SemiRing (A:=R)}  {n} (p1 p2 : (@mpoly R n)) x : eval_tuple (p1 + p2) x == eval_tuple p1 x +eval_tuple p2 x.
+  Proof.
+    revert x.
+    induction n;intros;simpl; try ring; try reflexivity.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    unfold eval_mpoly at 1.
+    rewrite pmeval_proper; try apply sum_polyf_spec.
+    rewrite IHn.
+    simpl.
+    apply add_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
+  Qed.
+
+  Lemma mpoly_mul_spec {R} `{R_semiRing : SemiRing (A:=R)}  {n} (p1 p2 : (@mpoly R n)) x : eval_tuple (p1 * p2) x == eval_tuple p1 x * eval_tuple p2 x.
+  Proof.
+    revert x.
+    induction n;intros;simpl; try ring; try reflexivity.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    rewrite pmeval_proper; try apply mult_polyf_spec.
+    rewrite IHn.
+    simpl.
+    apply mul_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
+  Qed.
+
+  Lemma zero_poly_eval {R} `{R_semiRing : SemiRing (A:=R)}  {n} (x : @tuple n R)  : eval_tuple 0 x == 0.
+  Proof.
+    revert x.
+    induction n;intros;simpl; try ring;try reflexivity.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    rewrite IHn;reflexivity.
+  Qed.
+
+  Lemma const_to_mpoly_eval  {R} `{R_semiRing : SemiRing (A:=R)}  (n :nat) (a : R) x : eval_tuple (const_to_mpoly n a) x == a.
+  Proof.
+    revert a x.
+    induction n;intros;simpl;try reflexivity.
+    destruct (destruct_tuple x) as [x0 [tl P]].
+    unfold eval_mpoly.
+    simpl.
+    rewrite mpoly_add_spec.
+    rewrite mpoly_mul_spec.
+    rewrite !IHn.
+    rewrite zero_poly_eval.
+    rewrite mul0.
+    rewrite add0.
+    reflexivity.
+  Qed.
+
+  Lemma eval_tuple_cons {R} `{R_semiRing : SemiRing (A:=R)} {m} (p0 : @mpoly R m) (p : @mpoly R (S m)) hd (tl : R^m) : eval_tuple ((p0 :: p) : mpoly (S m)) (tuple_cons hd tl) == eval_tuple p0 tl + hd * (eval_tuple p (tuple_cons hd tl)).
+  Proof.
+    simpl.
+    destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
+    setoid_replace t0 with tl.
+    unfold eval_mpoly.
+    simpl.
+    rewrite mpoly_add_spec.
+    apply ring_eq_plus_eq; try reflexivity.
+    rewrite mpoly_mul_spec.
+    apply ring_eq_mult_eq;try reflexivity.
+    rewrite const_to_mpoly_eval.
+    rewrite proj1_sig_tuple_cons in P0.
+    injection P0.
+    intros _ ->;reflexivity.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    destruct t0; destruct tl.
+    simpl in *.
+    injection P0.
+    intros -> _.
+    reflexivity.
+  Qed.
  Notation "p .[ x ]" := (eval_tuple  p x) (at level 3, left associativity).
 
 Section MultiPolyComposition.
@@ -1122,107 +1245,57 @@ Section MultiPolyComposition.
 
   Add Ring RRing: ComSemiRingTheory.
 
-  #[global] Instance pmeval_proper n t : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun p => eval_tuple (n := n) p t)).
-  Proof.
-    intros a b H0.
-    induction n; simpl;auto.
-    destruct (destruct_tuple t) as [x0 [tl P]].
-    apply IHn.
-    apply eval_proper;auto.
-  Defined.
-  #[global] Instance const_to_mpoly_proper n : (Proper  (SetoidClass.equiv ==>  SetoidClass.equiv) (const_to_mpoly n)).
-  Proof.
-     intros a b eq.
-     induction n;simpl;auto.
-     intros n0.
-     destruct n0;auto.
-     destruct n0;auto;reflexivity.
-   Qed.
-     
-  #[global] Instance pmeval_proper2 n : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (eval_tuple (n := n))).
-  Proof.
-     intros a b H0 c d H1.
-     generalize dependent c.
-     generalize dependent d.
-     induction n;intros.
-     simpl;auto.
-     simpl.
-     destruct (destruct_tuple c) as [c0 [ctl Pc]].
-     destruct (destruct_tuple d) as [d0 [dtl Pd]].
-     destruct (destruct_tuple_cons c) as [ch [t0 ->]].
-     destruct (destruct_tuple_cons d) as [dh [t1 ->]].
-     rewrite <-proj1_sig_tuple_cons in Pc.
-     rewrite <-proj1_sig_tuple_cons in Pd.
-     apply Subset.subset_eq in Pc.
-     apply Subset.subset_eq in Pd.
-     apply tuple_cons_ext in Pc.
-     apply tuple_cons_ext in Pd.
-     destruct Pc as [eq1 ->].
-     destruct Pd as [eq2 ->].
-     apply tuple_cons_equiv in H1.
-     enough (a.{c0} == b.{d0}).
-     apply IHn;auto.
-     apply H1.
-     unfold eval_mpoly.
-     apply eval_proper2;auto.
-     rewrite <-eq1, <-eq2.
-     apply const_to_mpoly_proper;auto.
-     apply H1.
-  Qed.
-  Lemma const_to_mpoly_spec n p x0 : (eval_poly p (const_to_mpoly n x0)) == p.{x0}.
-  Proof.
-    induction n;simpl;reflexivity.
-  Defined.
-
-  Lemma mpoly_add_spec {n} (p1 p2 : (@mpoly A n)) x : (p1 + p2).[x] == p1.[x]+p2.[x].
-  Proof.
-    revert x.
-    induction n;intros;simpl; try ring; try reflexivity.
-    destruct (destruct_tuple x) as [x0 [tl P]].
-    unfold eval_mpoly at 1.
-    rewrite pmeval_proper; try apply sum_polyf_spec.
-    rewrite IHn.
-    simpl.
-    apply add_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
-  Qed.
-
-  Lemma mpoly_mul_spec {n} (p1 p2 : (@mpoly A n)) x : (p1 * p2).[x] == p1.[x]*p2.[x].
-  Proof.
-    revert x.
-    induction n;intros;simpl; try ring; try reflexivity.
-    destruct (destruct_tuple x) as [x0 [tl P]].
-    rewrite pmeval_proper; try apply mult_polyf_spec.
-    rewrite IHn.
-    simpl.
-    apply mul_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
-  Qed.
-
-
-  Lemma zero_poly_eval {n} (x : @tuple n A)  : 0.[x] == 0.
-  Proof.
-    revert x.
-    induction n;intros;simpl; try ring;try reflexivity.
-    destruct (destruct_tuple x) as [x0 [tl P]].
-    rewrite IHn;ring.
-  Qed.
-
-  Lemma const_to_mpoly_eval (n :nat) (a : A) x : (const_to_mpoly n a).[x] == a.
-  Proof.
-    revert a x.
-    induction n;intros;simpl;try ring.
-    destruct (destruct_tuple x) as [x0 [tl P]].
-    unfold eval_mpoly.
-    simpl.
-    rewrite mpoly_add_spec.
-    rewrite mpoly_mul_spec.
-    rewrite !IHn.
-    rewrite zero_poly_eval;ring.
-  Qed.
-
   Lemma proj1_sig_tuple_cons {R n} (a : R) (x : @tuple n R): proj1_sig (tuple_cons a x) = a :: proj1_sig x.
   Proof.
     destruct x.
     simpl;auto.
+  Qed.
+
+  Lemma const_to_mpoly_zero n : (const_to_mpoly n 0) == 0.
+  Proof.
+    induction n.
+    simpl.
+    reflexivity.
+    simpl const_to_mpoly.
+    intros k.
+    destruct k.
+    simpl.
+    apply IHn.
+    simpl.
+    destruct k; reflexivity.
+  Qed.
+  
+  Lemma to_mmpoly_cons {n} m (p0 : mpoly n) (p : @mpoly A (S n)) : (to_mmpoly m ((p0 :: p) : @mpoly A (S n))) = (to_mmpoly m p0) :: (to_mmpoly m p).
+  Proof.
+    simpl to_mmpoly.
+    reflexivity.
+  Qed.
+
+  Lemma to_mmpoly_zero {n} m : (to_mmpoly m (0 : (@mpoly A n)))  == 0.
+  Proof.
+    simpl to_mmpoly.
+    induction n.
+    simpl.
+    apply const_to_mpoly_zero.
+    intros k.
+    destruct k;simpl;reflexivity.
+  Qed.
+
+  Lemma mpoly_composition_cons {n m}  (p0 : @mpoly A n) (p : @mpoly A (S n)) (q0 : @mpoly A m) (qs : @tuple n (@mpoly A m)) : mpoly_composition (p0 :: p : (@mpoly A (S n))) (tuple_cons q0 qs) == mpoly_composition p0 qs + q0 * mpoly_composition p (tuple_cons q0 qs).
+  Proof.
+    unfold mpoly_composition.
+    rewrite to_mmpoly_cons.
+    rewrite eval_tuple_cons.
+    reflexivity.
+  Qed.
+
+  Definition eval_tuple_rec_cons {n m} p0 (ps : @tuple n (@mpoly A m)) (xs : @tuple m A) : eval_tuple_rec (tuple_cons p0 ps) xs = tuple_cons (eval_tuple p0 xs) (eval_tuple_rec ps xs).
+  Proof.
+    simpl.
+    destruct (destruct_tuple_cons (tuple_cons p0 ps)) as [hd [tl P]].
+    apply tuple_cons_ext in P.
+    destruct P as [-> ->].
+    reflexivity.
   Qed.
 
   Lemma mpoly_composition_spec {n m} (p : @mpoly A n) (qs : @tuple n (@mpoly A m)) xs : eval_tuple (mpoly_composition p qs) xs == eval_tuple p (eval_tuple_rec qs xs). 
@@ -1233,9 +1306,24 @@ Section MultiPolyComposition.
     unfold mpoly_composition, to_mmpoly.
     simpl.
     rewrite const_to_mpoly_eval;ring.
-  - simpl.
-    destruct (destruct_tuple_cons qs) as [q0 [qt ->]].
-  Admitted.
+  -  destruct (destruct_tuple_cons qs) as [q0 [qt ->]].
+     induction p.
+     + unfold mpoly_composition.
+       rewrite to_mmpoly_zero.
+       rewrite !zero_poly_eval.
+       reflexivity.
+     +  rewrite mpoly_composition_cons.
+        rewrite mpoly_add_spec.
+        rewrite eval_tuple_rec_cons.
+        rewrite eval_tuple_cons.
+        apply ring_eq_plus_eq.
+        apply IHn.
+        rewrite mpoly_mul_spec.
+        apply ring_eq_mult_eq;try reflexivity.
+        rewrite IHp.
+        rewrite eval_tuple_rec_cons.
+        reflexivity.
+  Qed.
 
 End MultiPolyComposition.
 
@@ -1806,6 +1894,13 @@ Defined.
 
   Lemma poly_comp1_composition {m n} (f : @tuple n (mpoly (S m))) (i : nat) : mpoly_composition (poly_comp1 i) f == tuple_nth i f 0.
   Proof.
+    induction i.
+    simpl.
+    destruct n.
+    simpl.
+    intros n0.
+    destruct n0; try reflexivity.
+    simpl.
   Admitted.
 
   Lemma poly_composition_plus_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x+y) z == (mpoly_composition x z) + (mpoly_composition y z).
