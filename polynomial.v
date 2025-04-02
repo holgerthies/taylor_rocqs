@@ -1055,30 +1055,6 @@ Section MultiRawPoly.
   Definition eval_mpoly {n} (p : mpoly (S n)) x := eval_poly p (const_to_mpoly n x).
   End MultiRawPoly.
 
-(*   Section MultiPoly. *)
-(*   Context `{R_semiRing : SemiRing}. *)
-(*   #[global] Instance mpoly_SemiRing n:  SemiRing (A := (mpoly n)) (H := (mpoly_setoid n)) (R_rawRing := (mpoly_rawRing n)). *)
-(*   Proof. *)
-
-(*     intros. *)
-(*     destruct n. *)
-(*     apply R_semiRing. *)
-(*     Set Printing Implicit. *)
-(*     simpl. *)
-(*     unfold mpoly_setoid, mpoly_rawRing, mpoly_setoid_rawring;simpl. *)
-(*     apply poly_SemiRing. *)
-(*     pose proof (@poly_SemiRing (@mpoly A n) (mpoly_setoid n) (mpoly_rawRing n)). *)
-(*     simpl. *)
-(*     destruct (mpoly_setoid_rawring (S n)). *)
-(*     assert ((@mpoly_setoid A H R_rawRing (S n)) = x). *)
-(*     admit. *)
-(*     rewrite H1. *)
-(*     rewrite <-H1 in H0. *)
-(*     apply H0. *)
-(*     apply R_semiRing. *)
-(*   Admitted. *)
-
-(* End MultiPoly. *)
 Section Composition.
 
   Context `{R_semiRing : SemiRing }.
@@ -1582,6 +1558,15 @@ Section PartialDiffAlgebra.
     induction d;destruct n;simpl;try ring;auto.
   Qed.
 
+  Lemma poly_pdiff1  n d : @poly_pdiff n d 1 == 0.
+  Proof.
+    generalize dependent n.
+    induction d;destruct n;simpl;try ring;try reflexivity;auto.
+    intros m.
+    destruct m.
+    rewrite IHd;reflexivity.
+    destruct m;reflexivity.
+  Qed.
 
   #[global] Instance mpoly_pdiff_proper : forall n d, Proper (SetoidClass.equiv ==> SetoidClass.equiv)  (@poly_pdiff n d).
   Proof.
@@ -1759,20 +1744,39 @@ Defined.
 
   Lemma poly_comp_diff0 {m}  (i : nat) (j : nat) : (i <> j)%nat -> D[i] (@poly_comp1 m j) == 0.
   Proof.
+    simpl.
     intros.
     revert m.
+    generalize dependent i.
     induction j.
     intros.
     destruct m.
     simpl.
     rewrite poly_pdiff0;reflexivity.
+    intros n.
     simpl.
     destruct i; try lia.
     simpl.
+    destruct n.
     rewrite poly_pdiff0.
-    simpl; try reflexivity.
-    simpl;unfold derive_poly;simpl.
-  Admitted.
+    reflexivity.
+    destruct n.
+    rewrite poly_pdiff1;reflexivity.
+    destruct n; reflexivity.
+    intros.
+    simpl.
+    destruct m.
+    rewrite poly_pdiff0;reflexivity.
+    destruct i.
+    simpl.
+    intros n.
+    reflexivity.
+    simpl.
+    intros n.
+    destruct n;try reflexivity.
+    rewrite IHj; try reflexivity; try lia.
+    destruct n; reflexivity.
+  Qed.
 
   Lemma poly_id_spec {m} hd (tl : A^m) :   ([0; 1] : mpoly (S m)) .[ tuple_cons hd tl] == hd. 
     simpl.
