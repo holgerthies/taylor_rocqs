@@ -1265,6 +1265,22 @@ Section MultiPolyComposition.
     destruct k; reflexivity.
   Qed.
   
+  Lemma const_to_mpoly_zero_equiv {m} n (a : mpoly m) : a == 0 -> (const_to_mpoly n a) == 0.
+  Proof.
+    revert a.
+    induction n;intros.
+    simpl.
+    apply H0.
+    simpl const_to_mpoly.
+    intros k.
+    destruct k.
+    simpl.
+    apply IHn.
+    apply H0.
+    simpl.
+    destruct k; reflexivity.
+  Qed.
+  
   Lemma const_to_mpoly_plus n p1 p2 : (const_to_mpoly n (p1 + p2)) == const_to_mpoly n p1 + const_to_mpoly n p2.
   Proof.
     induction n.
@@ -1294,33 +1310,93 @@ Section MultiPolyComposition.
     destruct k;simpl;reflexivity.
   Qed.
 
-  Lemma to_mmpoly_proper {n} m : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (to_mmpoly (n := n) m).
+  Lemma to_mmpoly_zero_equiv {n} m (a : mpoly n) : a == 0 -> (to_mmpoly m a)  == 0.
   Proof.
-    induction n; intros a b eq.
+    intros.
+    induction n.
     simpl.
-    rewrite eq.
-    reflexivity.
+    pose proof (const_to_mpoly_zero_equiv m a).
+    rewrite H1; try reflexivity;auto.
     induction a.
     rewrite to_mmpoly_zero.
-    destruct b.
-    rewrite to_mmpoly_zero;reflexivity.
+    reflexivity.
     rewrite to_mmpoly_cons.
     intros k.
     destruct k.
     simpl.
-    specialize (eq 0).
-    simpl in eq.
-    rewrite <-eq.
-    rewrite to_mmpoly_zero;reflexivity.
+    apply IHn.
+    specialize (H0 0).
+    simpl in H0.
+    apply H0.
     Opaque to_mmpoly.
     simpl.
     Transparent to_mmpoly.
-    assert (nth k b 0 == 0).
-    specialize (eq (S k)).
-    simpl in eq.
-    rewrite <-eq;reflexivity.
-    specialize (IHn (nth k b 0) _ H0).
-  Admitted.
+    assert (a0 == 0).
+    intros k0.
+    specialize (H0 (S k0)).
+    simpl in H0.
+    rewrite H0.
+    destruct k0; reflexivity.
+    specialize (IHa H1).
+    specialize (IHa k).
+    rewrite IHa.
+    destruct k; reflexivity.
+  Qed.
+
+  #[global] Instance to_mmpoly_proper {n} m : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (to_mmpoly (n := n) m).
+  Proof.
+    induction n.
+    intros a b eq.
+    simpl.
+    rewrite eq.
+    reflexivity.
+    intros a.
+    induction a;intros b eq.
+    rewrite to_mmpoly_zero.
+    rewrite to_mmpoly_zero_equiv; try reflexivity.
+    rewrite eq; reflexivity.
+    rewrite to_mmpoly_cons.
+    destruct b.
+    + rewrite to_mmpoly_zero.
+      intros k.
+      destruct k.
+      simpl.
+      rewrite to_mmpoly_zero_equiv;try reflexivity.
+      specialize (eq 0).
+      simpl in eq.
+      apply eq.
+      Opaque to_mmpoly. simpl. Transparent to_mmpoly.
+      assert (a0 == 0).
+      {
+        intros j.
+        specialize (eq (S j)).
+        simpl in eq.
+        rewrite eq.
+        destruct j;reflexivity.
+      }
+      pose proof (to_mmpoly_zero_equiv m (a0 : (mpoly (S n))) H0 k).
+      rewrite H1. 
+      destruct k;reflexivity.
+   + rewrite to_mmpoly_cons.
+     intros k.
+     destruct k.
+     simpl.
+     apply IHn.
+     specialize (eq 0).
+     simpl in eq.
+     apply eq.
+      Opaque to_mmpoly. simpl. Transparent to_mmpoly.
+      assert (a0 == b).
+      {
+         intros j.
+         specialize (eq (S j)).
+         simpl in eq.
+         apply eq.
+      }
+      specialize (IHa b H0 k ).
+      apply IHa.
+  Qed.
+
   Lemma mpoly_composition_cons {n m}  (p0 : @mpoly A n) (p : @mpoly A (S n)) (q0 : @mpoly A m) (qs : @tuple n (@mpoly A m)) : mpoly_composition (p0 :: p : (@mpoly A (S n))) (tuple_cons q0 qs) == mpoly_composition p0 qs + q0 * mpoly_composition p (tuple_cons q0 qs).
   Proof.
     unfold mpoly_composition.
@@ -1938,7 +2014,9 @@ Defined.
     unfold mpoly_composition.
     rewrite eq'.
     apply pmeval_proper.
-    Search to_mmpoly.
+    rewrite eq.
+    reflexivity.
+  Defined.
 
   Lemma poly_comp1_composition {m n} (f : @tuple n (mpoly (S m))) (i : nat) : mpoly_composition (poly_comp1 i) f == tuple_nth i f 0.
   Proof.
