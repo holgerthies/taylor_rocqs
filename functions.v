@@ -1,10 +1,10 @@
 Require Import algebra.
-From Stdlib Require Import Setoid.
-Require Import Stdlib.Classes.SetoidClass.
+From Coq Require Import Setoid.
+Require Import Coq.Classes.SetoidClass.
 Require Import tuple.
-From Stdlib Require Import Psatz.
+From Coq Require Import Psatz.
 
-From Stdlib Require Import Classical.
+From Coq Require Import Classical.
 Require Import combinatorics.
 
 

@@ -1,15 +1,15 @@
-From Stdlib Require Import Psatz.
-From Stdlib Require Import List.
-From Stdlib Require Import ZArith.
+From Coq Require Import Psatz.
+From Coq Require Import List.
+From Coq Require Import ZArith.
 Import ListNotations.
 Require Import algebra.
 Require Import abstractpowerseries.
 Require Import functions.
 Require Import polynomial.
-From Stdlib Require Import Setoid.
-Require Import Stdlib.Classes.SetoidClass.
-Require Import Stdlib.Sorting.SetoidList.
-From Stdlib Require Import Classical.
+From Coq Require Import Setoid.
+Require Import Coq.Classes.SetoidClass.
+Require Import Coq.Lists.SetoidList.
+From Coq Require Import Classical.
 Require Import tuple.
 Require Import combinatorics.
 Require Import ode.
@@ -467,7 +467,7 @@ Section AnalyticPoly.
 
   Context `{cs_exists : CoeffSum (A := A) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := R_Field) (R_Field0 := R_Field0) (H5 := _) }.
    Add Ring KRing: (ComRingTheory (A :=A)).
-  Lemma poly_tot {d} (y0 : A^(S d)) : forall (f : @mpoly A (S d)), y0 \in_dom f.
+  Lemma poly_tot {d} (y0 : A^(S d)) : forall (f : @mpoly A (S d)), @in_domain _ _ _ (mpoly_setoid (S d) (A := A)) _ _ _ _ _ f y0.
   Proof.
     intros.
     apply poly_total.

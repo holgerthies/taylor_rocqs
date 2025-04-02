@@ -1,19 +1,19 @@
 Require Import combinatorics.
-Require Import Stdlib.Reals.Abstract.ConstructiveReals.
+Require Import Coq.Reals.Abstract.ConstructiveReals.
 Require Import algebra.
 Require Import polynomial.
 Require Import functions.
 Require Import ode.
-From Stdlib Require Import Setoid.
-Require Import Stdlib.Classes.SetoidClass.
-From Stdlib Require Import QArith.
+From Coq Require Import Setoid.
+Require Import Coq.Classes.SetoidClass.
+From Coq Require Import QArith.
 Require Import tuple.
 
-From Stdlib Require Import Psatz.
-From Stdlib Require Import List.
-From Stdlib Require Import ConstructiveRcomplete.
-From Stdlib Require Import ConstructiveLimits.
-From Stdlib Require Import Classical.
+From Coq Require Import Psatz.
+From Coq Require Import List.
+From Coq Require Import ConstructiveRcomplete.
+From Coq Require Import ConstructiveLimits.
+From Coq Require Import Classical.
 
 (* Require Import examples. *)
 Require Import ConstructiveAbs.

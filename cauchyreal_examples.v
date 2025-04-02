@@ -1,20 +1,20 @@
 Require Import polynomial.
-Require Import Stdlib.Reals.Abstract.ConstructiveReals.
+Require Import Coq.Reals.Abstract.ConstructiveReals.
 Require Import coqreals.
 Require Import examples.
 Require Import tuple.
-From Stdlib Require Import List.
-From Stdlib Require Import Classes.SetoidClass.
-From Stdlib.Reals Require Import ConstructiveCauchyReals.
-From Stdlib.Reals.Cauchy Require Import ConstructiveRcomplete.
-From Stdlib Require Import QArith.
-From Stdlib Require Import Qpower.
-From Stdlib Require Import Qabs.
-From Stdlib Require Import Qround.
+From Coq Require Import List.
+From Coq Require Import Classes.SetoidClass.
+From Coq.Reals Require Import ConstructiveCauchyReals.
+From Coq.Reals.Cauchy Require Import ConstructiveRcomplete.
+From Coq Require Import QArith.
+From Coq Require Import Qpower.
+From Coq Require Import Qabs.
+From Coq Require Import Qround.
 Require Import odebounds.
 Require Import realanalytic.
 Require Import abstractpowerseries.
-From Stdlib Require Import ConstructiveCauchyAbs.
+From Coq Require Import ConstructiveCauchyAbs.
 Open Scope algebra_scope.
 Open Scope fun_scope.
 Open Scope Q_scope.
