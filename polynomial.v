@@ -87,7 +87,7 @@ Import ListNotations.
   Lemma eval_poly2_app1 a an x : eval_poly2 (a ++ cons an nil) x = an * (npow x (length a)) + eval_poly2 a x.
   Proof.
     unfold eval_poly2 at 1.
-    replace (length (a ++ cons an nil)) with (S (length a)) by (rewrite app_length;simpl;lia).
+    replace (length (a ++ cons an nil)) with (S (length a)) by (rewrite length_app;simpl;lia).
     simpl.
     rewrite last_last.
     rewrite removelast_last.
@@ -102,7 +102,7 @@ Import ListNotations.
   replace (a ++ b0 :: b) with ((a ++ cons b0 nil) ++ b) by (rewrite <-app_assoc;auto).
   rewrite IH.
   rewrite eval_poly2_app1.
-  rewrite app_length.
+  rewrite length_app.
   simpl.
   rewrite addA, !(addC (eval_poly2 a x)), <-addA.
   apply ring_eq_plus_eq;auto.
@@ -620,7 +620,7 @@ Qed.
   Lemma split_poly p d : {qu | (length (fst qu)) = (min d (length p)) /\ (length (snd qu)) = (length p - d)%nat /\ forall x, eval_poly p x == eval_poly (fst qu) x + npow x d * eval_poly (snd qu) x}.
   Proof.
     exists (firstn d p, skipn d p).
-    split; [apply firstn_length|split;[apply skipn_length|]].
+    split; [apply length_firstn|split;[apply length_skipn|]].
     intros.
     simpl.
     revert d.
@@ -693,7 +693,7 @@ Qed.
      simpl in P1.
      rewrite Nat.sub_0_r in P1.
      exists (p' ++ [(ntimes (S (length p))) x]).
-     split; [rewrite !app_length, P1;simpl;lia|].
+     split; [rewrite !length_app, P1;simpl;lia|].
      intros n.
      destruct (Nat.lt_ge_cases n (length p')).
      + rewrite app_nth1;auto.
@@ -703,7 +703,7 @@ Qed.
        ring.
     + destruct H0; [simpl;rewrite nth_middle, P1, nth_middle;ring|].
       simpl.
-      rewrite !nth_overflow; try rewrite ntimes_zero; try ring; rewrite app_length;simpl; lia.
+      rewrite !nth_overflow; try rewrite ntimes_zero; try ring; rewrite length_app;simpl; lia.
  Defined.
 
  Definition derive_poly p := (proj1_sig  (poly_deriv_exists p)).
@@ -2377,7 +2377,6 @@ Defined.
    Qed.
   
   Definition mpoly_comp'  {n m} := mpoly_composition (n := n) (m := (S m)).
-Search poly_pdiff.
   Lemma mpoly_pdiff_comp_cons : forall {m n d} (x0 : mpoly m) (x : mpoly (S m)) y0 (y : @tuple m (mpoly (S n))), poly_pdiff d (mpoly_composition (x0 :: x : mpoly (S m)) (tuple_cons y0 y)) == poly_pdiff d (mpoly_composition x0 y) + mpoly_composition x (tuple_cons y0 y) * poly_pdiff d y0  + y0 * poly_pdiff d (mpoly_composition x (tuple_cons y0 y)).
   Proof.
     intros.
@@ -2422,30 +2421,40 @@ Search poly_pdiff.
   Qed.
 
 
-    Lemma mpoly_pdiff_chain0 : forall {n d} (x : mpoly 0) (y : @tuple 0 (mpoly (S n))), pdiff d (mpoly_composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) 0).
+    Lemma mpoly_pdiff_chain0 : forall {n d} (x : mpoly 0) (y : @tuple 0 (mpoly (S n))), poly_pdiff d (mpoly_composition x y) == (sum (fun i => (poly_pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) 0).
     Proof.
       intros.
       replace (mpoly_composition x y) with (const_to_mpoly (S n) x) by reflexivity.
-      enough ( D[ d] (const_to_mpoly (S n) x) == (0 : mpoly (S n))) as ->.
+      rewrite poly_pdiff_const.
       reflexivity.
-      apply poly_pdiff_const.
     Qed.
 
-    Lemma mpoly_pdiff_chain : forall {m n d} (x : mpoly m) (y : @tuple m (mpoly (S n))), pdiff d (mpoly_composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) m).
+    Lemma mpoly_pdiff_chain_nil : forall {m n d}  (y : @tuple (S m) (mpoly (S n))), poly_pdiff d (mpoly_composition 0 y) == (sum (fun i => (poly_pdiff d (tuple_nth i y 0)) * mpoly_composition (poly_pdiff i 0) y) (S m)).
     Proof.
-    induction m.
-    intros;apply mpoly_pdiff_chain0.
-    induction x.
-    intros.
-    - setoid_rewrite mpoly_pdiff_comp_nil.
+      intros.
+      pose proof (mpoly_pdiff_comp_nil (d:=d) (n:=n) (m:=(S m)) y).
+      simpl pdiff.
+      rewrite H1.
       rewrite sum_zero; try reflexivity.
       intros.
       rewrite poly_pdiff0.
       rewrite composition_zero;try reflexivity.
       rewrite mul0;reflexivity.
+    Qed.
+
+    Lemma mpoly_pdiff_chain : forall {m n d} (x : mpoly m) (y : @tuple m (mpoly (S n))), poly_pdiff d (mpoly_composition x y) == (sum (fun i => (poly_pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) m).
+    Proof.
+    simpl pdiff.
+    induction m.
+    intros;apply mpoly_pdiff_chain0.
+    induction x.
+    - intros.
+      apply mpoly_pdiff_chain_nil.
    -  intros.
       destruct (destruct_tuple_cons y) as [y0 [yt ->]].
-      setoid_rewrite mpoly_pdiff_comp_cons.
+      pose proof ( mpoly_pdiff_comp_cons (d := d) (n:=n) (m:=m) a x y0 yt) as He.
+      simpl pdiff.
+      rewrite He.
       rewrite sum_S_fun.
       rewrite tuple_nth_cons_hd.
       setoid_rewrite derive_poly_cons1.
