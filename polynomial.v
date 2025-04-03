@@ -448,6 +448,12 @@ Qed.
     simpl;lia.
  Qed.
 
+ Lemma mult_coefficients_nil_equiv b : (mult_coefficients 0 b) == 0.
+ Proof.
+   intros n0.
+   rewrite mult_coefficients_nil.
+   destruct n0; reflexivity.
+ Qed.
  Lemma mult_coefficients_nil_list b : mult_coefficients nil b == repeat 0 (length b - 1)%nat.
  Proof.
     intros n.
@@ -547,6 +553,11 @@ Qed.
    apply convolution_coeff_sym.
   Qed.
 
+ Lemma mult_coefficients_nil_equiv2 b : (mult_coefficients b 0) == 0.
+ Proof.
+   rewrite mult_coefficients_sym.
+   apply mult_coefficients_nil_equiv.
+ Qed.
  #[global] Instance nth_proper_list : forall n, (Proper  (SetoidClass.equiv ==> SetoidClass.equiv) (fun l => nth n l 0)).
  Proof.
    intros.
@@ -1265,6 +1276,19 @@ Section MultiPolyComposition.
     destruct k; reflexivity.
   Qed.
   
+  Lemma const_to_mpoly_one n : (const_to_mpoly n 1) == 1.
+  Proof.
+    induction n.
+    simpl.
+    reflexivity.
+    simpl const_to_mpoly.
+    intros k.
+    destruct k.
+    simpl.
+    apply IHn.
+    simpl.
+    destruct k; reflexivity.
+  Qed.
   Lemma const_to_mpoly_zero_equiv {m} n (a : mpoly m) : a == 0 -> (const_to_mpoly n a) == 0.
   Proof.
     revert a.
@@ -1294,6 +1318,22 @@ Section MultiPolyComposition.
     simpl.
     destruct k; reflexivity.
   Qed.
+  Lemma const_to_mpoly_mult n p1 p2 : (const_to_mpoly n (p1 * p2)) == const_to_mpoly n p1 * const_to_mpoly n p2.
+  Proof.
+    induction n.
+    simpl.
+    reflexivity.
+    simpl const_to_mpoly.
+    intros k.
+    destruct k.
+    simpl.
+    unfold convolution_coeff.
+    simpl.
+    rewrite add0.
+    apply IHn.
+    simpl.
+    destruct k; reflexivity.
+  Qed.
   Lemma to_mmpoly_cons {n} m (p0 : mpoly n) (p : @mpoly A (S n)) : (to_mmpoly m ((p0 :: p) : @mpoly A (S n))) = (to_mmpoly m p0) :: (to_mmpoly m p).
   Proof.
     simpl to_mmpoly.
@@ -1310,6 +1350,17 @@ Section MultiPolyComposition.
     destruct k;simpl;reflexivity.
   Qed.
 
+  Lemma to_mmpoly_one {n} m : (to_mmpoly m (1 : (@mpoly A n)))  == 1.
+  Proof.
+    simpl to_mmpoly.
+    induction n.
+    simpl.
+    apply const_to_mpoly_one.
+    intros k.
+    destruct k;simpl.
+    apply IHn.
+    destruct k;reflexivity.
+  Qed.
   Lemma to_mmpoly_zero_equiv {n} m (a : mpoly n) : a == 0 -> (to_mmpoly m a)  == 0.
   Proof.
     intros.
@@ -2020,14 +2071,47 @@ Defined.
 
   Lemma poly_comp1_composition {m n} (f : @tuple n (mpoly (S m))) (i : nat) : mpoly_composition (poly_comp1 i) f == tuple_nth i f 0.
   Proof.
-    induction i.
-    simpl.
-    destruct n.
-    simpl.
-    intros n0.
-    destruct n0; try reflexivity.
-    simpl.
-  Admitted.
+    generalize dependent m.
+    generalize dependent n.
+    induction i;intros.
+    - destruct n.
+      simpl mpoly_composition.
+      setoid_rewrite to_mmpoly_zero_equiv; try reflexivity.
+      intros n0.
+      rewrite tuple_nth_nil.
+      reflexivity.
+      simpl poly_comp1.
+      destruct (destruct_tuple_cons f) as [f0 [t ->]].
+      rewrite tuple_nth_cons_hd.
+      rewrite mpoly_composition_cons.
+      unfold mpoly_composition.
+      rewrite to_mmpoly_zero.
+      rewrite zero_poly_eval.
+      rewrite addC,add0.
+      setoid_replace ([1 : mpoly n]) with (1 : mpoly (S n)) by reflexivity.
+      pose proof (to_mmpoly_one (n:=(S n)) (S m)).
+      rewrite H1.
+      rewrite <-const_to_mpoly_one.
+      rewrite const_to_mpoly_eval.
+      rewrite mul1; reflexivity.
+   - destruct n.
+      simpl mpoly_composition.
+      setoid_rewrite to_mmpoly_zero_equiv; try reflexivity.
+      intros n0.
+      rewrite tuple_nth_nil.
+      reflexivity.
+      simpl mpoly_composition.
+      
+      destruct (destruct_tuple_cons f) as [f0 [t ->]].
+      rewrite tuple_nth_cons_tl.
+      rewrite mpoly_composition_cons.
+      rewrite IHi.
+      unfold mpoly_composition.
+      setoid_rewrite to_mmpoly_zero_equiv; try reflexivity.
+      rewrite zero_poly_eval.
+      rewrite mul0, add0.
+      reflexivity.
+   Qed.
 
   Lemma poly_composition_plus_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x+y) z == (mpoly_composition x z) + (mpoly_composition y z).
   Proof.
@@ -2070,8 +2154,101 @@ Defined.
      reflexivity.
   Qed.
 
+
+  Lemma nth_S {T : Type} n a0 (a : list T)  : nth (S n) (cons a0 a) = nth n a.
+  Proof.
+    simpl;reflexivity.
+  Qed.
+
+  Lemma mult_poly_shift  {n} (x y : mpoly (S n)) : (0 :: x) * y  == 0 :: (x * y).
+  Proof.
+    revert x.
+    destruct y;intros.
+    rewrite !mul0.
+    intros [];simpl; try destruct n0; try reflexivity.
+    rewrite mulC.
+    simpl (_ * _).
+    unfold mult_polyf at 1.
+    rewrite mult_coefficients_cons.
+    rewrite mult_coefficients_single_list.
+    rewrite map_cons.
+    rewrite <-mult_coefficients_single_list.
+    simpl sum_polyf.
+    rewrite mul0, add0.
+    destruct x.
+     setoid_replace ([0 : mpoly n] ) with (0 : mpoly (S n)) by  (intros [];simpl;try destruct n0;try reflexivity).
+    rewrite !mult_coefficients_nil_equiv2.
+    simpl.
+    intros []; try destruct n0; try reflexivity.
+    rewrite mult_poly_sym.
+    rewrite mult_poly_cons.
+    intros n0.
+    destruct n0; try reflexivity.
+    rewrite !nth_S.
+    apply nth_proper_list.
+    apply sum_poly2_proper.
+    rewrite mult_coefficients_sym.
+    destruct y.
+    setoid_replace ([0 : mpoly n] ) with (0 : mpoly (S n)) by  (intros [];simpl;try destruct n1;try reflexivity).
+    simpl mult_polyf.
+    rewrite mult_polyf_nil2.
+    rewrite !mult_coefficients_nil_equiv2;reflexivity.
+    rewrite mult_polyf_shift_switch.
+    rewrite mult_poly_sym.
+    reflexivity.
+  Qed.
+
   Lemma poly_composition_mult_comp : forall {m n} x y (z :@tuple m (mpoly (S n))) , mpoly_composition (x*y) z == (mpoly_composition x z) * (mpoly_composition y z).
-  Admitted.
+  Proof.
+    intros.
+    induction m.
+    - simpl.
+      intros []; try destruct n0;try reflexivity.
+      unfold convolution_coeff.
+      simpl.
+      rewrite add0.
+      simpl.
+      apply const_to_mpoly_mult.
+   - destruct (destruct_tuple_cons z) as [z0 [t ->]].
+     generalize dependent y.
+     induction x;intros.
+     +  setoid_rewrite mult_polyf_nil2.
+        unfold mpoly_composition; rewrite !to_mmpoly_zero; rewrite !zero_poly_eval; rewrite mulC,mul0.
+        reflexivity.
+     + setoid_rewrite mult_poly_cons.
+       setoid_rewrite poly_composition_plus_comp.
+       rewrite !mpoly_composition_cons.
+       rewrite mulC.
+       rewrite distrL.
+       apply ring_eq_plus_eq.
+       * induction y.
+         rewrite mult_polyf_nil1.
+        unfold mpoly_composition; rewrite !to_mmpoly_zero; rewrite !zero_poly_eval; rewrite mulC,mul0;reflexivity.
+        unfold mult_polyf.
+        rewrite mult_coefficients_single_list.
+        rewrite map_cons.
+        rewrite !(mpoly_composition_cons).
+        rewrite <-mult_coefficients_single_list.
+        rewrite !IHm.
+        rewrite (mulC _ (mpoly_composition a t)), distrL.
+        apply ring_eq_plus_eq;try reflexivity.
+        rewrite <-mulA, (mulC _ z0).
+        rewrite mulA.
+        apply ring_eq_mult_eq;try reflexivity.
+        destruct y.
+        rewrite mult_coefficients_nil_equiv2.
+        unfold mpoly_composition; rewrite !to_mmpoly_zero; rewrite !zero_poly_eval, mul0;reflexivity.
+        rewrite IHy.
+        rewrite mulC;reflexivity.
+       * setoid_rewrite mult_poly_shift.
+        rewrite mpoly_composition_cons.
+        unfold mpoly_composition at 1; setoid_rewrite to_mmpoly_zero; rewrite !zero_poly_eval, addC,add0.
+        rewrite IHx.
+        rewrite <-mulA.
+        rewrite (mulC z0).
+        rewrite mulC.
+        reflexivity.
+     Qed.
 
   Lemma poly_comp_diff1 {m}  (i : nat) : i < m -> D[i] (@poly_comp1 m i) == 1.
   Proof.

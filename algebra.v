@@ -99,6 +99,10 @@ Section Sums.
   Context `{SemiRing}.
   Add Ring ARing : ComSemiRingTheory.
 
+  Lemma distrR : forall a b c, mul (add b c) a == add (mul b a) (mul c a).
+  Proof.
+    intros;ring.
+  Qed.
   Lemma sum_S_fun (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
   Proof.
     unfold sum.
