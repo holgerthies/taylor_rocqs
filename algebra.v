@@ -162,6 +162,18 @@ Section Sums.
     rewrite IHd.
     ring.
   Qed.
+  Lemma sum_plus (f : nat -> A) (g : nat -> A) d : (sum f d) + (sum g d) ==  (sum (fun n=> f n + g n) d).
+  Proof.
+    induction d.
+    unfold sum;simpl.
+    ring.
+    rewrite !sum_S.
+    rewrite addA.
+    rewrite (addC (f d)).
+    rewrite <-!addA.
+    rewrite IHd.
+    ring.
+  Qed.
   Lemma sum_single (f : nat -> A) j d : (j < d) -> (forall i, i < d -> (not (i = j)) -> f i == 0) -> (sum f d) == f j. 
   Proof.
     intros.

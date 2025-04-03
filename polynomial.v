@@ -1524,6 +1524,12 @@ Section DifferentialRing.
     rewrite sum_coefficient_nth.
     destruct n;simpl; rewrite !derive_poly_nth;simpl;ring.
   Qed.
+  Lemma derive_poly_cons1 a0 a : derive_poly (a0 :: a) == sum_polyf a (0 :: (derive_poly a)).
+  Proof.
+    intros n0.
+    rewrite sum_coefficient_nth.
+    destruct n0;simpl; rewrite !derive_poly_nth;simpl;ring.
+  Qed.
   #[global] Instance cons_proper : (Proper  (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (fun a0 a => a0 :: a)). 
   Proof.
     intros a b H0 a0 b0 H1.
@@ -1823,6 +1829,15 @@ Section PartialDiffAlgebra.
     destruct m;reflexivity.
   Qed.
 
+  Lemma poly_pdiff_const  n d x : @poly_pdiff n d (const_to_mpoly n x) == 0.
+  Proof.
+    generalize dependent n.
+    induction d;destruct n;simpl;try ring;try reflexivity;auto.
+    intros m.
+    destruct m.
+    rewrite IHd;reflexivity.
+    destruct m;reflexivity.
+  Qed.
   #[global] Instance mpoly_pdiff_proper : forall n d, Proper (SetoidClass.equiv ==> SetoidClass.equiv)  (@poly_pdiff n d).
   Proof.
     intros.
@@ -2362,11 +2377,104 @@ Defined.
    Qed.
   
   Definition mpoly_comp'  {n m} := mpoly_composition (n := n) (m := (S m)).
+Search poly_pdiff.
+  Lemma mpoly_pdiff_comp_cons : forall {m n d} (x0 : mpoly m) (x : mpoly (S m)) y0 (y : @tuple m (mpoly (S n))), poly_pdiff d (mpoly_composition (x0 :: x : mpoly (S m)) (tuple_cons y0 y)) == poly_pdiff d (mpoly_composition x0 y) + mpoly_composition x (tuple_cons y0 y) * poly_pdiff d y0  + y0 * poly_pdiff d (mpoly_composition x (tuple_cons y0 y)).
+  Proof.
+    intros.
+    rewrite mpoly_composition_cons.
+    rewrite poly_pdiff_plus.
+    rewrite poly_pdiff_mult.
+    rewrite !addA.
+    reflexivity.
+  Qed.
+  
+  Lemma mpoly_pdiff_comp_nil : forall {m n d} (y : @tuple m (mpoly (S n))), poly_pdiff d (mpoly_composition (0: mpoly m) y) == 0.
+  Proof.
+    intros.
+    unfold mpoly_composition.
+    rewrite to_mmpoly_zero.
+    rewrite zero_poly_eval.
+    rewrite poly_pdiff0.
+    reflexivity.
+  Qed.
+    Lemma composition_zero :forall {m n} (x : mpoly m) (y : @tuple m (mpoly (S n))) , x == 0 -> mpoly_composition x y == 0.
+    Proof.
+      intros.
+      unfold mpoly_composition.
+      rewrite to_mmpoly_zero_equiv; auto.
+      rewrite zero_poly_eval; reflexivity.
+    Qed.
 
+  Lemma mpoly_comp_cons0 : forall {m n} (x : mpoly (S m)) y0 (y : @tuple m (mpoly (S n))), mpoly_composition (0:: x : mpoly (S m)) (tuple_cons y0 y) == y0 * (mpoly_composition x (tuple_cons y0 y)).
+  Proof.
+    intros.
+    rewrite mpoly_composition_cons.
+    rewrite composition_zero; try reflexivity.
+   Qed.
+  Lemma mpoly_pdiff_comp_cons0 : forall {m n d} (x : mpoly (S m)) y0 (y : @tuple m (mpoly (S n))), poly_pdiff d (mpoly_composition (0:: x : mpoly (S m)) (tuple_cons y0 y)) == mpoly_composition x (tuple_cons y0 y) * poly_pdiff d y0  + y0 * poly_pdiff d (mpoly_composition x (tuple_cons y0 y)).
+  Proof.
+    intros.
+    rewrite mpoly_pdiff_comp_cons.
+    rewrite composition_zero; try reflexivity.
+    rewrite poly_pdiff0.
+    rewrite addC, <-addA, add0.
+    rewrite addC; reflexivity.
+  Qed.
+
+
+    Lemma mpoly_pdiff_chain0 : forall {n d} (x : mpoly 0) (y : @tuple 0 (mpoly (S n))), pdiff d (mpoly_composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) 0).
+    Proof.
+      intros.
+      replace (mpoly_composition x y) with (const_to_mpoly (S n) x) by reflexivity.
+      enough ( D[ d] (const_to_mpoly (S n) x) == (0 : mpoly (S n))) as ->.
+      reflexivity.
+      apply poly_pdiff_const.
+    Qed.
 
     Lemma mpoly_pdiff_chain : forall {m n d} (x : mpoly m) (y : @tuple m (mpoly (S n))), pdiff d (mpoly_composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * mpoly_composition (poly_pdiff i x) y) m).
-    Admitted.
-
+    Proof.
+    induction m.
+    intros;apply mpoly_pdiff_chain0.
+    induction x.
+    intros.
+    - setoid_rewrite mpoly_pdiff_comp_nil.
+      rewrite sum_zero; try reflexivity.
+      intros.
+      rewrite poly_pdiff0.
+      rewrite composition_zero;try reflexivity.
+      rewrite mul0;reflexivity.
+   -  intros.
+      destruct (destruct_tuple_cons y) as [y0 [yt ->]].
+      setoid_rewrite mpoly_pdiff_comp_cons.
+      rewrite sum_S_fun.
+      rewrite tuple_nth_cons_hd.
+      setoid_rewrite derive_poly_cons1.
+      setoid_rewrite poly_composition_plus_comp.
+      rewrite distrL.
+      rewrite addA, addC, !addA.
+      apply ring_eq_plus_eq.
+      rewrite mulC;apply ring_eq_mult_eq; try reflexivity.
+      rewrite mpoly_comp_cons0.
+      setoid_rewrite IHx.
+      rewrite sum_S_fun.
+      rewrite distrL.
+      rewrite tuple_nth_cons_hd.
+      rewrite !addA.
+      apply ring_eq_plus_eq.
+      rewrite !(mulC y0), !mulA; reflexivity.
+      setoid_rewrite IHm.
+      rewrite sum_mult.
+      rewrite sum_plus.
+      apply sum_ext.
+      intros.
+      rewrite tuple_nth_cons_tl.
+      simpl poly_pdiff.
+      rewrite mpoly_composition_cons.
+      rewrite distrL.
+      rewrite addC.
+      apply ring_eq_plus_eq; try reflexivity.
+      rewrite !(mulC y0), !mulA; reflexivity.
+  Qed.
       
   #[global] Instance mpoly_comp_diff_algebra : CompositionalDiffAlgebra (A := (@mpoly A) ).
   Proof.
