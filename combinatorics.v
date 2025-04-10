@@ -223,6 +223,21 @@ Section factorialTheorems.
     reflexivity.
   Defined.
 
+  #[global] Instance fact_t_proper {d}: Proper (equiv ==> equiv) (factorialt (d:=d)).
+  Proof.
+    intros a b eq.
+    induction d.
+    simpl.
+    reflexivity.
+    simpl.
+    destruct (destruct_tuple_cons a) as [k0 [kt ->]].
+    destruct (destruct_tuple_cons b) as [n0 [nt ->]].
+    apply (tuple_cons_equiv) in eq.
+    destruct eq.
+    rewrite H1.
+    rewrite (IHd _ _ H2).
+    reflexivity.
+  Defined.
   #[global] Instance inv_fact_t_proper {d}: Proper (equiv ==> equiv) (inv_factorialt (d:=d)).
   Proof.
     intros a b eq.
@@ -378,6 +393,42 @@ Defined.
     ring.
   Qed.
 
+  Lemma tuple_cons_plus {d} (n0 k0 : nat) (n k : nat^d ) : tuple_cons k0 k + tuple_cons n0 n == tuple_cons (k0+n0)%nat (k + n).
+  Proof.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    rewrite vec_plus_spec;auto.
+    destruct i.
+    rewrite !tuple_nth_cons_hd;reflexivity.
+    rewrite !tuple_nth_cons_tl.
+    rewrite vec_plus_spec; try lia;reflexivity.
+  Qed.
+
+  Lemma rising_factorialt_unfold {d} (n k : nat^d) : t[k+1!n] == t[k+n]! * t![k].
+  Proof.
+    induction d.
+    simpl;ring.
+    rewrite vec1_cons.
+    destruct (destruct_tuple_cons k) as [k0 [kt P]] eqn:E'.
+    destruct (destruct_tuple_cons n) as [n0 [nt P']] eqn:E.
+    rewrite P,P'.
+    rewrite !tuple_cons_plus.
+    simpl.
+    destruct (destruct_tuple_cons (tuple_cons (k0+1)%nat (kt+1))) as [h' [t' P1]].
+    apply tuple_cons_ext in P1.
+    destruct P1 as [<- <-].
+    simpl.
+    destruct (destruct_tuple_cons (tuple_cons (k0+n0)%nat (kt+nt))) as [h'' [t'' P1']].
+    apply tuple_cons_ext in P1'.
+    destruct P1' as [<- <-].
+    rewrite <-P', <-P.
+    rewrite E,E'.
+    rewrite IHd.
+    unfold rising_factorial.
+    replace (k0 + 1 -1)%nat with k0 by lia.
+    replace (k0 + 1 + n0  -1)%nat with (k0 + n0)%nat by lia.
+    ring.
+  Qed.
   Lemma fact_invfactt {d} (n : nat^d) : t[n]! * t![n] == 1. 
   Proof.
    intros.

@@ -95,6 +95,15 @@ Class Field `{A_Ring : Ring} := {
       distinct_0_1 : (not (zero == one))
     }.
 
+  Lemma sum_S_fun `{RawRing} (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
+  Proof.
+    unfold sum.
+    simpl.
+    enough (map f (seq 1 n) = map (fun n => f (S n)) (seq 0 n)) as -> by reflexivity.
+    rewrite <- seq_shift.
+    rewrite map_map;auto.
+  Qed.
+
 Section Sums.
   Context `{SemiRing}.
   Add Ring ARing : ComSemiRingTheory.
@@ -102,15 +111,6 @@ Section Sums.
   Lemma distrR : forall a b c, mul (add b c) a == add (mul b a) (mul c a).
   Proof.
     intros;ring.
-  Qed.
-  Lemma sum_S_fun (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
-  Proof.
-    unfold sum.
-    simpl.
-    ring_simplify.
-    enough (map f (seq 1 n) = map (fun n => f (S n)) (seq 0 n)) as -> by reflexivity.
-    rewrite <- seq_shift.
-    rewrite map_map;auto.
   Qed.
 
   Lemma sum_1 (f : nat -> A) : (sum f 1) == (f 0%nat). 
@@ -140,6 +140,23 @@ Section Sums.
      rewrite IHd;[| intros; apply H1;  lia].
      rewrite H1;try lia;reflexivity.
    Qed.
+
+  Lemma sum_backwards f n : sum f n == sum (fun j => f (n-(S j))%nat) n.
+  Proof.
+    induction n.
+    unfold sum;simpl.
+    reflexivity.
+    rewrite sum_S.
+    rewrite sum_S_fun.
+    replace (S n - 1)%nat with n by lia.
+    rewrite addC.
+    apply add_proper; try reflexivity.
+    rewrite IHn.
+    apply sum_ext.
+    intros.
+    replace (S n - ((S (S n0))))%nat with (n - S n0)%nat by lia.
+    reflexivity.
+  Qed.
 
   Lemma sum_zero (f : nat -> A) d : (forall i, i < d  -> f i == 0) -> (sum f d) == 0. 
   Proof.
