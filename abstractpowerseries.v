@@ -42,80 +42,56 @@ Context `{SemiRing}.
  Defined.
 End SequenceSetoid.
 
-  Definition nth1 (d i : nat) : nat^d.
+  #[global] Instance derive_helper_proper_full `{PartialDifferentialRing } {d}  i : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (derive_rec_helper (d:=d) i).
   Proof.
+    intros a b eq k1 k2 eq'.
     revert i.
-    induction d;intros.
-    apply 0.
-    destruct i.
-    apply (tuple_cons 1 0).
-    apply (tuple_cons 0 (IHd i)).
+    induction d;intros;simpl.
+    rewrite eq;reflexivity.
+    destruct (destruct_tuple_cons k1) as [hd [tl ->]].
+    destruct (destruct_tuple_cons k2) as [hd' [tl' ->]].
+    apply tuple_cons_equiv in eq'.
+    destruct eq'.
+    enough (hd = hd') as ->.
+    apply nth_derivative_proper.
+    setoid_rewrite IHd;try reflexivity;auto.
+    simpl in H1;auto.
   Defined.
 
-  Lemma nth1_spec1 d i : i < d -> (nth1 d i)\_i == 1.
+  #[global] Instance derive_rec_proper_full `{PartialDifferentialRing } {d} : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (derive_rec (d:=d)).
+  Proof.
+    unfold derive_rec.
+    apply derive_helper_proper_full.
+  Defined.
+
+  Lemma deriv_rec_next_pdiff `{PartialDifferentialRing }  {m} f (k : nat^m) i : i<m -> (derive_rec (pdiff i f) k) == (derive_rec f (k + nth1 m i)).
   Proof.
     intros.
-    generalize dependent i.
-    induction d;intros;try lia.
+    unfold derive_rec.
+    rewrite deriv_next_helper.
+    enough (forall j , D[i+j] (derive_rec_helper j f k) == derive_rec_helper j f (k+nth1 m i)).
+    replace i with (i+0)%nat at 1 by lia.
+    apply H2;try lia.
+    generalize dependent i;induction m;intros; try lia.
+    destruct (destruct_tuple_cons k) as [k0 [kt ->]].
     destruct i.
-    simpl.
-    rewrite tuple_nth_cons_hd;reflexivity.
-    simpl.
-    rewrite tuple_nth_cons_tl.
-    apply IHd;lia.
-  Qed.
-
-  Lemma nth1_spec0 d i j: i <> j -> (nth1 d i)\_j == 0.
-  Proof.
-    intros.
-    generalize dependent i.
-    generalize dependent j.
-    induction d;intros;try lia.
-    destruct i.
-    simpl.
-    destruct j;reflexivity.
-    simpl.
-    destruct j;reflexivity.
-    simpl.
-    destruct i.
-    destruct j;try lia.
-    rewrite tuple_nth_cons_tl.
-    enough ((0 : nat^d )\_j == 0) by (simpl;auto).
-    apply vec0_nth.
-    destruct j.
-    rewrite tuple_nth_cons_hd;auto.
-    rewrite tuple_nth_cons_tl.
-    apply IHd;lia.
-  Qed.
-
-  Definition is_zero_tuple {d}  (t : nat^d) : bool.
-  Proof.
-    induction d.
-    apply true.
-    destruct (destruct_tuple_cons t) as [h [tl P]].
-    destruct h.
-    apply (IHd tl).
-    apply false.
- Defined.
-
-  Lemma is_zero_tuple_spec {d} (t : nat ^d ) : is_zero_tuple t = true <-> t == 0.
-  Proof.
-    split; intros.
-    - induction d; [apply zero_tuple_zero|].
-      simpl in H.
-      destruct (destruct_tuple_cons t) as [h [tl ->]].
-      destruct h;try discriminate H.
-      rewrite vec0_cons.
-      apply tuple_cons_equiv_equiv; try reflexivity.
-      apply IHd;auto.
-  - induction d;auto.
-      simpl.
-      destruct (destruct_tuple_cons t) as [h [tl ->]].
-      rewrite vec0_cons in H.
-      apply tuple_cons_equiv in H.
-      simpl in H.
-      destruct H as [-> H].
-      apply IHd;auto.
+    - replace (0+j)%nat with j%nat by lia.
+      simpl nth1.
+      setoid_rewrite tuple_cons_plus.
+      replace (k0 +1)%nat with (S k0) by lia.
+      rewrite add0.
+      rewrite !derive_rec_helper_next.
+      rewrite nth_derivative_S.
+      rewrite nth_deriv_independent.
+      reflexivity.
+    - simpl nth1.
+      setoid_rewrite tuple_cons_plus.
+      replace (k0 +0)%nat with k0 by lia.
+      rewrite !derive_rec_helper_next.
+      rewrite <-nth_deriv_independent.
+      apply nth_derivative_proper.
+      replace (S i + j)%nat with (i + S j)%nat by lia.
+      apply IHm; try lia.
   Qed.
 Section AbstractPowerSeries.
   Context `{SemiRing}.
@@ -1000,11 +976,95 @@ Section AbstractPowerSeries.
     reflexivity.
   Qed.
 
+  Lemma order_nonzero {d} (v : nat^d) : order v <> 0 -> {i | v\_i <> 0}.
+  Proof.
+    intros.
+    induction d.
+    simpl in H1;lia.
+    destruct (destruct_tuple_cons v) as [hd [tl ->]].
+    destruct hd eqn:E.
+    - rewrite order_cons in H1.
+      destruct (IHd tl); try apply H1.
+      exists (S x).
+      rewrite tuple_nth_cons_tl;auto.
+   -  exists 0.
+      rewrite tuple_nth_cons_hd;auto.
+  Qed.
+
+  Definition tuple_pred {d} (v : nat^d) : nat^d.
+  Proof.
+    induction d.
+    apply v.
+    destruct (destruct_tuple_cons v) as [n [vt ->]].
+    destruct n.
+    apply (tuple_cons 0 (IHd vt)).
+    apply (tuple_cons n vt).
+  Defined.
+
+
+
+  Lemma tuple_pred_cons0 {d} (v : nat^d) : tuple_pred (tuple_cons 0 v) == tuple_cons 0 (tuple_pred v).
+  Proof.
+    simpl tuple_pred.
+    destruct (destruct_tuple_cons (tuple_cons 0 v)) as [z [v' P]] eqn:E.
+    setoid_rewrite E.
+    clear E.
+    apply tuple_cons_ext in P.
+    destruct P as [<- <-].
+    reflexivity.
+  Qed.
+
+  Lemma tuple_pred_cons_S {d} (v : nat^d) i : tuple_pred (tuple_cons (S i) v) == tuple_cons i v.
+  Proof.
+    simpl tuple_pred.
+    destruct (destruct_tuple_cons (tuple_cons (S i) v)) as [z [v' P]].
+    apply tuple_cons_ext in P.
+    destruct P as [<- <-].
+    reflexivity.
+  Qed.
+
+  Lemma tuple_pred_spec {d} (v : nat^d) : order v <> 0 -> {i | v == tuple_pred v + nth1 d i}.
+  Proof.
+    intros.
+    induction d.
+    simpl in H1;lia.
+    destruct (destruct_tuple_cons v) as [n [vt ->]].
+    destruct n.
+    - rewrite order_cons in H1.
+      destruct (IHd vt); try apply H1.
+      exists (S x).
+      setoid_rewrite tuple_pred_cons0.
+      simpl nth1.
+      rewrite tuple_cons_plus.
+      apply tuple_cons_equiv_equiv;  simpl;try lia.
+      apply e.
+   - exists 0.
+     rewrite tuple_pred_cons_S.
+      simpl nth1.
+      rewrite tuple_cons_plus.
+      rewrite add0.
+      apply tuple_cons_equiv_equiv;  try (simpl;lia);try reflexivity.
+  Qed.
+
+  Lemma tuple_pred_order {d} (v : nat^d) : order (tuple_pred v) = pred (order v).
+  Proof.
+    induction d.
+    simpl;lia.
+    destruct (destruct_tuple_cons v) as [n [vt ->]].
+    destruct n.
+    rewrite tuple_pred_cons0.
+    rewrite !order_cons.
+    rewrite IHd.
+    simpl.
+    lia.
+    rewrite !tuple_pred_cons_S.
+    rewrite !order_cons.
+    lia.
+Qed.
   Lemma ps_derive_spec {d} (a : ps d) k: Dx[k] a == tuple_derive a k.
   Proof.
     destruct d.
     simpl.
-
     intros k0.
     unfold derive_rec, tuple_derive.
     simpl.
@@ -1013,10 +1073,8 @@ Section AbstractPowerSeries.
     rewrite !zero_tuple_zero.
     reflexivity.
     destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+    induction k0.
     unfold tuple_derive.
-    Search derive_rec.
-    apply partial_index_equiv.
-    intros n.
  Admitted.
 
   Lemma ps_derive : forall {d} (a : (nat^d -> A)) (k j : nat^d),  (Dx[k] a) j == t[j+1!k] * a (k+j).
@@ -1030,9 +1088,24 @@ Section AbstractPowerSeries.
    rewrite ps_mult_cons.
    reflexivity.
  Qed.
-  
+  Definition ps_composition n m (a : ps n) (bs : @tuple n (ps m)) : (ps m).
+  Proof.
+    revert a bs.
+    induction m;intros.
+    - intros k; apply (a 0).
+    - intros k.
+      destruct (destruct_tuple_cons k) as [hd [tl ->]].
+      revert tl.
+      induction hd;intros.
+      + admit.
+      + 
+  Admitted.
+
+  Definition ps_comp1 m : nat -> (ps m).
+  Admitted.
   #[global] Instance ps_diffAlgebra  :  CompositionalDiffAlgebra (A := ps).
   Proof.
+     exists ps_composition ps_comp1.
   Admitted.
  (* Context `{CompositionalDiffAlgebra (A := ps) (H := _) (H0 := _) (H1 := _) (H2 := _)}. *)
 
@@ -1072,49 +1145,6 @@ Section AbstractPowerSeriesProperties.
 
   Add Ring ARing: (ComSemiRingTheory (A := A)). 
 
-  (*  Lemma nth_deriv_independent {d} (f : nat^d -> A) i n : nth_derivative (S i) D[0] f n  == D[0] (nth_derivative (S i) f n). *)
-  (*  Proof. *)
-  (*    induction n. *)
-  (*    simpl. *)
-  (*    intros;reflexivity. *)
-  (*    simpl. *)
-  (*    intros. *)
-  (*    apply index_proper; try reflexivity. *)
-  (*    rewrite IHn. *)
-  (*    rewrite pdiff_comm. *)
-  (*    reflexivity. *)
-  (*  Qed. *)
-  
-  (*  Lemma deriv_next_helper {d e} (f : nat^d -> A) i (k : nat^e) : derive_rec_helper (S i) D[0] f k == D[0] (derive_rec_helper (S i) f k). *)
-  (*  Proof. *)
-  (*    revert f i. *)
-  (*    induction e;intros. *)
-  (*    simpl. *)
-  (*    intros;reflexivity. *)
-  (*    simpl. *)
-  (*    destruct (destruct_tuple_cons k) as [hd [tl P]]. *)
-  (*    intros. *)
-  (*    specialize (IHe tl f (S i)). *)
-  (*    apply index_proper; try reflexivity. *)
-  (*    rewrite nth_derivative_proper; try apply IHe. *)
-  (*    apply nth_deriv_independent. *)
-  (* Qed. *)
-
-  (* Lemma deriv_rec_next {d e} (f : nat^d -> A) hd (tl : nat^e) : (derive_rec (D[0]f) (tuple_cons hd tl)) == (derive_rec f (tuple_cons (S hd) tl)). *)
-  (* Proof. *)
-  (*   Opaque SetoidClass.equiv. *)
-  (*   unfold derive_rec;simpl. *)
-  (*   destruct (destruct_tuple_cons (tuple_cons hd tl)) as [hd' [tl' P]]. *)
-  (*   destruct (destruct_tuple_cons (tuple_cons (S hd) tl)) as [hd'' [tl'' P']]. *)
-  (*   apply tuple_cons_ext in P. *)
-  (*   apply tuple_cons_ext in P'. *)
-  (*   destruct P as [<- <-]. *)
-  (*   destruct P' as [<- <-]. *)
-  (*   rewrite nth_derivative_proper; try apply deriv_next_helper. *)
-  (*   rewrite nth_derivative_S. *)
-  (*   reflexivity. *)
-  (*   Transparent SetoidClass.equiv. *)
-  (* Qed. *)
       
   Lemma deriv_next_backwards {d} (f : nat^(S d) -> A) hd tl : f (tuple_cons (S hd) tl) == (inv_Sn hd) * (D[0] f) (tuple_cons hd tl).
   Proof.  

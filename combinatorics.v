@@ -638,3 +638,79 @@ Section EmbedNat.
      ring.
    Qed.
 End EmbedNat.
+
+  Definition nth1 (d i : nat) : nat^d.
+  Proof.
+    revert i.
+    induction d;intros.
+    apply 0.
+    destruct i.
+    apply (tuple_cons 1 0).
+    apply (tuple_cons 0 (IHd i)).
+  Defined.
+
+  Lemma nth1_spec1 d i : i < d -> (nth1 d i)\_i == 1.
+  Proof.
+    intros.
+    generalize dependent i.
+    induction d;intros;try lia.
+    destruct i.
+    simpl.
+    rewrite tuple_nth_cons_hd;reflexivity.
+    simpl.
+    rewrite tuple_nth_cons_tl.
+    apply IHd;lia.
+  Qed.
+
+  Lemma nth1_spec0 d i j: i <> j -> (nth1 d i)\_j == 0.
+  Proof.
+    intros.
+    generalize dependent i.
+    generalize dependent j.
+    induction d;intros;try lia.
+    destruct i.
+    simpl.
+    destruct j;reflexivity.
+    simpl.
+    destruct j;reflexivity.
+    simpl.
+    destruct i.
+    destruct j;try lia.
+    rewrite tuple_nth_cons_tl.
+    enough ((0 : nat^d )\_j == 0) by (simpl;auto).
+    apply vec0_nth.
+    destruct j.
+    rewrite tuple_nth_cons_hd;auto.
+    rewrite tuple_nth_cons_tl.
+    apply IHd;lia.
+  Qed.
+
+  Definition is_zero_tuple {d}  (t : nat^d) : bool.
+  Proof.
+    induction d.
+    apply true.
+    destruct (destruct_tuple_cons t) as [h [tl P]].
+    destruct h.
+    apply (IHd tl).
+    apply false.
+ Defined.
+
+  Lemma is_zero_tuple_spec {d} (t : nat ^d ) : is_zero_tuple t = true <-> t == 0.
+  Proof.
+    split; intros.
+    - induction d; [apply zero_tuple_zero|].
+      simpl in H.
+      destruct (destruct_tuple_cons t) as [h [tl ->]].
+      destruct h;try discriminate H.
+      rewrite vec0_cons.
+      apply tuple_cons_equiv_equiv; try reflexivity.
+      apply IHd;auto.
+  - induction d;auto.
+      simpl.
+      destruct (destruct_tuple_cons t) as [h [tl ->]].
+      rewrite vec0_cons in H.
+      apply tuple_cons_equiv in H.
+      simpl in H.
+      destruct H as [-> H].
+      apply IHd;auto.
+  Qed.

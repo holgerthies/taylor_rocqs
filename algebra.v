@@ -347,7 +347,7 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
    reflexivity.
  Defined.
 
-   Lemma nth_deriv_independent `{PartialDifferentialRing }   f i n : nth_derivative (S i) (pdiff 0 f) n  == pdiff 0 (nth_derivative (S i) f n).
+   Lemma nth_deriv_independent `{PartialDifferentialRing }   f i j n : nth_derivative i (pdiff j f) n  == pdiff j (nth_derivative i f n).
    Proof.
      induction n.
      simpl.
@@ -355,11 +355,11 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
      simpl.
      intros.
      rewrite IHn.
-     rewrite pdiff_comm.
-     reflexivity.
+     pose proof (pdiff_comm  i j (nth_derivative i f n)).
+     apply H1.
    Qed.
 
-   Lemma deriv_next_helper `{PartialDifferentialRing }  {m} f  i (k : nat^m)  : derive_rec_helper (S i) (pdiff 0 f) k == pdiff 0 (derive_rec_helper (S i) f k).
+   Lemma deriv_next_helper `{PartialDifferentialRing }  {m} f  i j (k : nat^m)  : derive_rec_helper i (pdiff j f) k == pdiff j (derive_rec_helper i f k).
    Proof.
      revert f i.
      induction m;intros.
@@ -372,6 +372,7 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
      rewrite nth_deriv_independent.
      reflexivity.
   Qed.
+
   Lemma deriv_rec_next `{PartialDifferentialRing }  {m} f  hd (tl : nat^m) : (derive_rec (pdiff 0 f) (tuple_cons hd tl)) == (derive_rec f (tuple_cons (S hd) tl)).
   Proof.
     Opaque SetoidClass.equiv.
@@ -387,6 +388,7 @@ Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {
     reflexivity.
     Transparent SetoidClass.equiv.
   Qed.
+
 Notation "D[ i ] f" := (pdiff i f) (at level 4) : algebra_scope.
 Notation "Dx[ x ] f" := (derive_rec f x) (at level 4) : algebra_scope.
 (* Notation "D[ i ]n f" := (nth_derivative i f n) (at level 4) : algebra_scope. *)
