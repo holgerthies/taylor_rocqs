@@ -1010,7 +1010,51 @@ End PartialDiffAlgebraTheory.
 
   Class ArchimedeanField `{R_Field :TotallyOrderedField} `{normK : (NormedSemiRing (A := A) (B:=A) (H := H) (H0 := H) (R_rawRing := _) (R_rawRing0 := _) (R_TotalOrder := _) )} `{invSn : (Sn_invertible (A:=A) (H:=H) (H0 := _) (R_rawRing := _))}  := {
       norm_abs : forall x, 0 <= x -> norm x == x;
+      norm_abs_neg : forall x,  x <= 0 -> norm x == (- x);
       upper : forall (x : A), {n : nat | x <= ntimes n 1}
      
      }.
 Infix "\o" := multi_composition (at level 2).
+Section ArchimedeanFieldProperties.
+  Context `{ArchimedeanField}.
+  Add Ring ARing: (ComRingTheory (A := A)). 
+
+  Lemma  opp_pos  x y : opp y <= opp x -> x <= y.
+  Proof.
+    intros.
+    setoid_replace x with (-y + (x + y)) by ring.
+    setoid_replace y with (-x + (x + y) ) at 3 by ring.
+    apply (le_plus_compat);apply H1.
+  Qed.
+
+  Lemma abs_mult a b: norm (a * b) == norm a * norm b.
+  Proof.
+    destruct (le_total a 0); destruct (le_total b 0).
+    rewrite (norm_abs_neg _ H1).
+    rewrite (norm_abs_neg _ H2).
+    ring_simplify.
+    rewrite norm_abs; try reflexivity.
+    setoid_replace (a * b) with (-a * - b) by ring.
+    apply mul_pos_pos;apply opp_pos;ring_simplify;auto.
+    rewrite (norm_abs_neg _ H1).
+    rewrite (norm_abs _ H2).
+    rewrite norm_abs_neg; try ring.
+    apply opp_pos.
+    ring_simplify.
+    apply mul_pos_pos;auto.
+    apply opp_pos.
+    ring_simplify;auto.
+    rewrite (norm_abs_neg _ H2).
+    rewrite (norm_abs _ H1).
+    rewrite norm_abs_neg; try ring.
+    apply opp_pos.
+    setoid_replace (-0) with 0 by ring.
+    setoid_replace (-(a*b)) with (a * (-b)) by ring.
+    apply mul_pos_pos;auto.
+    apply opp_pos.
+    ring_simplify;auto.
+    rewrite !norm_abs; auto; try reflexivity.
+    apply mul_pos_pos;auto.
+  Qed.
+
+End ArchimedeanFieldProperties.

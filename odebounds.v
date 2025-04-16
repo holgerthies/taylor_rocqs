@@ -399,25 +399,6 @@ Section Bounds.
     apply le_refl.
   Qed.
 
-  Lemma ntimes_monotone  n m: (n <= m)%nat -> (# n <= # m). 
-  Proof.
-    simpl.
-    induction m.
-    intros.
-    assert (n = 0)%nat as -> by lia.
-    apply le_refl.
-    intros.
-    assert (n <= m \/ n = S m)%nat by lia.
-    destruct H8.
-    simpl.
-    setoid_replace (#n) with (0 + #n) by ring.
-    apply le_le_plus_le.
-    apply le_0_1.
-    apply IHm;auto.
-    rewrite H8.
-    apply le_refl.
-  Qed.
-
   Lemma ntimes_pos_monotone  n m x : (0 <= x) ->  (n <= m)%nat -> (ntimes n x <= ntimes m x). 
   Proof.
     intros.
