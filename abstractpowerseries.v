@@ -1323,7 +1323,7 @@ Qed.
     - intros k.
       destruct (order k <? (S i)) eqn:E;[apply (IHi a k) | ].
       destruct (order k =? S i) eqn:E'; [|apply 0].
-      apply ((inv_Sn i) * ((sum (fun j => D[pred_index k] bs\_j * (IHi (D[j] a))) n) (tuple_pred k))).
+      apply ((inv_Sn k\_(pred_index k)) * ((sum (fun j => D[pred_index k] bs\_j * (IHi (D[j] a))) n) (tuple_pred k))).
  Defined.
 
 
@@ -1390,7 +1390,7 @@ Qed.
   Qed.
 
   Opaque order add tuple_pred sum mul.
-  Lemma ps_composition_ith_next n m a bs i k : order k = (S i) -> ps_composition_ith n m a bs (S i) k == inv_Sn i * (sum (fun j => D[pred_index k] bs\_j * (ps_composition_ith n m (D[j] a) bs i)) n (tuple_pred k)).
+  Lemma ps_composition_ith_next n m a bs i k : order k = (S i) -> ps_composition_ith n m a bs (S i) k == (inv_Sn k\_(pred_index k))  * (sum (fun j => D[pred_index k] bs\_j * (ps_composition_ith n m (D[j] a) bs i)) n (tuple_pred k)).
   Proof.
      intros.
      simpl.
@@ -1761,6 +1761,74 @@ Qed.
        rewrite !(ps_comp_ith_larger _ _ _ _ n0);auto.
   Qed.
 
+  Lemma ps_composition_simpl2 j n m a bs k  : (order k <= j)%nat ->  ps_composition n m a bs k == ps_composition_ith n m a bs j k.
+  Proof.
+    intros.
+    rewrite ps_composition_simpl.
+    rewrite (ps_comp_ith_larger _ _ _ _ j);auto.
+    reflexivity.
+  Qed.
+
+   Transparent add.
+   Lemma ps_composition_chain : forall (m n d : nat) (x : ps m) (y : ps (S n) ^ m), D[ d] (ps_composition m n x y) == sum (fun i : nat => D[ d] y \_ i * ps_composition m n D[ i] x y) m.
+   Proof.
+     intros.
+     assert (S n <= d \/ d < S n)%nat by lia.
+     destruct H1.
+     {
+       simpl.
+       intros.
+       unfold ps_pdiff.
+       destruct (S n -d)%nat eqn:E; try lia.
+       symmetry.
+       apply index_proper; try apply sum_zero;try reflexivity.
+       intros.
+       rewrite mulC.
+       rewrite mul0.
+       reflexivity.
+     }
+     apply ps_eq_order.
+     intros.
+     setoid_rewrite deriv_next_full;auto.
+     rewrite !ps_composition_simpl.
+     rewrite order_plus.
+     rewrite order_nth1;auto.
+     replace (add (order k) 1)%nat with (S (order k)) by (simpl;lia).
+     rewrite ps_composition_ith_next.
+     (* setoid_rewrite exchange_ps_factor_order; [| apply (ps_composition_simpl2 (order k)) | apply (ps_composition_simpl2 (order k)) ]. *)
+     (* assert (order k <= n0)%nat by lia. *)
+     (* clear H1. *)
+     (* generalize dependent k. *)
+     (* revert x y. *)
+     (* induction n0;intros. *)
+     (* assert (order k = 0)%nat by lia. *)
+     (* rewrite H1. *)
+     (* admit. *)
+     (* assert (order k <= n0 \/ order k = S n0)%nat by lia. *)
+     (* destruct H1;[apply IHn0;auto|]. *)
+   Admitted.
+
+  Lemma ps_composition_mult :   forall (m n : nat) (x y : ps m) (z : ps (S n) ^ m),  ps_composition m n (x * y) z == ps_composition m n x z * ps_composition m n y z.
+  Proof.
+     intros.
+     apply ps_eq_order.
+     intros.
+     rewrite !ps_composition_simpl.
+     setoid_rewrite exchange_ps_factor_order; [| apply (ps_composition_simpl2 (order k)) | apply (ps_composition_simpl2 (order k)) ].
+     assert (order k <= n0)%nat by lia.
+     clear H1.
+     generalize dependent k.
+     revert x y.
+     induction n0;intros.
+     assert (order k = 0)%nat by lia.
+     rewrite H1.
+     admit.
+     assert (order k <= n0 \/ order k = S n0)%nat by lia.
+     destruct H1;[apply IHn0;auto|].
+     
+     (* rewrite !ps_composition_ith_next;auto. *)
+     (* rewrite <-H1. *)
+  Admitted.
   Transparent order add tuple_pred  sum mul.
   Lemma  comp1_diff0 : forall d i j : nat, i <> j -> D[ i] (ps_comp1 d j) == 0.
   Proof.
@@ -1786,13 +1854,6 @@ Qed.
   Lemma comp1_spec : forall (m n i : nat) (x : ps (S n) ^ m), ps_composition m n (ps_comp1 m i) x == x \_ i.
   Proof.
   Admitted.
-
-  Lemma ps_composition_mult :   forall (m n : nat) (x y : ps m) (z : ps (S n) ^ m),  ps_composition m n (x * y) z == ps_composition m n x z * ps_composition m n y z.
-  Proof.
-  Admitted.
-   Lemma ps_composition_chain : forall (m n d : nat) (x : ps m) (y : ps (S n) ^ m), D[ d] (ps_composition m n x y) == sum (fun i : nat => D[ d] y \_ i * ps_composition m n D[ i] x y) m.
-   Proof.
-   Admitted.
 
 
 
@@ -2131,6 +2192,7 @@ Qed.
       reflexivity.
    Qed.
 
+  Transparent order add tuple_pred sum mul.
   Lemma comp1_1d  k : ((k == 1%nat) -> (ps_comp1  1 0) t(k) == 1) /\ ((k <> 1%nat) -> (ps_comp1 1  0) t(k) == 0).
   Proof.
     split.
