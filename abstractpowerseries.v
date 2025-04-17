@@ -1337,6 +1337,21 @@ Qed.
     apply Nat.ltb_lt;lia.
  Qed.
 
+  Definition ps_comp_ith_larger n m a bs : forall i k, (order k <= i)%nat -> (ps_composition_ith n m a bs i k) = (ps_composition_ith n m a bs (order k) k).
+  Proof.
+    intros.
+    generalize dependent k.
+    induction i;intros.
+    assert (order k = 0)%nat by lia.
+    rewrite H2.
+    reflexivity.
+    assert (order k <= i \/ order k = S i)%nat by lia.
+    destruct H2.
+    rewrite <-IHi; try lia.
+    rewrite <-ps_comp_ith_converging; try lia;auto.
+    rewrite H2.
+    reflexivity.
+ Qed.
   Definition ps_composition n m (a : ps n) (bs : @tuple n (ps (S m))) : (ps (S m)).
   Proof.
     apply (prefix_limit (ps_composition_ith n m a bs)).
@@ -1386,26 +1401,6 @@ Qed.
      reflexivity.
   Qed.
   
-  Lemma ps_composition_plus : forall (m n : nat) (x y : ps m) (z : ps (S n) ^ m), ps_composition m n (x + y) z == ps_composition m n x z + ps_composition m n y z.
-  Proof.
-     intros.
-     apply ps_eq_order.
-     intros.
-     rewrite ps_plus_index.
-     rewrite !ps_composition_simpl.
-     rewrite H1.
-     generalize dependent k.
-     revert x y.
-     induction n0;intros.
-     simpl;rewrite H1; rewrite ps_plus_index;reflexivity.
-     rewrite !ps_composition_ith_next;auto.
-     rewrite <-distrL.
-     apply ring_eq_mult_eq; try reflexivity.
-     setoid_rewrite index_sum.
-     rewrite sum_plus.
-     apply sum_ext.
-     intros.
-  Admitted.
 
    Lemma partial_index_ps_comp1_first0 {d} : partial_index (ps_comp1 (S d) 0) 0 == 0.
    Proof.
@@ -1621,6 +1616,30 @@ Qed.
   Qed.
 
   Transparent order add tuple_pred  sum mul.
+  Lemma exchange_ps_factor_order {d} (h h' g g' : nat^d -> A) (k : nat^d) : (forall i, (order i <= order k)%nat -> (h i) == (h' i)) -> (forall i, (order i <= order k)%nat -> (g i) == (g' i)) ->  (h * g) k == (h' * g') k.
+  Proof.
+    induction d.
+    -  intros;simpl.
+       rewrite H1,H2;auto.
+       reflexivity.
+    - intros.
+      destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+      rewrite (mult_ps_cons_ps h g k0 kt).
+      rewrite (mult_ps_cons_ps h' g' k0 kt).
+      rewrite !index_sum.
+      apply sum_ext.
+      intros.
+      apply IHd.
+      + intros.
+        apply H1.
+        rewrite !order_cons.
+        lia.
+     + intros.
+       apply H2.
+        rewrite !order_cons.
+        lia.
+   Qed.
+
   Lemma order_plus {d} (k j : nat^d) : order (k+j) = order k + order j.
   Proof.
     induction d.
@@ -1633,6 +1652,116 @@ Qed.
     simpl.
     lia.
   Qed.
+
+  Opaque order add tuple_pred  sum mul.
+
+  Definition ps_comp_ith_overflow n m a bs : forall i k, (i < order k)%nat -> (ps_composition_ith n m a bs i k) = 0.
+  Proof.
+    intros.
+    induction i.
+    simpl.
+    destruct (order k); try lia;auto.
+    simpl.
+    assert (order k <? S i = false) as ->.
+    apply Nat.ltb_ge;lia.
+    assert (order k =? S i = false) as ->;auto.
+    apply Nat.eqb_neq;lia.
+  Qed.
+
+   #[global] Instance  ps_composition_ith_proper : forall m n : nat, Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (ps_composition_ith m n).
+
+   Proof.
+     intros.
+     intros a b eq z1 z2 eq' j j' eq''.
+     simpl in eq''.
+     rewrite <-eq''.
+     clear eq'' j'.
+     apply ps_eq_order.
+     intros.
+     assert (order k <= j \/ j <  order k)%nat by lia.
+     destruct H2; [| rewrite !ps_comp_ith_overflow;auto;reflexivity].
+     rewrite !(ps_comp_ith_larger _ _ _ _ j);auto.
+      assert (order k <= n0)%nat by lia.
+      clear H1 H2 j .
+      generalize dependent a.
+      generalize dependent b.
+      generalize dependent k.
+      induction n0;intros. 
+      - assert (order k = 0)%nat by lia.
+        rewrite H1;simpl; rewrite H1.
+        apply eq.
+      - assert (order k <= n0 \/ order k = S n0)%nat by lia.
+       destruct H1;[apply IHn0;auto|].
+       rewrite H1.
+        rewrite !ps_composition_ith_next;auto.
+        apply ring_eq_mult_eq; try reflexivity.
+        setoid_rewrite index_sum.
+        apply sum_ext.
+        intros.
+        apply exchange_ps_factor_order.
+        + intros.
+          apply index_proper; try rewrite eq'; reflexivity.
+        + intros.
+          rewrite tuple_pred_order in H4.
+          rewrite H1 in H4.
+          simpl in H4.
+          rewrite !(ps_comp_ith_larger _ _ _ _ n0);auto.
+          apply IHn0;auto.
+          rewrite eq.
+          reflexivity.
+  Defined.
+
+   #[global] Instance  ps_composition_proper : forall m n : nat, Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (ps_composition m n).
+   Proof.
+     intros.
+     intros a b eq z1 z2 eq'.
+     apply ps_eq_order.
+     intros i k Hi.
+     rewrite !ps_composition_simpl.
+     apply ps_composition_ith_proper;auto.
+     reflexivity.
+  Defined.
+
+  Lemma ps_composition_plus : forall (m n : nat) (x y : ps m) (z : ps (S n) ^ m), ps_composition m n (x + y) z == ps_composition m n x z + ps_composition m n y z.
+  Proof.
+     intros.
+     apply ps_eq_order.
+     intros.
+     rewrite ps_plus_index.
+     rewrite !ps_composition_simpl.
+      assert (order k <= n0)%nat by lia.
+      clear H1.
+     generalize dependent k.
+     revert x y.
+
+     induction n0;intros.
+     assert (order k = 0)%nat by lia.
+     rewrite H1;simpl;rewrite H1; rewrite ps_plus_index;reflexivity.
+     assert (order k <= n0 \/ order k = S n0)%nat by lia.
+     destruct H1;[apply IHn0;auto|].
+     rewrite H1.
+     rewrite !ps_composition_ith_next;auto.
+     rewrite <-distrL.
+     apply ring_eq_mult_eq; try reflexivity.
+     setoid_rewrite index_sum.
+     rewrite sum_plus.
+     apply sum_ext.
+     intros.
+     rewrite (exchange_ps_factor_order (D[pred_index k] (z\_n1)) (D[pred_index k] (z\_n1)) (ps_composition_ith m n D[ n1] (x + y) z n0) ((ps_composition_ith m n D[ n1] x z n0) + (ps_composition_ith m n D[n1] y z n0)) (tuple_pred k)).
+     - rewrite <-index_plus.
+       apply index_proper; try rewrite distrL; reflexivity.
+     - intros;reflexivity.
+     - intros.
+       setoid_replace ( ps_composition_ith m n D[ n1] (x + y) z n0 i ) with ( ps_composition_ith m n (D[ n1] x + D[n1] y) z n0 i ) by (apply index_proper; try setoid_rewrite ps_pdiff_plus; try reflexivity).
+       rewrite tuple_pred_order in H4.
+       rewrite H1 in H4.
+       simpl in H4.
+       specialize (IHn0 (D[n1] x) (D[n1] y) i H4).
+       setoid_rewrite index_plus.
+       rewrite !(ps_comp_ith_larger _ _ _ _ n0);auto.
+  Qed.
+
+  Transparent order add tuple_pred  sum mul.
   Lemma  comp1_diff0 : forall d i j : nat, i <> j -> D[ i] (ps_comp1 d j) == 0.
   Proof.
     intros.
@@ -1652,18 +1781,32 @@ Qed.
     simpl.
     reflexivity.
   Qed.
+  Opaque order.
+
+  Lemma comp1_spec : forall (m n i : nat) (x : ps (S n) ^ m), ps_composition m n (ps_comp1 m i) x == x \_ i.
+  Proof.
+  Admitted.
+
+  Lemma ps_composition_mult :   forall (m n : nat) (x y : ps m) (z : ps (S n) ^ m),  ps_composition m n (x * y) z == ps_composition m n x z * ps_composition m n y z.
+  Proof.
+  Admitted.
+   Lemma ps_composition_chain : forall (m n d : nat) (x : ps m) (y : ps (S n) ^ m), D[ d] (ps_composition m n x y) == sum (fun i : nat => D[ d] y \_ i * ps_composition m n D[ i] x y) m.
+   Proof.
+   Admitted.
+
+
 
   #[global] Instance ps_diffAlgebra  :  CompositionalDiffAlgebra (A := ps).
   Proof.
      exists ps_composition ps_comp1.
-     - admit.
-     -apply ps_composition_plus.
-     - admit.
-     - admit.
-     - admit.
-     - apply comp1_diff1.
-     - apply comp1_diff0.
-  Admitted.
+     apply comp1_spec.
+     apply ps_composition_plus.
+     apply ps_composition_mult.
+     apply ps_composition_chain.
+     apply ps_composition_proper.
+     apply comp1_diff1.
+     apply comp1_diff0.
+  Defined.
 
   Definition sum_order {d} (a : nat^d -> A) (n : nat) : A.
   Proof.
