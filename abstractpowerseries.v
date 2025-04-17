@@ -1161,27 +1161,188 @@ Qed.
   (*  apply x0. *)
   (*  destruct (tuple_pred_spec k); try (simpl;lia). *)
   (*  apply () *)
+
+  Lemma deriv_next_backwards {d} (f : nat^(S d) -> A) hd tl : f (tuple_cons (S hd) tl) == (inv_Sn hd) * (D[0] f) (tuple_cons hd tl).
+  Proof.  
+    pose proof (inv_Sn_spec hd).
+    rewrite <-mul1.
+    rewrite <-H1.
+    rewrite mulC.
+    rewrite (mulC (# (S hd))).
+    rewrite mulA.
+    replace (S hd) with (hd + 1)%nat by lia.
+    rewrite <-deriv_next.
+    reflexivity.
+  Qed.
+
+  Lemma deriv_next_full {d} (f : nat^d -> A) k i : i < d -> D[i] f k  == # (k\_i+1) * f (k + nth1 d i).
+  Proof.
+    revert i.
+    induction d;intros;try lia.
+    destruct i.
+    destruct (destruct_tuple_cons k) as [k0 [t ->]].
+    setoid_rewrite deriv_next.
+    rewrite tuple_nth_cons_hd.
+    apply ring_eq_mult_eq; try reflexivity.
+    apply index_proper; try reflexivity.
+    setoid_rewrite tuple_cons_plus.
+    rewrite add0.
+    reflexivity.
+    destruct (destruct_tuple_cons k) as [k0 [t ->]].
+    pose proof (ps_pdiff_next i f k0 t).
+    rewrite H2.
+    setoid_rewrite IHd; try lia.
+    rewrite tuple_nth_cons_tl.
+    apply ring_eq_mult_eq; try reflexivity.
+    simpl.
+    unfold partial_index.
+    apply index_proper; try reflexivity.
+    rewrite tuple_cons_plus.
+    replace (k0+0)%nat with k0 by lia.
+    reflexivity.
+  Qed.
+
+  Lemma zero_tuple1 : (0 : nat^1) == t(0).
+  Proof.
+    apply (tuple_nth_ext' _ _ 0 0).
+    intros.
+    rewrite vec0_nth.
+    assert (i = 0)%nat as -> by lia.
+    simpl.
+    reflexivity.
+  Qed.
+  Lemma exchange_ps_factor (h h' g : nat^1 -> A) (k : nat) : (forall i, (i <= k)%nat -> (h t(i)) == (h' t(i))) -> (h * g) t(k) == (h' * g) t(k).
+  Proof.
+    revert h h' g.
+    induction k;intros.
+    - rewrite !ps_mul0.
+      enough (h 0 == h' 0) as -> by reflexivity.
+      assert (0 <= 0)%nat by lia.
+      specialize (H1 _ H2).
+      transitivity (h t(0)).
+      apply index_proper;try reflexivity.
+      rewrite H1.
+      apply index_proper;try reflexivity.
+    - rewrite !deriv_next_backwards.
+      apply ring_eq_mult_eq; try reflexivity.
+      rewrite index_proper; try apply pdiff_mult; try reflexivity.
+      rewrite (index_proper (D[ 0] (h' * g)) _ (pdiff_mult _ _ _ ) t(k) t(k)); try reflexivity.
+      rewrite !index_plus.
+      apply ring_eq_plus_eq.
+      + rewrite (index_proper (g *  (D[0] h)) _ (mulC _ _ ) t(k) t(k)); try reflexivity.
+        rewrite (index_proper (g *  (D[0] h')) _ (mulC _ _ ) t(k) t(k)); try reflexivity.
+        apply IHk.
+        intros.
+        setoid_rewrite deriv_next.
+        apply (ring_eq_mult_eq); try reflexivity.
+        apply H1; lia.
+      + apply IHk.
+        intros.
+        apply H1;auto.
+   Qed.
+
+
+  Lemma deriv_eq_ps_equal {m} (a b : (nat^m -> A)) : (forall (k : nat^m), (Dx[k] a) == (Dx[k] b)) -> a == b.
+  Proof.
+
+    intros.
+    intros i.
+    rewrite ps_property_backwards.
+    rewrite (ps_property_backwards b).
+    apply ring_eq_mult_eq;try reflexivity.
+    apply index_proper;try reflexivity.
+    rewrite <-!ps_derive_spec.
+    apply H1.
+  Qed.
+
+  Lemma deriv_eq_ps_equal1  (a b : (nat^1 -> A)) : (forall (k : nat), nth_derivative 0 a k == nth_derivative 0 b k) -> a == b.
+  Proof.
+    intros.
+    apply deriv_eq_ps_equal.
+    intros.
+    destruct (destruct_tuple_cons k) as [k0 [N ->]].
+    rewrite !deriv_rec_1.
+    apply H1.
+  Qed.
+
+  Definition prefix_limit {d}  (an : forall n, ps d): (forall n k, (order k <= n)%nat -> an n k == an (S n) k) -> ps d.
+  Proof.
+    intros.
+    apply ps_order_def.
+    intros.
+    apply (an n k).
+  Defined.
+
+  (* Definition initial_segment {d} n  (forall (k : nat^d), (order k <= n)%nat -> A) : ps d := fun k => if (order k <=? n) then (X _ ). *)
+  (* Proof. *)
+  (*   intros. *)
+  (*   intros k. *)
+  (*   destruct (le_lt_dec (order k) n). *)
+  (*   apply (X _ l). *)
+  (*   apply 0. *)
+  (* Defined. *)
+
+  Lemma prefix_limit_spec {d} (an : nat -> ps d) P :forall k, forall n, (order k <= n)%nat -> prefix_limit an P k == an n k.
+  Proof.
+    intros.
+    induction n.
+    - unfold prefix_limit, ps_order_def.
+      assert (order k = 0)%nat as -> by lia.
+      reflexivity.
+   - assert ((order k <= n)%nat \/ (order k = S n)%nat) by lia.
+     destruct H2;[rewrite <-P;auto|].
+     unfold prefix_limit, ps_order_def.
+     rewrite H2.
+     reflexivity.
+  Qed.
+
+
+  (* Definition ps_composition_next n m (xn : ps (S m)) (bs : @tuple n (ps (S m))) (i : nat) v (k : nat^(S m))  : A. *)
+  (* Proof. *)
+  (*   apply ((inv_Sn i) * ((sum (fun j => D[v] bs\_j * (IHi (D[j] a))) n) (tuple_pred k))). *)
+  (*   destruct (order k =? S i) eqn:E; [|apply 0]. *)
+  (*   apply Nat.eqb_eq in E. *)
+  (*   destruct (tuple_pred_spec k); try (simpl in *;lia). *)
+  (*   apply ((inv_Sn i) * ((sum (fun j => D[x] bs\_j * xn ) n) (tuple_pred k))). *)
+  (* Defined. *)
+
+  Definition pred_index {d} (k : nat^d): nat.
+  Proof.
+    destruct (order k) eqn:E.
+    apply 0.
+    assert (order k <> 0) by (simpl in *;lia).
+    apply (proj1_sig (tuple_pred_spec k H1)).
+  Defined.
+
+  Definition ps_composition_ith n m (a : ps n) (bs : @tuple n (ps (S m))) (i : nat) : (ps (S m)).
+  Proof.
+    revert a.
+    induction i;intros.
+    - intros k.
+      apply (match (order k) with 0%nat => (a 0) | _ => 0 end).
+    - intros k.
+      destruct (order k <? (S i)) eqn:E;[apply (IHi a k) | ].
+      destruct (order k =? S i) eqn:E'; [|apply 0].
+      apply ((inv_Sn i) * ((sum (fun j => D[pred_index k] bs\_j * (IHi (D[j] a))) n) (tuple_pred k))).
+ Defined.
+
+
+  Definition ps_comp_ith_converging n m a bs : forall i k, (order k <= i)%nat -> (ps_composition_ith n m a bs i k) = (ps_composition_ith n m a bs (S i) k).
+  Proof.
+    intros.
+    Opaque order.
+    simpl.
+    Transparent order.
+    enough (order k <? S i = true) as -> by auto.
+    apply Nat.ltb_lt;lia.
+ Qed.
+
   Definition ps_composition n m (a : ps n) (bs : @tuple n (ps (S m))) : (ps (S m)).
   Proof.
-    apply ps_order_def.
-    intros j.
-    generalize dependent a.
-    induction j.
-    - intros.
-      apply (a 0).
-    - intros.
-    (*   destruct (tuple_pred_spec k); try (simpl;lia). *)
-    (*   Search nth1. *)
-    (*   apply (sum ) *)
-    (* induction m;intros. *)
-    (* - intros k; apply (a 0). *)
-    (* - intros k. *)
-    (*   destruct (destruct_tuple_cons k) as [hd [tl ->]]. *)
-    (*   revert tl. *)
-    (*   induction hd;intros. *)
-    (*   + admit. *)
-    (*   +  *)
-  Admitted.
+    apply (prefix_limit (ps_composition_ith n m a bs)).
+    intros.
+    rewrite ps_comp_ith_converging;auto;reflexivity.
+  Defined.
 
   Definition ps_comp1 m : nat -> (ps m).
   Proof.
@@ -1194,9 +1355,314 @@ Qed.
    - apply 0.
   Defined.
 
+  Lemma prefix_limit_simpl {d} (an : nat -> ps d) P :forall k, prefix_limit an P k == an (order k) k.
+  Proof.
+     intros.
+     apply prefix_limit_spec;auto.
+  Qed.
+
+  Lemma ps_eq_order {d} (a b : ps d): (forall n, (forall k, (order k = n) -> a k == b k)) -> a == b.
+  Proof.
+    intros.
+    intros k.
+    apply (H1 (order k));auto.
+  Qed.
+
+  Lemma ps_composition_simpl n m a bs k : ps_composition n m a bs k == ps_composition_ith n m a bs (order k) k.
+  Proof.
+    unfold ps_composition.
+    apply prefix_limit_simpl.
+  Qed.
+
+  Opaque order add tuple_pred sum mul.
+  Lemma ps_composition_ith_next n m a bs i k : order k = (S i) -> ps_composition_ith n m a bs (S i) k == inv_Sn i * (sum (fun j => D[pred_index k] bs\_j * (ps_composition_ith n m (D[j] a) bs i)) n (tuple_pred k)).
+  Proof.
+     intros.
+     simpl.
+     rewrite H1.
+     simpl.
+     rewrite Nat.ltb_irrefl.
+     rewrite Nat.eqb_refl.
+     reflexivity.
+  Qed.
+  
+  Lemma ps_composition_plus : forall (m n : nat) (x y : ps m) (z : ps (S n) ^ m), ps_composition m n (x + y) z == ps_composition m n x z + ps_composition m n y z.
+  Proof.
+     intros.
+     apply ps_eq_order.
+     intros.
+     rewrite ps_plus_index.
+     rewrite !ps_composition_simpl.
+     rewrite H1.
+     generalize dependent k.
+     revert x y.
+     induction n0;intros.
+     simpl;rewrite H1; rewrite ps_plus_index;reflexivity.
+     rewrite !ps_composition_ith_next;auto.
+     rewrite <-distrL.
+     apply ring_eq_mult_eq; try reflexivity.
+     setoid_rewrite index_sum.
+     rewrite sum_plus.
+     apply sum_ext.
+     intros.
+  Admitted.
+
+   Lemma partial_index_ps_comp1_first0 {d} : partial_index (ps_comp1 (S d) 0) 0 == 0.
+   Proof.
+     intros k.
+     unfold partial_index.
+     unfold ps_comp1.
+     rewrite order_cons.
+     replace (0 + order k)%nat with (order k) by lia.
+     rewrite tuple_nth_cons_hd.
+     destruct (order k =? 1) eqn:E; try reflexivity.
+   Qed.
+
+   Lemma partial_index_ps_comp1_first0' {d} k : k <> 1 ->  partial_index (ps_comp1 (S d) 0) k == 0.
+   Proof.
+     intros.
+     destruct k.
+     apply partial_index_ps_comp1_first0.
+     intros j.
+     unfold partial_index.
+     unfold ps_comp1.
+     rewrite order_cons.
+     destruct (order j) eqn:E.
+     simpl.
+     replace (k+0)%nat with k by lia.
+     destruct (k =? 0) eqn:E'; try reflexivity.
+     apply Nat.eqb_eq in E'.
+     simpl in H1.
+     lia.
+     simpl.
+     replace (k + S n)%nat with (S (k+n)%nat) by lia.
+     simpl.
+     reflexivity.
+   Qed.
+   Lemma partial_index_ps_comp1_first1 {d} : partial_index (ps_comp1 (S d) 0) 1 == 1.
+   Proof.
+     intros k.
+     unfold partial_index.
+     unfold ps_comp1.
+     rewrite order_cons.
+     simpl.
+     destruct (order k) eqn:E.
+     rewrite tuple_nth_cons_hd.
+     simpl.
+     apply order_zero_eq_zero in E.
+     apply is_zero_tuple_spec in E.
+     unfold one_ps.
+     rewrite E.
+     reflexivity.
+     simpl.
+     unfold one_ps.
+     enough (is_zero_tuple k = false) as -> by reflexivity.
+     destruct (is_zero_tuple k) eqn:E';auto.
+     apply is_zero_tuple_spec in E'.
+     rewrite E' in E.
+     rewrite zero_order in E.
+     lia.
+   Qed.
+
+   Lemma partial_index_ps_comp1_next {d} n : partial_index (ps_comp1 (S d) (S n)) 0 == ps_comp1 d n.
+   Proof.
+     intros k.
+     unfold partial_index.
+     unfold ps_comp1.
+     rewrite order_cons.
+     replace (0 + order k)%nat with (order k) by lia.
+     rewrite tuple_nth_cons_tl.
+     destruct (order k =? 1) eqn:E; try reflexivity.
+   Qed.
+
+   Lemma partial_index_ps_comp1_next0 {d} n i : partial_index (ps_comp1 (S d) (S n)) (S i) == 0.
+   Proof.
+     intros k.
+     unfold partial_index.
+     unfold ps_comp1.
+     rewrite order_cons.
+     rewrite tuple_nth_cons_tl.
+     simpl.
+     destruct (order k) eqn:E.
+     - destruct i;simpl;try reflexivity.
+       destruct (tuple_nth n k 0 =? 1)%nat eqn:E';simpl; try reflexivity.
+       apply Nat.eqb_eq in E'.
+       apply order_zero_eq_zero in E.
+       assert (tuple_nth n k 0 = 0).
+       rewrite E.
+       apply vec0_nth.
+       simpl in H1.
+       lia.
+    - replace (i + S n0)%nat with (S (i+n0)) by lia.
+      simpl.
+      reflexivity.
+   Qed.
+
+   Lemma partial_index1_0 {d} : partial_index (d:=d) 1 0 == 1. 
+   Proof.
+     intros k.
+     unfold partial_index.
+     simpl.
+     unfold one_ps.
+     rewrite is_zero_tuple_next.
+     reflexivity.
+   Qed.
+   Lemma partial_index1_S {d} n : partial_index (d:=d) 1 (S n) == 0. 
+   Proof.
+     intros k.
+     unfold partial_index.
+     simpl.
+     unfold one_ps.
+     destruct (is_zero_tuple (tuple_cons (S n) k)) eqn:E; try reflexivity.
+     apply is_zero_tuple_spec in E.
+     rewrite vec0_cons in E.
+     apply tuple_cons_equiv in E.
+     destruct E.
+     simpl in H1.
+     lia.
+   Qed.
+
+  Lemma fold_partial_index {d} (a : ps (S d)) k0 kt: a (tuple_cons k0 kt) == partial_index a k0 kt. 
+  Proof.
+    unfold partial_index;reflexivity.
+  Qed.
+
+  Lemma comp1_diff1 : forall d i : nat, i < d -> D[ i] (ps_comp1 d i) == 1.
+  Proof.
+    intros.
+    destruct d; try lia.
+    intros k.
+    setoid_rewrite deriv_next_full;auto;try lia.
+    revert dependent d.
+    induction i;intros;destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+    - rewrite tuple_nth_cons_hd.
+      destruct k0.
+      simpl.
+      ring_simplify.
+      rewrite index_proper; try (apply tuple_cons_plus;try rewrite add0); try reflexivity.
+      rewrite !fold_partial_index.
+      rewrite index_proper; try rewrite add0; try reflexivity.
+      replace (0+1)%nat with 1%nat by lia.
+      rewrite partial_index1_0.
+      rewrite partial_index_ps_comp1_first1; reflexivity.
+      rewrite !fold_partial_index.
+      rewrite (partial_index1_S k0 kt).
+      rewrite index_proper; try (apply tuple_cons_plus;try rewrite add0); try reflexivity.
+      rewrite fold_partial_index.
+      setoid_rewrite (partial_index_ps_comp1_first0' (S k0 +1)%nat _ (kt+0)); try (simpl;lia).
+      simpl.
+      rewrite !ps0.
+      ring.
+   - rewrite tuple_nth_cons_tl.
+     simpl nth1.
+     rewrite index_proper; try (apply tuple_cons_plus); try reflexivity.
+      rewrite !fold_partial_index.
+      replace (k0+0)%nat with k0 by lia.
+      destruct k0.
+      rewrite (partial_index1_0 kt).
+      rewrite (partial_index_ps_comp1_next _ (kt + nth1 d i)).
+      destruct d; try lia.
+      apply IHi; try lia.
+      rewrite (partial_index1_S _ kt).
+      rewrite (partial_index_ps_comp1_next0 _ _ (kt + nth1 d i)).
+      simpl.
+      rewrite !ps0.
+      ring.
+   Qed.
+
+  Lemma out_of_range_diff {d} (a : ps d) i : (d <= i)%nat -> D[i] a == 0.
+  Proof.
+    simpl.
+    intros.
+    unfold ps_pdiff.
+    destruct (d-i)%nat eqn:E; try lia.
+    reflexivity.
+  Qed.
+
+  Lemma ps_comp1_wrong_order d i k : order k <> 1 -> ps_comp1 d i k == 0.
+  Proof.
+    intros.
+    unfold ps_comp1.
+    destruct (order k =? 1) eqn: E; try reflexivity.
+    rewrite Nat.eqb_eq in E.
+    simpl in *;lia.
+  Qed.
+
+  Lemma order1_nth1 d k : order k = 1 -> {i | i < d /\ k == nth1 d i}.
+  Proof.
+    intros.
+    assert (order k <> 0) by (simpl in *;lia).
+    destruct (tuple_pred_spec _ H2).
+    exists x.
+    destruct a.
+    split;auto.
+    rewrite H4.
+    rewrite addC.
+    enough (tuple_pred k == 0) as -> by (rewrite add0; reflexivity).
+    apply order_zero_eq_zero.
+    rewrite tuple_pred_order.
+    rewrite H1.
+    simpl;auto.
+  Qed.
+
+  Lemma order_nth1 {d} i : i <d -> order (nth1 d i) = 1.
+  Proof.
+    revert i.
+    induction d;intros;try lia.
+    intros.
+    destruct i.
+    simpl.
+    rewrite order_cons.
+    rewrite zero_order.
+    lia.
+    simpl.
+    rewrite order_cons.
+    rewrite IHd; simpl;try lia.
+  Qed.
+
+  Transparent order add tuple_pred  sum mul.
+  Lemma order_plus {d} (k j : nat^d) : order (k+j) = order k + order j.
+  Proof.
+    induction d.
+    simpl;reflexivity.
+    destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+    destruct (destruct_tuple_cons j) as [j0 [jt ->]].
+    rewrite tuple_cons_plus.
+    rewrite !order_cons.
+    rewrite IHd.
+    simpl.
+    lia.
+  Qed.
+  Lemma  comp1_diff0 : forall d i j : nat, i <> j -> D[ i] (ps_comp1 d j) == 0.
+  Proof.
+    intros.
+    assert (i < d \/ d <= i)%nat by lia.
+    destruct H2; [|apply out_of_range_diff;auto].
+    destruct d; try lia.
+    intros k.
+    setoid_rewrite deriv_next_full;auto;try lia.
+    enough (ps_comp1 (S d) j (k + nth1 (S d) i)  == 0) as -> by (simpl;rewrite ps0;ring).
+    assert (order k = 0 \/ order k <> 0) by lia.
+    destruct H3; [ | (apply ps_comp1_wrong_order;rewrite order_plus, order_nth1;simpl in *; lia)].
+    apply order_zero_eq_zero in H3.
+    rewrite index_proper; try (rewrite H3,addC,add0); try reflexivity.
+    unfold ps_comp1.
+    rewrite order_nth1;auto.
+    rewrite nth1_spec0;auto.
+    simpl.
+    reflexivity.
+  Qed.
+
   #[global] Instance ps_diffAlgebra  :  CompositionalDiffAlgebra (A := ps).
   Proof.
      exists ps_composition ps_comp1.
+     - admit.
+     -apply ps_composition_plus.
+     - admit.
+     - admit.
+     - admit.
+     - apply comp1_diff1.
+     - apply comp1_diff0.
   Admitted.
 
   Definition sum_order {d} (a : nat^d -> A) (n : nat) : A.
@@ -1325,120 +1791,6 @@ Qed.
   Qed.
 
 
-   Lemma partial_index_ps_comp1_first0 {d} : partial_index (ps_comp1 (S d) 0) 0 == 0.
-   Proof.
-     intros k.
-     unfold partial_index.
-     unfold ps_comp1.
-     rewrite order_cons.
-     replace (0 + order k)%nat with (order k) by lia.
-     rewrite tuple_nth_cons_hd.
-     destruct (order k =? 1) eqn:E; try reflexivity.
-   Qed.
-
-   Lemma partial_index_ps_comp1_first0' {d} k : k <> 1 ->  partial_index (ps_comp1 (S d) 0) k == 0.
-   Proof.
-     intros.
-     destruct k.
-     apply partial_index_ps_comp1_first0.
-     intros j.
-     unfold partial_index.
-     unfold ps_comp1.
-     rewrite order_cons.
-     destruct (order j) eqn:E.
-     simpl.
-     replace (k+0)%nat with k by lia.
-     destruct (k =? 0) eqn:E'; try reflexivity.
-     apply Nat.eqb_eq in E'.
-     simpl in H1.
-     lia.
-     simpl.
-     replace (k + S n)%nat with (S (k+n)%nat) by lia.
-     simpl.
-     reflexivity.
-   Qed.
-   Lemma partial_index_ps_comp1_first1 {d} : partial_index (ps_comp1 (S d) 0) 1 == 1.
-   Proof.
-     intros k.
-     unfold partial_index.
-     unfold ps_comp1.
-     rewrite order_cons.
-     simpl.
-     destruct (order k) eqn:E.
-     rewrite tuple_nth_cons_hd.
-     simpl.
-     apply order_zero_eq_zero in E.
-     apply is_zero_tuple_spec in E.
-     unfold one_ps.
-     rewrite E.
-     reflexivity.
-     simpl.
-     unfold one_ps.
-     enough (is_zero_tuple k = false) as -> by reflexivity.
-     destruct (is_zero_tuple k) eqn:E';auto.
-     apply is_zero_tuple_spec in E'.
-     rewrite E' in E.
-     rewrite zero_order in E.
-     lia.
-   Qed.
-
-   Lemma partial_index_ps_comp1_next {d} n : partial_index (ps_comp1 (S d) (S n)) 0 == ps_comp1 d n.
-   Proof.
-     intros k.
-     unfold partial_index.
-     unfold ps_comp1.
-     rewrite order_cons.
-     replace (0 + order k)%nat with (order k) by lia.
-     rewrite tuple_nth_cons_tl.
-     destruct (order k =? 1) eqn:E; try reflexivity.
-   Qed.
-
-   Lemma partial_index_ps_comp1_next0 {d} n i : partial_index (ps_comp1 (S d) (S n)) (S i) == 0.
-   Proof.
-     intros k.
-     unfold partial_index.
-     unfold ps_comp1.
-     rewrite order_cons.
-     rewrite tuple_nth_cons_tl.
-     simpl.
-     destruct (order k) eqn:E.
-     - destruct i;simpl;try reflexivity.
-       destruct (tuple_nth n k 0 =? 1)%nat eqn:E';simpl; try reflexivity.
-       apply Nat.eqb_eq in E'.
-       apply order_zero_eq_zero in E.
-       assert (tuple_nth n k 0 = 0).
-       rewrite E.
-       apply vec0_nth.
-       simpl in H1.
-       lia.
-    - replace (i + S n0)%nat with (S (i+n0)) by lia.
-      simpl.
-      reflexivity.
-   Qed.
-
-   Lemma partial_index1_0 {d} : partial_index (d:=d) 1 0 == 1. 
-   Proof.
-     intros k.
-     unfold partial_index.
-     simpl.
-     unfold one_ps.
-     rewrite is_zero_tuple_next.
-     reflexivity.
-   Qed.
-   Lemma partial_index1_S {d} n : partial_index (d:=d) 1 (S n) == 0. 
-   Proof.
-     intros k.
-     unfold partial_index.
-     simpl.
-     unfold one_ps.
-     destruct (is_zero_tuple (tuple_cons (S n) k)) eqn:E; try reflexivity.
-     apply is_zero_tuple_spec in E.
-     rewrite vec0_cons in E.
-     apply tuple_cons_equiv in E.
-     destruct E.
-     simpl in H1.
-     lia.
-   Qed.
 
    Lemma sum_order1_S {d} i: sum_order (d:=d) 1 (S i) == 0.
    Proof.
@@ -1502,6 +1854,9 @@ Qed.
        rewrite partial_index_ps_comp1_first0'; simpl;try lia; try rewrite sum_order_zero_ps; reflexivity.
        rewrite partial_index_ps_comp1_next0, sum_order_zero_ps; try reflexivity.
    Qed.
+
+
+
    Lemma sum_order_mult {d} (a b : nat^d -> A) n : sum_order (a * b) n <= sum (fun j => sum_order a j * sum_order b (n-j)) (S n).
    Proof.
      revert n.
@@ -1617,29 +1972,52 @@ Qed.
        apply ntimes_monotone;lia.
    Qed.
 
-   Lemma sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0).
-   Proof.
-    intros.
-  Admitted.
+  (*  Lemma sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0). *)
+  (*  Proof. *)
+  (*   intros. *)
+  (* Admitted. *)
+
+    Lemma comp1_0 {d} i : (ps_comp1 d  i) 0 == 0.
+    Proof.
+      induction d.
+      simpl.
+      reflexivity.
+      unfold ps_comp1.
+      rewrite zero_order.
+      simpl.
+      reflexivity.
+   Qed.
+
+  Lemma comp1_1d  k : ((k == 1%nat) -> (ps_comp1  1 0) t(k) == 1) /\ ((k <> 1%nat) -> (ps_comp1 1  0) t(k) == 0).
+  Proof.
+    split.
+    - intros ->.
+      reflexivity.
+    - intros.
+      unfold ps_comp1.
+      simpl.
+      replace (k+0)%nat with k by lia.
+      destruct (k =? 1) eqn:E;try reflexivity.
+      apply Nat.eqb_eq in E.
+      lia.
+   Qed.
  (* Context `{CompositionalDiffAlgebra (A := ps) (H := _) (H0 := _) (H1 := _) (H2 := _)}. *)
 
   (* coefficient norm is currently formalized abstractly *)
-  Class CoeffSum := {
-      (* sum_order {d} (a : nat^d -> A ) (n : nat) : A; *)
-      (* sum_order_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (sum_order (d := d)); *)
-      (* sum_order_mult {d} (a b : nat^d -> A) n : sum_order (a * b) n == sum (fun j => sum_order a j * sum_order b (n-j)) (S n); *)
-      (* sum_order_nonneg {d} (a : nat^d -> A) n : 0 <= sum_order a n; *)
-      (* sum_order_sum {d} (a : nat -> nat^d -> A) m n :  sum_order (sum a m) n == sum (fun i => (sum_order (a i) n)) m; *)
-      (* sum_order_diff_le {d} (a :  nat^d -> A) i n : i < d -> sum_order (D[i] a) n <= #(n+1)%nat * sum_order a (n+1)%nat; *)
-      sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0);
-      (* sum_order1d  (a :  nat^1 -> A)  k :  sum_order (d:=1) a k == norm (a t(k)); *)
-      (* sum_order0  {d} (a :  nat^d -> A):  sum_order  a 0 == norm (a 0); *)
-    }.
+  (* Class CoeffSum := { *)
+  (*     (* sum_order {d} (a : nat^d -> A ) (n : nat) : A; *) *)
+  (*     (* sum_order_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (sum_order (d := d)); *) *)
+  (*     (* sum_order_mult {d} (a b : nat^d -> A) n : sum_order (a * b) n == sum (fun j => sum_order a j * sum_order b (n-j)) (S n); *) *)
+  (*     (* sum_order_nonneg {d} (a : nat^d -> A) n : 0 <= sum_order a n; *) *)
+  (*     (* sum_order_sum {d} (a : nat -> nat^d -> A) m n :  sum_order (sum a m) n == sum (fun i => (sum_order (a i) n)) m; *) *)
+  (*     (* sum_order_diff_le {d} (a :  nat^d -> A) i n : i < d -> sum_order (D[i] a) n <= #(n+1)%nat * sum_order a (n+1)%nat; *) *)
+  (*     sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0); *)
+  (*     (* sum_order1d  (a :  nat^1 -> A)  k :  sum_order (d:=1) a k == norm (a t(k)); *) *)
+  (*     (* sum_order0  {d} (a :  nat^d -> A):  sum_order  a 0 == norm (a 0); *) *)
+  (*   }. *)
 
   Class AbstractPowerSeries := {
   ps_comp0 : forall {d e} (a : (nat^d -> A)) (bs : (nat^(S e) -> A)^d), (a \o1 bs) 0 ==  (a 0);
-  comp1_0 {d} i : (comp1 (m:=d)  i) 0 == 0;
-  comp1_1d  k : ((k == 1%nat) -> (comp1 (m:=1)  0) t(k) == 1) /\ ((k <> 1%nat) -> (comp1 (m:=1)  0) t(k) == 0);
   }.
   
 End AbstractPowerSeries.
@@ -1660,78 +2038,6 @@ Section AbstractPowerSeriesProperties.
   Add Ring ARing: (ComSemiRingTheory (A := A)). 
 
       
-  Lemma deriv_next_backwards {d} (f : nat^(S d) -> A) hd tl : f (tuple_cons (S hd) tl) == (inv_Sn hd) * (D[0] f) (tuple_cons hd tl).
-  Proof.  
-    pose proof (inv_Sn_spec hd).
-    rewrite <-mul1.
-    rewrite <-H2.
-    rewrite mulC.
-    rewrite (mulC (# (S hd))).
-    rewrite mulA.
-    replace (S hd) with (hd + 1)%nat by lia.
-    rewrite <-deriv_next.
-    reflexivity.
-  Qed.
-  Lemma zero_tuple1 : (0 : nat^1) == t(0).
-  Proof.
-    apply (tuple_nth_ext' _ _ 0 0).
-    intros.
-    rewrite vec0_nth.
-    assert (i = 0)%nat as -> by lia.
-    simpl.
-    reflexivity.
-  Qed.
-
-
-  Lemma exchange_ps_factor (h h' g : nat^1 -> A) (k : nat) : (forall i, (i <= k)%nat -> (h t(i)) == (h' t(i))) -> (h * g) t(k) == (h' * g) t(k).
-  Proof.
-    revert h h' g.
-    induction k;intros.
-    - rewrite !ps_mul0.
-      enough (h 0 == h' 0) as -> by reflexivity.
-      assert (0 <= 0)%nat by lia.
-      specialize (H2 _ H3).
-      transitivity (h t(0)).
-      apply index_proper;try reflexivity.
-      rewrite H2.
-      apply index_proper;try reflexivity.
-    - rewrite !deriv_next_backwards.
-      apply ring_eq_mult_eq; try reflexivity.
-      rewrite index_proper; try apply pdiff_mult; try reflexivity.
-      rewrite (index_proper (D[ 0] (h' * g)) _ (pdiff_mult _ _ _ ) t(k) t(k)); try reflexivity.
-      rewrite !index_plus.
-      apply ring_eq_plus_eq.
-      + rewrite (index_proper (g *  (D[0] h)) _ (mulC _ _ ) t(k) t(k)); try reflexivity.
-        rewrite (index_proper (g *  (D[0] h')) _ (mulC _ _ ) t(k) t(k)); try reflexivity.
-        apply IHk.
-        intros.
-        rewrite !deriv_next.
-        apply (ring_eq_mult_eq); try reflexivity.
-        apply H2; lia.
-      + apply IHk.
-        intros.
-        apply H2;auto.
-   Qed.
-
-
-  Lemma deriv_eq_ps_equal {m} (a b : (nat^m -> A)) : (forall (k : nat^m), (Dx[k] a) == (Dx[k] b)) -> a == b.
-  Proof.
-    intros.
-    intros i.
-    rewrite ps_property_backwards.
-    rewrite (ps_property_backwards b).
-    apply ring_eq_mult_eq;try reflexivity.
-    apply H2.
-  Qed.
-  Lemma deriv_eq_ps_equal1  (a b : (nat^1 -> A)) : (forall (k : nat), nth_derivative 0 a k == nth_derivative 0 b k) -> a == b.
-  Proof.
-    intros.
-    apply deriv_eq_ps_equal.
-    intros.
-    destruct (destruct_tuple_cons k) as [k0 [N ->]].
-    rewrite !deriv_rec_1.
-    apply H2.
-  Qed.
 
   Lemma ntimes_index {d} (a : nat^d -> A) k n : (ntimes n a k) == ntimes n (a k).
   Proof.
