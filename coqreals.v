@@ -265,6 +265,9 @@ Proof.
       apply CReal_abs_right.
       apply H.
    -  intros.
+      simpl.
+      apply CReal_abs_left;auto.
+   -  intros.
       exists (Z.to_nat (Qceiling (seq x (-1))+1)).
       apply archimedean_bound.
   Defined.

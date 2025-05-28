@@ -94,7 +94,6 @@ End ODE_basic.
 
 Open Scope fun_scope.
 Section TaylorSequence.
-
   Context `{AbstractFunctionSpace }.
   Context `{invSn : Sn_invertible (A := (A 0%nat)) (H := (H 0)) (R_rawRing := (H0 0%nat)) (H0 := _)}.
   Context {d : nat} (f : (A d)^d)  (y0 : (A 0)^d) (dom_f : y0 \in_dom f).
@@ -226,7 +225,7 @@ End TaylorSequence.
 
 Section PowerSeriesSolution.
   
-  Context `{AbstractPowerSeries}.
+  Context `{ArchimedeanField}.
 
   Add Ring ARing: (ComSemiRingTheory (A := A)). 
   Context {d : nat} {f : (nat^(S d) -> A)^(S d)}.
@@ -267,7 +266,7 @@ Section PowerSeriesSolution.
   Lemma yi_spec : forall k n i, i < (S d) -> ((Fi f n i) \o1 yt) t(k)  == Dx[t(n)] (yt\_i) t(k).
   Proof.
     intros k.
-    enough (forall k0, (k0 <= k)%nat ->  forall n i : nat, (i < (S d)) -> ((Fi f n i) \o1 yt) t(k0)  == Dx[t(n)] (yt\_i) t(k0)) by (intros;apply H6;lia).
+    enough (forall k0, (k0 <= k)%nat ->  forall n i : nat, (i < (S d)) -> ((Fi f n i) \o1 yt) t(k0)  == Dx[t(n)] (yt\_i) t(k0)) by (intros;apply H1;lia).
     intros.
     rewrite ps_derive.
     rewrite index1_add.
@@ -290,8 +289,8 @@ Section PowerSeriesSolution.
       ring.
    -  intros.
       assert ((k0 <= k)%nat \/ (k0 = S k)%nat) by lia.
-      destruct H8; [apply IHk;auto|].
-      rewrite H8;clear H8 H6.
+      destruct H3; [apply IHk;auto|].
+      rewrite H3.
       replace (n+ S k)%nat with (S n+k)%nat by lia.
       simpl rising_factorialt in *.
       replace (S (k+1))%nat with (k+2)%nat by lia.
@@ -305,21 +304,21 @@ Section PowerSeriesSolution.
       rewrite <-deriv_next.
       apply ring_eq_mult_eq; try reflexivity.
       pose proof (pdiff_chain (d:=0) (Fi f n i) yt).
-      rewrite index_proper;try apply H6; try reflexivity.
-      clear H6.
+      rewrite index_proper;try apply H4; try reflexivity.
+      clear H4.
       simpl Fi.
-      pose proof (composition_sum_comp (fun j : nat => f \_ j * D[ j] (Fi (H3 := H4) f n i)) yt d t(k)).
-      rewrite H6.
-      setoid_replace (sum (A := nat^1 -> A) (fun i0 : nat => (f \_ i0 * D[ i0] (Fi  (H3 := H4) f n i)) \o1 yt) (S d) t(k)) with (sum (A := nat^1 -> A) (fun i0 : nat => (f \_ i0 \o1 yt  * (D[ i0] (Fi  (H3 := H4) f n i)) \o1 yt)) (S d) t(k)) by (apply index_proper;[apply sum_ext;intros; rewrite composition_mult_comp|];reflexivity).
+      pose proof (composition_sum_comp (fun j : nat => f \_ j * D[ j] (Fi (H3 := (ps_diffAlgebra )) f n i)) yt d t(k)).
+      rewrite H4.
+      setoid_replace (sum (A := nat^1 -> A) (fun i0 : nat => (f \_ i0 * D[ i0] (Fi  (H3 := ps_diffAlgebra) f n i)) \o1 yt) (S d) t(k)) with (sum (A := nat^1 -> A) (fun i0 : nat => (f \_ i0 \o1 yt  * (D[ i0] (Fi  (H3 := ps_diffAlgebra) f n i)) \o1 yt)) (S d) t(k)) by (apply index_proper;[apply sum_ext;intros; rewrite composition_mult_comp|];reflexivity).
       rewrite !index_sum.
       apply sum_ext.
       intros.
       apply exchange_ps_factor.
       intros.
 
-      pose proof (IVP_F1 f n0 H8 ).
-      setoid_replace ((f \_n0 \o1 yt) t(i0)) with (((Fi  f 1 n0) \o1 yt) t(i0)) by (apply index_proper;try rewrite composition_proper; try rewrite <-H10; try reflexivity).
-      rewrite deriv_next.
+      pose proof (IVP_F1 f n0 H5 ).
+      setoid_replace ((f \_n0 \o1 yt) t(i0)) with (((Fi  f 1 n0) \o1 yt) t(i0)) by (apply index_proper;try rewrite composition_proper; try rewrite <-H7; try reflexivity).
+      setoid_rewrite deriv_next.
       rewrite yt_spec;auto.
       replace (i0+1)%nat with (1 + i0)%nat by lia.
       rewrite IHk;auto.
@@ -335,11 +334,11 @@ Section PowerSeriesSolution.
     apply (tuple_nth_ext' _ _ 0 0).
     intros.
     pose proof (tuple_nth_multicomposition i 0 f yt ).
-    setoid_rewrite H7;auto.
+    setoid_rewrite H2;auto.
     setoid_rewrite (pdiff_tuple_nth yt);auto.
     setoid_replace (D[0] yt\_i) with (derive_rec yt\_i t(1)) by (rewrite deriv_rec_1;simpl; reflexivity).
     intros k.
-    pose proof (yi_spec (k\_0) 1%nat i H6).
+    pose proof (yi_spec (k\_0) 1%nat i H1).
     assert (k == t(k\_0)).
     {
       apply (tuple_nth_ext' _ _ 0 0).
@@ -349,10 +348,10 @@ Section PowerSeriesSolution.
       reflexivity.
     }
     assert (Dx[t(1)] yt \_i k == Dx[t(1)] yt \_ i t(k\_0)) as -> by  (apply index_proper;try reflexivity;auto).
-    rewrite <- H8.
-    apply index_proper;try rewrite H9;try reflexivity.
-    pose proof (IVP_F1 f i  H6).
-    rewrite composition_proper; try apply H10; try reflexivity.
+    rewrite <- H3.
+    apply index_proper;try rewrite H4;try reflexivity.
+    pose proof (IVP_F1 f i  H1).
+    rewrite composition_proper; try apply H5; try reflexivity.
  Qed.
 
   (* Lemma yi_is_unique z  i: i < (S d) -> z\_i 0 == yt\_i 0 -> ODE_solution f z -> forall (k : nat),  z\_i t(k) == yt\_i t(k).  *)

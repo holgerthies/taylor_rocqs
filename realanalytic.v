@@ -31,10 +31,7 @@ Section Analytic.
   Context `{ArchimedeanField (A:=A 0) (H:=H 0) (R_rawRing := H0 0) (R_semiRing := H1 0) }.
 
 
-  Context `{CompositionalDiffAlgebra (A := (ps (A := (A 0)))) (H := (ps_set)) }.
-  Context `{@AbstractPowerSeries (A 0) (H 0) (H0 0) (H1 0) H7 H8 H9 H10 invSn}.
 
-  Context `{cs_exists : CoeffSum (A := A 0) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := R_Field) (R_Field0 := R_Field0) (H5 := _) }.
    Add Ring KRing: (ComRingTheory (A := (A 0))).
   (* Context `{AbstractPowerseries (A := (A 0)) (H := (H 0))  (H1 := _)   }. *)
   (* Context `{norm_abs : forall x, 0 <= x -> norm x == x}. *)
@@ -89,7 +86,7 @@ Section Analytic.
    Definition analytic_solution_ps  (F : Analytic) (i : nat) (n : nat)  : (A 0)  :=  ![n] * (Fi F.(f) n i){y0}.
 
 
-  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (H1 0) H7 H8 H9 H10 invSn d  (f_to_ps F).
+  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (H1 0) A_Ring _ _ _ _ _ _ d  (f_to_ps F).
 
 
   Lemma eval_sum_compat f N :  (sum f N){y0} == (sum (fun n => (f n){y0}) N).
@@ -149,9 +146,9 @@ Section Analytic.
     destruct (destruct_tuple_cons n') as [n'0 [n't ->]].
     apply (tuple_cons_equiv) in eq'.
     destruct eq'.
-    rewrite H14.
+    rewrite H9.
     intros.
-    specialize (IHe _ _ H15 (S j)).
+    specialize (IHe _ _ H10 (S j)).
     rewrite nth_derivative_proper; try apply IHe.
     reflexivity.
   Defined.
@@ -194,7 +191,7 @@ Section Analytic.
     unfold fun_ps.
     intros k.
     destruct (destruct_tuple_cons k) as [i [t ->]].
-    rewrite deriv_next.
+    setoid_rewrite deriv_next.
     rewrite <-!mulA.
     replace (i+1)%nat with (S i) at 2 by lia.
     rewrite inv_factt_S_reverse.
@@ -227,7 +224,7 @@ Section Analytic.
       reflexivity.
     - intros.
        assert ((Fi (f F) (S (S n)) i) == (sum (fun j => (f F)\_j * (D[j] (Fi (f F) (S n) i))) (S d))) by (simpl;reflexivity).
-       rewrite H13.
+       rewrite H8.
        rewrite Fi_S.
        rewrite fun_ps_sum.
        apply sum_ext.
@@ -255,8 +252,8 @@ Section Analytic.
        reflexivity.
      - 
        unfold y_i.
-       pose proof (F_ps_same F k i H12 0).
-       rewrite <-H13.
+       pose proof (F_ps_same F k i H7 0).
+       rewrite <-H8.
        apply ring_eq_mult_eq;try reflexivity.
        unfold fun_ps.
        rewrite inv_factt0.
@@ -268,9 +265,9 @@ Section Analytic.
    Proof.
      intros.
      split;unfold fast_cauchy_neighboring;intros.
-     rewrite <-!H12.
-     apply H13.
-     rewrite !H12; apply H13.
+     rewrite <-!H7.
+     apply H8.
+     rewrite !H7; apply H8.
    Qed.
 
    Lemma fast_cauchy_neighboring_ps_proper f g x: (forall n, f n == g n) -> fast_cauchy_neighboring (fun n => (partial_sum (to_ps f) x n)) <-> fast_cauchy_neighboring (fun n => (partial_sum (to_ps g) x n)). 
@@ -282,7 +279,7 @@ Section Analytic.
      apply sum_ext.
      intros.
      rewrite !to_ps_simpl.
-     rewrite H12.
+     rewrite H7.
      reflexivity.
    Qed.
    Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)).
@@ -343,7 +340,7 @@ Section Analytic.
       intros;auto.
       pose proof (deriv_bound F).
       rewrite f_to_ps_spec;auto.
-      apply H13;auto.
+      apply H8;auto.
    Qed.
 
    Definition bound_ps F := (a_bound_series (A := (A 0)) (npow #2 (proj1_sig (analytic_solution_logM F))) #(proj1_sig (analytic_solution_r F))).
@@ -376,10 +373,10 @@ Section Analytic.
      assert (Mpos : 0 <= #F.(M)).
      apply ntimes_nonneg;apply le_0_1.
      (* destruct (destruct_tuple1 (S k0)) as [k0 ->]. *)
-     pose proof (y_bound (f_bounded := (f_mps_bound F)) (rpos := rpos) (Mpos := Mpos) (normK := normK)  i k0 H12).
+     pose proof (y_bound (f_bounded := (f_mps_bound F)) (rpos := rpos) (Mpos := Mpos) (normK := normK)  i k0 H7).
      unfold powerseries_yi.
-     rewrite yt_spec in H13;auto.
-     apply (le_trans _ _ _ H13).
+     rewrite yt_spec in H8;auto.
+     apply (le_trans _ _ _ H8).
      unfold bound_ps.
      rewrite order1d.
      unfold a_bound_series.
@@ -392,8 +389,8 @@ Section Analytic.
      apply mul_le_le_compat_pos; try apply npow_pos; try apply mul_pos_pos;try apply ntimes_nonneg; try apply ntimes_nonneg;try apply mul_pos_pos; try apply ntimes_nonneg;try apply le_0_1;try apply le_0_n.
      apply l.
      enough (#1 <= #x0).
-     simpl in H16.
-     ring_simplify in H16.
+     simpl in H11.
+     ring_simplify in H11.
      apply (le_trans _ (npow #x0 k0 * 1)).
      ring_simplify;apply npow_monotone;auto.
      apply mul_pos_pos; try apply mul_pos_pos;try apply mul_pos_pos; try apply npow_pos; try apply ntimes_nonneg;try apply ntimes_nonneg;try apply le_0_1.
@@ -424,32 +421,33 @@ Section Analytic.
    Proof.
      intros.
      apply fast_cauchy_neighboring_r0.
-     pose proof (bound_solution F i H12).
-     unfold bound_ps in H14.
+     pose proof (bound_solution F i H7).
+     unfold bound_ps in H9.
      destruct (analytic_solution_logM F) as [logM PM].
      destruct (analytic_solution_r F) as [r pr].
        Opaque ntimes.
      simpl in *.
      assert (#(S r) * inv_Sn r == 1) by apply inv_Sn_spec.
-      assert (mps_bound (to_ps_remove0 ( analytic_solution_ps F i)) (a_bound_series (npow #2 logM) # (S r))). 
+      assert (mps_bound (to_ps_remove0 ( analytic_solution_ps F i)) (a_bound_series (npow #2 logM) # (S r))).
      {
        intros k.
-       apply (le_trans _ _ _ (H14 k)).
+       apply (le_trans _ _ _ (H9 k)).
        unfold a_bound_series.
-
+       
        rewrite !to_ps_simpl.
+       unfold bound_ps; simpl.
        apply mul_le_compat_pos; try apply npow_pos; try apply le_0_n.
        apply npow_monotone; try apply le_0_n.
        apply ntimes_monotone;lia.
      }
 
      intros n.
-     pose proof (bounded_ps_modulus_spec  (to_ps_remove0  (analytic_solution_ps F i)) (npow #2 logM) #(S r) (inv_Sn r) logM t H15  (le_refl _ ) H13 H16 n).
-     simpl in H17.
-     unfold bps_modulus in H17.
+     pose proof (bounded_ps_modulus_spec  (to_ps_remove0  (analytic_solution_ps F i)) (npow #2 logM) #(S r) (inv_Sn r) logM t H10  (le_refl _ ) H8 H11 n).
+     simpl in H12.
+     unfold bps_modulus in H12.
      replace (logM + S n + 1)%nat with (((S n) + 1 + logM))%nat by lia.
      replace (logM + n +1)%nat with ((n+1 + logM))%nat  by lia.
-     apply H17.
+     apply H12.
  Qed.
 
   Definition taylor_poly (F : Analytic) (i : nat) (n : nat)  : @poly ((A 0)).
@@ -463,9 +461,6 @@ End Analytic.
 Section AnalyticPoly.
   Context `{ArchimedeanField}.
   Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (A_Ring := _ ) (R_Field0 := _) (R_Field := R_Field) (R_TotalOrder := _) (normK := _)  (H0 := H0) (invSn := _)}.
-  Context `{AbstractPowerSeries (A := A) (H := H) (R_rawRing := R_rawRing) (H0 := _) (invSn := invSn) }.
-
-  Context `{cs_exists : CoeffSum (A := A) (H:= _ ) (R_rawRing := _) (H0 := _) (H1 := _) (H2 := _) (H3 := _) (H4 := _ ) (invSn := _) (A_Ring := _) (R_TotalOrder := _) (normK := _) (R_Field := R_Field) (R_Field0 := R_Field0) (H5 := _) }.
    Add Ring KRing: (ComRingTheory (A :=A)).
   Lemma poly_tot {d} (y0 : A^(S d)) : forall (f : @mpoly A (S d)), @in_domain _ _ _ (mpoly_setoid (S d) (A := A)) _ _ _ _ _ f y0.
   Proof.
@@ -560,11 +555,11 @@ Section AnalyticPoly.
      assert (  fast_cauchy_neighboring  (approx  F t i)).
      {
        apply fast_cauchy_neighboring_approx;try lia.
-       apply (le_trans _ _ _ H7).
+       apply (le_trans _ _ _ H2).
        apply le_refl.
      }
      pose proof (has_limit (approx F t i)).
-     destruct (X H8).
+     destruct (X H3).
      apply x.
    Defined.
 
@@ -577,7 +572,7 @@ Section AnalyticPoly.
        apply inv2_pos.
        apply inv_Sn_pos.
      }
-     apply ((ivp_r_max F), (ivp_solution_i F i (ivp_r_max F)) H7).
+     apply ((ivp_r_max F), (ivp_solution_i F i (ivp_r_max F)) H2).
    Defined.
 
    Definition ivp_solution_max  {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly)) : (A * ( A^(S d))).

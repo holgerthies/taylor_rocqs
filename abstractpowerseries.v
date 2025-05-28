@@ -1790,6 +1790,8 @@ Qed.
      apply ps_eq_order.
      intros.
      setoid_rewrite deriv_next_full;auto.
+     setoid_rewrite index_sum.
+     intros.
      rewrite !ps_composition_simpl.
      rewrite order_plus.
      rewrite order_nth1;auto.
@@ -2206,6 +2208,9 @@ Qed.
       apply Nat.eqb_eq in E.
       lia.
    Qed.
+
+  Lemma ps_comp0  {d e} (a : (nat^d -> A)) (bs : (nat^(S e) -> A)^d): (a \o1 bs) 0 == (a 0). 
+  Admitted.
  (* Context `{CompositionalDiffAlgebra (A := ps) (H := _) (H0 := _) (H1 := _) (H2 := _)}. *)
 
   (* coefficient norm is currently formalized abstractly *)
@@ -2221,29 +2226,7 @@ Qed.
   (*     (* sum_order0  {d} (a :  nat^d -> A):  sum_order  a 0 == norm (a 0); *) *)
   (*   }. *)
 
-  Class AbstractPowerSeries := {
-  ps_comp0 : forall {d e} (a : (nat^d -> A)) (bs : (nat^(S e) -> A)^d), (a \o1 bs) 0 ==  (a 0);
-  }.
   
-End AbstractPowerSeries.
-
-
-Section AbstractPowerSeriesProperties.
-  Context `{AbstractPowerSeries}.
-
-  Definition index {d} (a : nat^d -> A) n := a n.
-
-  Instance index_prop {d}: Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (@index d). 
-  Proof.
-    apply index_proper.
-  Defined.
-
-
-
-  Add Ring ARing: (ComSemiRingTheory (A := A)). 
-
-      
-
   Lemma ntimes_index {d} (a : nat^d -> A) k n : (ntimes n a k) == ntimes n (a k).
   Proof.
     induction n.
@@ -2254,5 +2237,6 @@ Section AbstractPowerSeriesProperties.
     rewrite IHn.
     reflexivity.
  Qed.
+End AbstractPowerSeries.
 
-End AbstractPowerSeriesProperties.
+
