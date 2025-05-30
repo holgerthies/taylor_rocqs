@@ -76,6 +76,10 @@ Definition sin_cos_exact := (ivp_solution_max sin_cos_analytic).
 (* prints the time and the value as pair *)
 Compute (seq_tuple (sin_cos_exact) (-5)).
 
+(*trajectory *)
+
+Definition sin_cos_trajectory := (pivp_trajectory sin_cos_example.(pf) (inject_Q 0) sin_cos_example.(py0) 1).
+Compute (seq_trajectory (sin_cos_trajectory) 0).
 (** tan function (1d) **)
 
 Definition tan_example := tan_ivp (A := RQ).

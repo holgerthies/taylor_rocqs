@@ -456,11 +456,34 @@ Section Analytic.
     apply [analytic_solution_ps F i 0%nat].
     apply (IHn ++ [analytic_solution_ps F i (S n)]).
   Defined.
+
+  Lemma inv_Sn_injective a b : inv_Sn a == inv_Sn b -> a = b.
+  Proof.
+    intros.
+  Admitted.
+
+  Definition taylor_error (F: Analytic) (k : nat) (n : nat) : (A 0).
+  Proof.
+     destruct (analytic_solution_r F) as [r [pr1 pr2]].
+     remember (ntimes (S d) #F.(M)) as M.
+     remember (inv_Sn (k*r+1)) as x.
+     remember (1 - x) as y.
+     assert (not (y == 0)).
+     {
+       intros Hy.
+       rewrite Heqy in Hy.
+       assert (x == 1) by (setoid_replace x with (x + (1 - x)) by rewrite Hy;ring).
+       rewrite Heqx in H7.
+       rewrite <-inv_Sn0 in H7.
+       apply inv_Sn_injective in H7.
+       lia.
+     }
+     apply (M * npow x (S n) * y).
+  Defined.
 End Analytic.
 
 Section AnalyticPoly.
   Context `{ArchimedeanField}.
-  Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (A_Ring := _ ) (R_Field0 := _) (R_Field := R_Field) (R_TotalOrder := _) (normK := _)  (H0 := H0) (invSn := _)}.
    Add Ring KRing: (ComRingTheory (A :=A)).
   Lemma poly_tot {d} (y0 : A^(S d)) : forall (f : @mpoly A (S d)), @in_domain _ _ _ (mpoly_setoid (S d) (A := A)) _ _ _ _ _ f y0.
   Proof.
@@ -548,6 +571,7 @@ Section AnalyticPoly.
    (* Qed. *)
    Definition ivp_r_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))   := ((inv2 * inv_Sn (proj1_sig (analytic_solution_r (A := @mpoly A)  F)))).
 
+   Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (A_Ring := _ ) (R_Field0 := _) (R_Field := R_Field) (R_TotalOrder := _) (normK := _)  (H0 := H0) (invSn := _)}.
    Definition ivp_solution_i {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat) t  :  norm t <= (ivp_r_max F)  -> A.
    Proof.
      intros.

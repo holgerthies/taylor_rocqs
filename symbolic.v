@@ -1,3 +1,10 @@
+Definition AQexpBigD : bigD -> msp_car ARbigD
+  := AQexp.
+
+(* Some time measures on a 5000 bogomips CPU *)
+
+Time Eval vm_compute in (approximate (AQexpBigD (cast _ _ 300%Z)) (Qpos2QposInf (1#1))).
+(* 0.1 secs *)
 Require Import Psatz.
 Require Import List.
 Require Import ZArith.
@@ -57,17 +64,17 @@ Inductive Symbolic
     intros x y;apply Ssym.
     intros x y z;apply Strans.
   Defined.
+
   #[global] Instance S_rawRing : RawRing (A := Symbolic).
   Proof.
     constructor;[apply Szero | apply Sone|  apply Sadd | apply Smul].
   Defined.
-  #[global] Instance S_semiRing : (comSemiRing (A := Symbolic)).
+
+  #[global] Instance S_semiRing : (SemiRing (A := Symbolic)).
   Proof.
     constructor;intros.
     apply Proper_symbolic_add.
     apply Proper_symbolic_mul.
-    apply Srefl.
-    apply Srefl.
     apply SaddA.
     apply SaddC.
     apply Sadd0.
@@ -77,6 +84,10 @@ Inductive Symbolic
     apply Smul1.
     apply SmulD.
  Defined.
+
+  #[global] Instance S_Ring : (Ring (A := Symbolic)).
+  Proof.
+    
 End Symbolic.
 
 Definition tupleToSymbolic {A n} (t : @tuple n A) : (@tuple n (Symbolic A)).
