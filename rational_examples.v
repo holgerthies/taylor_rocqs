@@ -35,7 +35,6 @@ Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 
 Definition exp_example := exp_ivp (A := Q).
 
-Check @analytic_poly.
 Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 
 (* First compute finite Taylor polynomial *)

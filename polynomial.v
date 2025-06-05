@@ -67,6 +67,61 @@ Import ListNotations.
     constructor.
     apply []. apply [1]. apply (sum_polyf). apply (mult_polyf).
   Defined.
+
+ Lemma rev_app1 {X : Type} (l : list X) a : (rev (l ++ [a])) = a :: (rev l).
+ Proof.
+   induction l.
+   simpl;auto.
+   simpl.
+   rewrite IHl;auto.
+ Defined.
+ Lemma rev_involutive' {X : Type} (l : list X) : (rev (rev l)) = l.
+ Proof.
+   induction l.
+   simpl;auto.
+   simpl.
+   rewrite rev_app1.
+   simpl.
+   rewrite IHl;auto.
+ Defined.
+
+ Lemma poly_rev_ind : forall (P : poly -> Type),
+  P [] -> (forall (x : A) (l : poly), P l -> P (l ++ [x])) -> forall l : poly, P l.
+ Proof.
+   intros.
+   replace l with (rev (rev l)) by (apply rev_involutive').
+   induction (rev l).
+   simpl.
+   apply X.
+   simpl.
+   apply X0;auto.
+ Defined.
+
+ Lemma poly_deriv_exists (p : poly) : {p' : poly | length p' = (length p - 1)%nat /\ forall n, n < length p' -> nth n p' 0 == ntimes (S n) (nth (S n) p 0) }.
+ Proof.
+ induction p using poly_rev_ind;[exists [];split;auto; simpl;lia|].
+   destruct p.
+   - exists [].
+     split; auto;simpl;lia.
+   - destruct IHp as [p' [P1 P2]].
+     simpl in P1.
+     rewrite Nat.sub_0_r in P1.
+     exists (p' ++ [(ntimes (S (length p))) x]).
+     split; [rewrite !length_app, P1;simpl;lia|].
+     intros n Hn.
+     destruct (Nat.lt_ge_cases n (length p')).
+     + rewrite app_nth1;auto.
+       rewrite P2;auto.
+       simpl.
+       rewrite app_nth1;try rewrite <-P1;auto.
+       reflexivity.
+     + 
+       rewrite length_app in Hn.
+       simpl in *.
+       assert (n = length p') as -> by lia.
+       rewrite nth_middle, P1, nth_middle.
+       reflexivity.
+ Defined.
   End RawPolynomial.
   Section Polynomial.
   Context `{A_semiRing : SemiRing}.
@@ -652,59 +707,7 @@ Qed.
    apply p.
  Defined.
 
- Lemma rev_app1 {X : Type} (l : list X) a : (rev (l ++ [a])) = a :: (rev l).
- Proof.
-   induction l.
-   simpl;auto.
-   simpl.
-   rewrite IHl;auto.
- Defined.
- Lemma rev_involutive' {X : Type} (l : list X) : (rev (rev l)) = l.
- Proof.
-   induction l.
-   simpl;auto.
-   simpl.
-   rewrite rev_app1.
-   simpl.
-   rewrite IHl;auto.
- Defined.
-
- Lemma poly_rev_ind : forall (P : poly -> Type),
-  P [] -> (forall (x : A) (l : poly), P l -> P (l ++ [x])) -> forall l : poly, P l.
- Proof.
-   intros.
-   replace l with (rev (rev l)) by (apply rev_involutive').
-   induction (rev l).
-   simpl.
-   apply X.
-   simpl.
-   apply X0;auto.
- Defined.
   
- Lemma poly_deriv_exists (p : poly) : {p' : poly | length p' = (length p - 1)%nat /\ forall n,  nth n p' 0 == ntimes (S n) (nth (S n) p 0) }.
- Proof.
- induction p using poly_rev_ind;[exists [];split;auto; intros;rewrite nth_overflow;simpl;[rewrite ntimes_zero;ring | lia]|].
-   destruct p.
-   - exists [].
-     split; auto.
-     intros; rewrite nth_overflow; simpl; try lia.
-     destruct n;simpl;try rewrite ntimes_zero; ring.
-   - destruct IHp as [p' [P1 P2]].
-     simpl in P1.
-     rewrite Nat.sub_0_r in P1.
-     exists (p' ++ [(ntimes (S (length p))) x]).
-     split; [rewrite !length_app, P1;simpl;lia|].
-     intros n.
-     destruct (Nat.lt_ge_cases n (length p')).
-     + rewrite app_nth1;auto.
-       rewrite P2.
-       simpl.
-       rewrite app_nth1;try rewrite <-P1;auto.
-       ring.
-    + destruct H0; [simpl;rewrite nth_middle, P1, nth_middle;ring|].
-      simpl.
-      rewrite !nth_overflow; try rewrite ntimes_zero; try ring; rewrite length_app;simpl; lia.
- Defined.
 
  Definition derive_poly p := (proj1_sig  (poly_deriv_exists p)).
 
@@ -1023,27 +1026,24 @@ Qed.
 End Polynomial.
 
 Section MultiRawPoly.
-  Context `{R_semiRing : SemiRing }.
+  Context `{R_rawRing : RawRing  }.
   Fixpoint mpoly n :=
     match n with
     | 0 => A
     | (S n) => @poly (mpoly n)
     end.
 
-  Lemma mpoly_setoid_rawring n : {H : Setoid (mpoly n) & {H1 : RawRing (A := mpoly n) & SemiRing (A := mpoly n)}}.
+  Lemma mpoly_setoid_rawring n : {H : Setoid (mpoly n) & RawRing (A := mpoly n)}.
   Proof.
     induction n.
     exists H.
-    exists R_rawRing.
-    apply R_semiRing.
-    exists (poly_A_setoid (H := (projT1 IHn)) (A_rawRing := (projT1 (projT2 IHn)))).
-    exists poly_rawRing.
-    apply (poly_SemiRing (A_semiRing := (projT2 (projT2 IHn)))).
+    apply R_rawRing.
+    exists (poly_A_setoid (H := (projT1 IHn)) (A_rawRing := (projT2 IHn))).
+    apply poly_rawRing.
   Defined.
 
   #[global] Instance mpoly_setoid n : Setoid (mpoly n) := (projT1 (mpoly_setoid_rawring n)).
-  #[global] Instance mpoly_rawRing n: RawRing (A := (mpoly n)) := (projT1 (projT2 (mpoly_setoid_rawring n))).
-  #[global] Instance mpoly_SemiRing n:  SemiRing (A := (mpoly n)) := (projT2 (projT2 (mpoly_setoid_rawring n))).
+  #[global] Instance mpoly_rawRing n: RawRing (A := (mpoly n)) := (projT2 (mpoly_setoid_rawring n)).
   Lemma mpoly_setoid_spec n  : mpoly_setoid (S n) = (poly_A_setoid (A := (mpoly n))).
   Proof.
     induction n.
@@ -1065,6 +1065,60 @@ Section MultiRawPoly.
    end.
   Definition eval_mpoly {n} (p : mpoly (S n)) x := eval_poly p (const_to_mpoly n x).
   End MultiRawPoly.
+Section MultiPolySemiRing.
+  Context `{R_semiRing : SemiRing }.
+  Lemma mpoly_semiring n :  SemiRing (A := mpoly n).
+  Proof.
+    induction n.
+    apply R_semiRing.
+    apply (poly_SemiRing (A_semiRing := IHn)).
+  Defined.
+
+  #[global] Instance mpoly_SemiRing n:  SemiRing (A := (mpoly n)) := mpoly_semiring n.
+  End MultiPolySemiRing.
+(* Section MultiPolySemiRing. *)
+(*   Context `{R_semiRing : SemiRing }. *)
+(*   Fixpoint mpoly n := *)
+(*     match n with *)
+(*     | 0 => A *)
+(*     | (S n) => @poly (mpoly n) *)
+(*     end. *)
+
+(*   Lemma mpoly_setoid_rawring n : {H : Setoid (mpoly n) & {H1 : RawRing (A := mpoly n) & SemiRing (A := mpoly n)}}. *)
+(*   Proof. *)
+(*     induction n. *)
+(*     exists H. *)
+(*     exists R_rawRing. *)
+(*     apply R_semiRing. *)
+(*     exists (poly_A_setoid (H := (projT1 IHn)) (A_rawRing := (projT1 (projT2 IHn)))). *)
+(*     exists poly_rawRing. *)
+(*     apply (poly_SemiRing (A_semiRing := (projT2 (projT2 IHn)))). *)
+(*   Defined. *)
+
+(*   #[global] Instance mpoly_setoid n : Setoid (mpoly n) := (projT1 (mpoly_setoid_rawring n)). *)
+(*   #[global] Instance mpoly_rawRing n: RawRing (A := (mpoly n)) := (projT1 (projT2 (mpoly_setoid_rawring n))). *)
+(*   #[global] Instance mpoly_SemiRing n:  SemiRing (A := (mpoly n)) := (projT2 (projT2 (mpoly_setoid_rawring n))). *)
+(*   Lemma mpoly_setoid_spec n  : mpoly_setoid (S n) = (poly_A_setoid (A := (mpoly n))). *)
+(*   Proof. *)
+(*     induction n. *)
+(*     simpl. *)
+(*     unfold poly_A_setoid. *)
+(*     reflexivity. *)
+(*     unfold poly_A_setoid. *)
+(*     unfold mpoly_setoid. *)
+(*     simpl. *)
+(*     reflexivity. *)
+(*   Defined. *)
+
+
+
+(*   Fixpoint const_to_mpoly n x : (mpoly n) :=  *)
+(*     match n with *)
+(*     | 0 => x *)
+(*     | (S n) => [const_to_mpoly n x] *)
+(*    end. *)
+(*   Definition eval_mpoly {n} (p : mpoly (S n)) x := eval_poly p (const_to_mpoly n x). *)
+(*   End MultiRawPoly. *)
 
 Section Composition.
 
@@ -1092,7 +1146,7 @@ End Composition.
 
  Notation "p .{ x }" := (eval_mpoly  p x) (at level 3, left associativity).
 
-Definition eval_tuple {R} `{R_semiRing : SemiRing (A:=R)} {n} (p : @mpoly R n) (t : @tuple n R) : R. 
+Definition eval_tuple {R} `{R_rawRing : RawRing (A:=R)} {n} (p : @mpoly R n) (t : @tuple n R) : R. 
 Proof.
    induction n.
    apply p.
@@ -1513,7 +1567,11 @@ Section DifferentialRing.
   Proof.
     unfold derive_poly; simpl.
     destruct (poly_deriv_exists a);simpl.
-    apply a0.
+    assert (n < length x \/ length x <= n)%nat by lia.
+    destruct H0.
+    apply a0;auto.
+    rewrite !nth_overflow;auto;try lia.
+    rewrite ntimes_zero;ring.
   Qed.
 
   Lemma derive_poly_cons a0 a1 a : derive_poly (a0 :: a1 :: a) == sum_polyf (a1 :: a) (0 :: (derive_poly (a1 :: a))).

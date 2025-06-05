@@ -145,7 +145,7 @@ Admitted.
       contradict magic.
    - contradict magic.
    - intros.
-     exists 3%nat.
+     exists 1%nat.
      contradict magic.
   Defined.
 
@@ -168,7 +168,7 @@ Proof.
 Defined.
 
   Definition q (x : Z) (y : positive) : Q := ({| Qnum := x; Qden := y |}).
-Definition approx_index (e : Q)  := S (Z.to_nat (Qdlog.Qdlog2 (Qinv e))).
+Definition approx_index (e : Q)  := 4%nat. (* S (Z.to_nat (Qdlog.Qdlog2 (Qinv e))). *)
 
   Lemma approx_index_spec (u : nat -> ARbigD) (e : Q) : fast_cauchy_neighboring u ->
     ∀ m n, (m ≥ approx_index e) → (n ≥ approx_index e) →
@@ -194,29 +194,86 @@ Definition approx_index (e : Q)  := S (Z.to_nat (Qdlog.Qdlog2 (Qinv e))).
  Defined.
 
 Open Scope algebra_scope.
-Section examples.
+(* Section examples. *)
 
+Definition  approx_poly {d} (p : (tuple d (list ARbigD)))  (n : positive):  list (list string).
+   destruct p as [t v].
+   destruct v.
+   remember (Qpos2QposInf (QabsQpos (q 1 n))) as prec.
+   induction t.
+   apply nil.
+   apply (cons (map (fun x => (to_string (approximate x prec))) a)  IHt). 
+Defined.
+
+  Definition Fi_fast {d} (f : (tuple (S d) (@mpoly ARbigD (S d)))) (n i : nat) : list (@mpoly ARbigD (S d)).
+  Proof.
+    induction n.
+    apply (cons (cons 0 (cons 1 nil)) nil).
+    apply (cons (sum (fun j =>  (tuple_nth j f 0) * (D[j] (hd 0 IHn))) (S d))  IHn).
+  Defined.
+  
+Definition Fi_to_taylor {d} (l : list (@mpoly ARbigD (S d))) (y0 : (tuple (S d) ARbigD)) : @poly ARbigD.
+Proof.
+  induction l.
+  apply nil.
+  apply (IHl ++ (cons (![Datatypes.length IHl] * eval_tuple a y0) nil)).
+Defined.
 
 Definition exp_example := exp_ivp (A := ARbigD).
 
+Definition exp10 := (Fi_fast exp_example.(pf) 5 0).
+
+Definition exp_taylor10 := Fi_to_taylor exp10 exp_example.(py0).
+
+Definition exp_approx0 : ARbigD :=(ARcompress  (eval_poly exp_taylor10 (inv_Sn_ARbigD 1))).
+
+Fixpoint exp_continue0 (n : nat) := match n with
+                          | 0%nat => (ARcompress (eval_poly exp_taylor10 (inv_Sn_ARbigD 1)))
+                          | (S n') => (ARcompress (eval_poly (Fi_to_taylor exp10 (tuple_cons (exp_continue0 n') nil_tuple)) (inv_Sn_ARbigD 1)))
+                                       end.
+Definition test0 := (approximate exp_approx0 (Qpos2QposInf (QabsQpos (q 1 100)))).
+Time Eval vm_compute in test0.
+
+
+Definition testc0 := (approximate (exp_continue0 3) (Qpos2QposInf (QabsQpos (q 1 100)))).
+Time Eval vm_compute in testc0.
 Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 
 (* First compute finite Taylor polynomial *)
 
 (* order 20 approximation *)
-Definition exp_taylor := taylor_poly exp_analytic 0 5.
+Definition exp_taylor := taylor_poly exp_analytic 0 20.
 (*evaluate at 1/2 *)
-Definition exp_approx1 : ARbigD := (eval_poly exp_taylor (inv_Sn_ARbigD 1)).
-Check approximate.
-Definition test := (approximate exp_approx1 (Qpos2QposInf (QabsQpos (q 1 1)))).
-Eval vm_compute in test.
+Definition exp_approx1 : ARbigD :=(ARcompress  (eval_poly exp_taylor (inv_Sn_ARbigD 1))).
+Definition test := (approximate exp_approx1 (Qpos2QposInf (QabsQpos (q 1 100)))).
+Time Eval vm_compute in test.
 
  Definition exp_cont1  := analytic_poly exp_example.(pf) t(exp_approx1).
 
-Definition exp_taylor2 := taylor_poly exp_cont1 0 5.
-Definition exp_approx2 := (eval_poly exp_taylor2 (inv_Sn_ARbigD 1)).
+Definition exp_taylor2 := taylor_poly exp_cont1 0 10.
+Definition exp_approx2 := (ARcompress ((eval_poly exp_taylor2 (inv_Sn_ARbigD 1)))).
   
-Definition test2 := (approximate exp_approx2 (Qpos2QposInf (QabsQpos (q 1 1)))).
+Definition test2 := (approximate exp_approx2 (Qpos2QposInf (QabsQpos (q 1 100)))).
+
+  Fixpoint eval_poly' (a : poly) (x : ARbigD) :=
+    match a with
+    | nil => 0
+    | h :: t => ARcompress h + x * (ARcompress (eval_poly t x))
+    end.
+
+
+
+Check (exp_example.(pf)).
+
+Fixpoint exp_continue (n : nat) := match n with
+                          | 0%nat => (ARcompress (eval_poly' (taylor_poly (analytic_poly exp_example.(pf) exp_example.(py0)) 0 5) (inv_Sn_ARbigD 1)))
+                          | (S n') => (ARcompress (eval_poly' (taylor_poly (analytic_poly exp_example.(pf) t(exp_continue n')) 0 5) (inv_Sn_ARbigD 1)))
+                                       end.
+
+
+Definition test3 := (approximate (exp_continue 1) (Qpos2QposInf (QabsQpos (q 1 100)))).
+Time Eval vm_compute in test3.
+
  Definition  approx_tuple {d} (p : (ARbigD * tuple d ARbigD))  (n : positive): string * list string.
  Proof.
    destruct p as [t v].
@@ -228,7 +285,7 @@ Definition test2 := (approximate exp_approx2 (Qpos2QposInf (QabsQpos (q 1 1)))).
  Definition  approx_trajectory {d} (p : list (ARbigD * tuple d ARbigD))   z :=  map (fun p => approx_tuple p z) p.
 
 Eval vm_compute in test2.
-    
+
 (* now with guaranteed error bound  at max time *)
 Definition exp_exact := (ivp_solution_max exp_analytic).
 Definition app := (approx_tuple exp_exact 1000).
@@ -236,6 +293,18 @@ Definition a := (ivp_r_max exp_analytic).
 Definition b := (proj1_sig  (analytic_solution_r exp_analytic)).
 
 Eval vm_compute in app.
+Check pivp_trajectory.
+   Definition pivp_trajectory {d} (p : (tuple (S d) (@mpoly ARbigD (S d)))) (t0 : ARbigD) (y0 : (tuple (S d) ARbigD)) (steps : nat) :  list (ARbigD * (tuple (S d) ARbigD)).
+   Proof.
+     revert t0 y0.
+     induction steps;intros.
+     apply (cons (ARcompress t0,tuple_map ARcompress y0) nil).
+     pose proof (pivp_solution_max p y0).
+     apply (cons (ARcompress t0, tuple_map ARcompress y0) (IHsteps (ARcompress (t0 + fst X)) (tuple_map ARcompress (snd X)))).
+   Defined.
+Definition exp_trajectory := (pivp_trajectory exp_example.(pf) canonical_names.zero exp_example.(py0) 2).
+Eval vm_compute in (approx_trajectory exp_trajectory 1).
 
+End examples.
 
-
+Recursive Extraction test3.

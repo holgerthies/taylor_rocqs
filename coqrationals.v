@@ -12,23 +12,6 @@ From Coq Require Import Psatz.
 From Coq Require Import List.
 Require Import QOrderedType Qabs.
 (* Require Import examples. *)
-Require Import
-  CoRN.model.totalorder.QposMinMax
-  CoRN.metric2.Metric
-  CoRN.metric2.Complete
-  CoRN.reals.faster.ARexp
-  CoRN.reals.faster.ARbigD.
-Check cast.
-Eval vm_compute in
-  (approximate
-     ((cast Z (msp_car ARbigD) 300%Z))
-     (Qpos2QposInf (1#1))).
-Instance AR_setoid: Setoid ARbigD.
-Proof.
-  split;auto.
-Defined.
-
-(* Resolve type classes *)
 
 Import ListNotations.
 
