@@ -232,7 +232,7 @@ Proof.
 Defined.
 
 
-   (* Fixpoint Fi {d} (f : (tuple (S d) (@mpoly I (S d)))) (n i : nat) : @mpoly I (S d) :=  *)
+   (* Fixpoint Fi {d} (f : (tuple (S d) (@mpoly I (S d)))) (n i : nat) : @mpoly I (S d) := *)
    (*   match n with *)
    (*   | 0%nat => (poly_comp1 i) *)
    (*   | (S n') => (sum (fun j => (tuple_nth j f 0) * (poly_pdiff j (Fi f n' i))) d) *)
@@ -241,7 +241,7 @@ Defined.
 Definition Fi {d} (f : (tuple (S d) (@mpoly I (S d)))) (n i : nat) : list (@mpoly I (S d)).
   Proof.
     induction n.
-    apply (cons (cons 0 (cons 1 nil)) nil).
+    apply (cons (poly_comp1 i) nil).
     apply (cons (sum (fun j =>  (tuple_nth j f 0) * (poly_pdiff j (hd 0 IHn))) (S d))  IHn).
 Defined.
 
@@ -331,15 +331,22 @@ Definition t := (itail_error (d:=1)  1 2 10).
 Definition a := (add_error t 1).
 Eval vm_compute in (interval_to_cr_string a).
 Definition t' := (ode_trajectory exp_ivp.(pf) 0 1 20 2 11).
-Definition t'' := (ode_solution exp_ivp.(pf) 0 1 1 20 2 11).
+Definition t'' := (ode_solution exp_ivp.(pf) 0 1 1 10 2 1000).
 Eval vm_compute in (map intervalt_to_cr_string t').
 Eval vm_compute in (intervalt_to_cr_string t'').
 Eval vm_compute in (map intervalt_to_string t').
                                                                     
+Definition sin_cos_example := sin_cos_ivp (A := Q).
+Definition sc_pf := Q2Ipolyt sin_cos_example.(pf).
+Definition sc_y0 := tuple_map Q2I sin_cos_example.(py0).
+Definition test := (ode_solution sin_cos_example.(pf) 0 (sc_y0) 1 10 2 100).
+
+Eval vm_compute in (intervalt_to_cr_string test).
 
 
-
-Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
+Definition vdp_example := vdp_ivp (A := Q) (q 1 2).
+Definition test_vdp := (ode_solution vdp_example.(pf) 0 (tuple_map Q2I (vdp_example.(py0))) 1 10 2 100).
+Eval vm_compute in (intervalt_to_cr_string test_vdp).
 Fixpoint interval_trajectory (n : nat) := match n with
                           | 0%nat => exp_y0\_0 
                           | (S n') => (add_error (eval_poly (Fi_to_taylor exp10 (tuple_cons (interval_trajectory n') nil_tuple)) 1 ) (taylor_error exp_analytic 1 10))
