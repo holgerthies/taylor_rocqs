@@ -480,6 +480,16 @@ Section Analytic.
      }
      apply (M * npow x (S n) * y).
   Defined.
+
+  From Coq Require Import QArith.
+  Definition tail_error (F: Analytic) (q : Q) (n : nat) : Q.
+  Proof.
+     destruct (analytic_solution_r F) as [r [pr1 pr2]].
+     remember ((S d) * F.(M))%nat as M.
+     remember (q / (inject_Z (Z.of_nat r)) ) as x.
+     remember (1 - x) as y.
+     apply (inject_Z (Z.of_nat M) * (x ^ (Z.of_nat (S n))) * y).
+  Defined.
 End Analytic.
 
 Section AnalyticPoly.
