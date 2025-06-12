@@ -1,5 +1,5 @@
 Require Import combinatorics.
-Require Import algebra.
+Require Import algebra archimedean.
 Require Import polynomial.
 Require Import functions.
 Require Import ode.
@@ -14,12 +14,6 @@ Require Import QOrderedType Qabs.
 (* Require Import examples. *)
 
 Import ListNotations.
-
-  #[global] Instance Q_setoid : @Setoid Q.
-  Proof.
-    exists Qeq.
-    apply Q_Setoid.
-  Defined.
 
   #[global] Instance Q_rawRing : (@RawRing Q _).
   Proof.
@@ -57,97 +51,54 @@ Defined.
   (*    apply (p1 y y);auto. *)
   (* Qed. *)
 
-  #[global] Instance Q_field : Field (A := Q).
+    #[global] Instance Q_partialOrder : (archimedean.PartialOrder (A :=Q)).
   Proof.
-    exists Q_inv'.
+    exists (fun x y => (x <= y)%Q).
+    intros a b eq1 c d eq2.
+    rewrite eq1, eq2;reflexivity.
+    
     intros.
-    unfold Q_inv';simpl.
-    field;auto.
-    simpl;auto.
-    compute.
-    discriminate.
-  Defined.
-
-  Lemma Q_total (x y : Q): (x <= y) \/ (y <= x). 
-  Proof.
-     lra.
-  Qed.
-
-  #[global] Instance Q_totalOrder : TotalOrder.
-  Proof.
-    exists (fun x y => (x <= y)); intros;simpl;try lra.
-    apply Qle_comp.
-  Defined.
-
-  #[global] Instance Q_totallyOrderedField : TotallyOrderedField.
-  Proof.
-    constructor;simpl;intros; try lra.
-    apply Qmult_le_0_compat;auto.
-  Defined.
-
-
-  Lemma ntimes_Q : (forall m, ntimes m 1 == (inject_Z (Z.of_nat m))).
-  Proof.
+    apply Qle_refl.
     intros.
-    induction m.
-    simpl; try reflexivity.
-    simpl.
-    rewrite IHm.
-    replace 1%Q with (inject_Z 1%Z) by auto.
-    rewrite <-inject_Z_plus.
-    apply inject_Z_injective.
-    lia.
-  Qed.
-
-  #[global] Instance invSn : Sn_invertible.
-  Proof.
-    exists (fun n => Qinv (inject_Z (Z.of_nat (S n)))).
-    intros.
-    rewrite ntimes_Q.
-    simpl.
-    rewrite Qmult_inv_r;try reflexivity.
-    unfold Qeq;simpl;lia.
+    apply QOrder.le_antisym;auto.
+    intros;apply (Qle_trans _ y);auto.
   Defined.
 
-  Lemma Qabs_zero x :   Qabs x == zero <-> x == zero.
-  Proof.
-  simpl.
-  apply Qabs_case;intros;lra.
-  Qed.
-
-  Opaque Qabs.
-  #[global] Instance Q_norm : NormedSemiRing (A := Q) (B := Q) (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := Q_totalOrder). 
-  Proof.
-    exists (Qabs);intros;simpl.
-    apply Qabs_wd_Proper.
-    apply Qabs_nonneg.
-    apply Qabs_zero.
-    apply Qabs_triangle.
-    rewrite Qabs_Qmult.
-    lra.
+   #[global] Instance Q_embedQ : (QEmbedding (A:=Q)).
+   Proof.
+   exists (fun x => x); simpl;intros;try reflexivity;auto.
+    intros a b eq.
+    rewrite eq;reflexivity.
   Defined.
 
- #[global] Instance ArchimedeanFieldQ : algebra.ArchimedeanField (A := Q).
-  Proof.
-    unshelve eapply algebra.Build_ArchimedeanField.
+   #[global] Instance R_hasAbs : HasAbs.
+   Proof.
+    exists (Qabs).
+    - intros a b ->;reflexivity.
+    - intros;apply Qabs_pos;auto.
+    - intros;apply Qabs_neg;auto.
+    - intros;apply Qabs_Qmult;auto.
+    - intros;apply Qabs_triangle.
+    - intros; apply Qabs_nonneg.
     - intros.
       simpl.
-      apply Qabs_pos;auto.
-   -  intros.
-      apply Qabs_neg;auto.
-   -  intros.
-      simpl.
+      apply Qabs_case;intros;split;intros;auto;lra.
+  Defined.
+
+   #[global] Instance Q_ArchimedeanField : ArchimedeanField.
+   Proof.
+     constructor;simpl;intros; try lra.
+    - intros;apply Qmult_le_0_compat;auto.
+    - intros.
       destruct (Qarchimedean x).
       exists (Pos.to_nat x0).
-      rewrite ntimes_Q.
+      rewrite <-ntimes_embed.
+      simpl.
       rewrite positive_nat_Z.
       apply Qlt_le_weak.
-      apply (QOrder.lt_le_trans q).
-      rewrite Qmake_Qdiv.
-      field_simplify.
-      rewrite <-Zle_Qle.
-      lia.
-  Defined.
+      apply q.
+   Defined.
+
 
   Transparent Qabs.
 

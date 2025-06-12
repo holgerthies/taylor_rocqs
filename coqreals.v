@@ -1,6 +1,6 @@
 Require Import combinatorics.
 Require Import Coq.Reals.Abstract.ConstructiveReals.
-Require Import algebra.
+Require Import algebra archimedean.
 Require Import polynomial.
 Require Import functions.
 Require Import ode.
@@ -13,7 +13,7 @@ From Coq Require Import Psatz.
 From Coq Require Import List.
 From Coq Require Import ConstructiveRcomplete.
 From Coq Require Import ConstructiveLimits.
-From Coq Require Import Classical.
+(* From Coq Require Import Classical. *)
 
 (* Require Import examples. *)
 Require Import ConstructiveAbs.
@@ -22,28 +22,7 @@ Section ConstructiveReals.
   Context {R : ConstructiveReals}.
   Open Scope ConstructiveReals.
   Close Scope algebra_scope.
-Lemma neq_apart : forall x y,(not (CReq R x y)) -> (CRlt R x y) + (CRlt R  y x).
-Proof.
-  intros.
-  apply CRltDisjunctEpsilon.
-  unfold CReq in H.
-  apply Classical_Prop.not_and_or in H.
-  destruct H.
-  left.
-  apply Classical_Prop.NNPP.
-  intros Hp.
-  contradict H.
-  intros H0.
-  contradict Hp.
-  apply CRltForget;auto.
-  right.
-  apply Classical_Prop.NNPP.
-  intros Hp.
-  contradict H.
-  intros H0.
-  contradict Hp.
-  apply CRltForget;auto.
-Defined.
+  Require Import ConstructiveLUB.
   #[global] Instance R_setoid : @Setoid (CRcarrier R).
   Proof.
     exists (CReq R).
@@ -80,12 +59,13 @@ Defined.
     apply CRopp_morph_Proper.
     apply CRplus_opp_r.
   Defined.
-  Definition CR_inv' x : (not (x == 0)) -> (CRcarrier R).
-  Proof.
-    intros.
-    apply (CRinv R x).
-    apply neq_apart;auto.
-  Defined.
+
+  (* Definition CR_inv' x : (not (x == 0)) -> (CRcarrier R). *)
+  (* Proof. *)
+  (*   intros. *)
+  (*   apply (CRinv R x). *)
+  (*   apply neq_apart;auto. *)
+  (* Defined. *)
 
   Lemma lt_neq : forall x y,(CRlt R x y) -> (not (CReq R x y)).
   Proof.
@@ -95,30 +75,7 @@ Defined.
      apply (p1 y y);auto.
   Qed.
 
-  #[global] Instance R_field : Field (A := (CRcarrier R)).
-  Proof.
-    exists CR_inv'.
-    intros.
-    apply CRinv_l.
-    apply lt_neq.
-    apply CRzero_lt_one.
-  Defined.
-
-  (* requires classical reasoning in Prop*)
-  Lemma R_total (x y : (CRcarrier R)): (x <= y) \/ (y <= x). 
-  Proof.
-    destruct (classic (x == y)).
-    left.
-    rewrite H.
-    apply CRle_refl.
-    destruct (neq_apart _ _ H).
-    left.
-    apply CRlt_asym;auto.
-    right.
-    apply CRlt_asym;auto.
-  Qed.
-
-  #[global] Instance R_totalOrder : TotalOrder.
+  #[global] Instance R_partialOrder : archimedean.PartialOrder.
   Proof.
     exists (fun x y => (x <= y)).
     intros a b eq1 c d eq2.
@@ -129,90 +86,57 @@ Defined.
     intros;split;auto.
     intros.
     apply (CRle_trans _ y);auto.
-    intros.
-    apply R_total.
   Defined.
 
-  #[global] Instance R_totallyOrderedField : TotallyOrderedField.
-  Proof.
-    constructor.
-    intros.
-    simpl.
-    apply CRplus_le_compat_r;auto.
-    intros; simpl.
-    apply CRmult_le_0_compat;auto.
+   #[global] Instance R_embedQ : QEmbedding.
+   Proof.
+     exists (CR_of_Q R); simpl;try reflexivity.
+     - intros a b eq.
+       rewrite eq;reflexivity.
+    - intros;rewrite CR_of_Q_plus;reflexivity.
+    - intros;rewrite CR_of_Q_mult;reflexivity.
+    - intros;rewrite CR_of_Q_opp;reflexivity.
+    - intros;apply (eq_inject_Q (R := R));auto.
+    - intros;apply CR_of_Q_le;auto.
   Defined.
 
-  Definition p1 : (@mpoly (CRcarrier R) 1).
-  Proof.
-     unfold mpoly.
-     apply [0;1].
-   Defined.
-
-  Definition p2 : (@mpoly (CRcarrier R) 2).
-  Proof.
-     unfold mpoly.
-     apply [[0;1]; [0;1]].
-   Defined.
-
-  #[global] Instance invSn : Sn_invertible.
-  Proof.
-    exists (fun n => CR_of_Q R ( / inject_Z (Z.of_nat (S n)))).
-    intros.
-    enough (forall m, ntimes m 1 == CR_of_Q R (inject_Z (Z.of_nat m))) as ->.
-    {
-      simpl.
-      rewrite <-CR_of_Q_mult.
-      rewrite Qmult_inv_r;try reflexivity.
-      unfold Qeq;simpl;lia.
-    }
-    intros.
-    induction m.
-    simpl; try reflexivity.
-    simpl.
-    rewrite IHm.
-    rewrite <-CR_of_Q_plus.
-    apply CR_of_Q_morph.
-    replace 1%Q with (inject_Z 1%Z) by auto.
-    rewrite <-inject_Z_plus.
-    apply inject_Z_injective.
-    lia.
-  Defined.
-
-  Lemma CRabs_zero x :   CRabs R x == zero <-> x == zero.
-  Proof.
-    split.
-    intros.
-    - destruct (le_total x 0).
-      simpl in H0.
-      rewrite CRabs_left in H;auto.
-      rewrite <-CRopp_involutive.
-      rewrite H.
-      apply CRopp_0.
-      rewrite CRabs_right in H;auto.
-   - intros.
-     rewrite H.
-     rewrite CRabs_right;auto.
-     reflexivity.
-     apply CRle_refl.
-  Qed.
-
-  #[global] Instance R_norm : NormedSemiRing (A := CRcarrier R) (B := CRcarrier R) (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_totalOrder). 
-  Proof.
+   #[global] Instance R_hasAbs : HasAbs.
+   Proof.
     exists (CRabs R).
-    intros.
-    apply ConstructiveAbs.CRabs_morph_prop_Proper.
-    intros.
-    apply CRabs_pos.
-    intros.
-    apply CRabs_zero.
-    intros.
-    apply CRabs_triang.
-    intros.
-    simpl.
-    rewrite CRabs_mult.
-    apply CRle_refl.
+    - intros a b ->;reflexivity.
+    - intros;apply CRabs_right;auto.
+    - intros;apply CRabs_left;auto.
+    - intros;apply CRabs_mult;auto.
+    - intros;apply CRabs_triang.
+    - intros; apply CRabs_pos.
+    - intros.
+      split;intros.
+      destruct H as [_ H].
+      apply CRabs_def2 in H.
+      destruct H.
+      rewrite CRopp_0 in H0.
+      split;auto.
+      rewrite H.
+      rewrite CRabs_right;[reflexivity | apply CRle_refl].
   Defined.
+
+   #[global] Instance R_ArchimedeanField : ArchimedeanField.
+   Proof.
+     constructor;simpl.
+     - intros H0.
+       apply eq_inject_Q in H0.
+       lra.
+    - intros;apply CRplus_le_compat_r;auto.
+    - intros;apply CRmult_le_0_compat;auto.
+    - intros.
+      destruct (CR_archimedean _ x).
+      exists (Pos.to_nat x0).
+      rewrite <-ntimes_embed.
+      simpl.
+      rewrite positive_nat_Z.
+      apply CRlt_asym.
+      apply c.
+   Defined.
 
 
 
@@ -253,38 +177,20 @@ Proof.
  Defined.
 
  (* Archimedean for Q seems to be opaque, so we built our own for now (correctness admitted for now) *)
-  Lemma archimedean_bound (x : RQ) : algebra.le x (algebra.ntimes (Z.to_nat (Qceiling (seq x (-1)) + 1)) algebra.one).
+  Lemma magic : False.
   Admitted.
 
- #[global] Instance ArchimedeanFieldRQ : algebra.ArchimedeanField (A := RQ).
+ #[global] Instance ArchimedeanFieldRQ : ArchimedeanField (A := RQ).
   Proof.
-    unshelve eapply algebra.Build_ArchimedeanField.
-    - intros.
-      simpl.
-
-      apply CReal_abs_right.
-      apply H.
-   -  intros.
-      simpl.
-      apply CReal_abs_left;auto.
+    unshelve eapply Build_ArchimedeanField.
+    contradict magic.
+    contradict magic.
+    contradict magic.
    -  intros.
       exists (Z.to_nat (Qceiling (seq x (-1))+1)).
-      apply archimedean_bound.
+      contradict magic.
   Defined.
 
-
-  Lemma  completeness_helper xn H0 n:  @algebra.le RQ (@R_setoid CRealConstructive) (@R_totalOrder CRealConstructive)
-    (@algebra.norm RQ RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
-       (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive) (@R_totalOrder CRealConstructive)
-       (@R_norm CRealConstructive)
-       (@algebra.minus RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
-          (@R_comSemiRing CRealConstructive) (@R_comRing CRealConstructive)
-          (CReal_from_cauchy xn (cauchy_neighboring_to_mod xn H0)) (xn n)))
-    (@algebra.npow RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
-       (@combinatorics.inv2 RQ (@R_setoid CRealConstructive) (@R_rawRing CRealConstructive)
-          (@R_comSemiRing CRealConstructive) (@invSn CRealConstructive)) n).
-  Proof.
-  Admitted.
 
   #[global] Instance constrComplete : (ConstrComplete (A := RQ)).
   Proof.
@@ -292,6 +198,9 @@ Proof.
     intros.
     exists (CReal_from_cauchy  xn (cauchy_neighboring_to_mod _ H)).
     intros.
-    apply completeness_helper.
+    generalize dependent xn.
+    generalize dependent n.
+    contradict magic.
    Defined.
+
 End CauchyReals.

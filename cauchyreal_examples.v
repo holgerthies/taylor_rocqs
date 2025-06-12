@@ -79,7 +79,7 @@ Compute (seq_tuple (sin_cos_exact) (-5)).
 (*trajectory *)
 
 Definition sin_cos_trajectory := (pivp_trajectory sin_cos_example.(pf) (inject_Q 0) sin_cos_example.(py0) 1).
-Compute (seq_trajectory (sin_cos_trajectory) 0).
+Compute (seq_trajectory (sin_cos_trajectory) 3).
 (** tan function (1d) **)
 
 Definition tan_example := tan_ivp (A := RQ).
@@ -153,7 +153,6 @@ Compute (seq (l3_approx) (-10)).
 
 Definition lorenz_exact := (ivp_solution_max lorenz_analytic).
 (* prints the time and the value as pair *)
-(* This takes a while and thus commented out *)
 
 Compute (seq_tuple (lorenz_exact) 0).  
 

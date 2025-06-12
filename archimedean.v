@@ -43,8 +43,8 @@ Class QEmbedding `{R_Ring :Ring} `{R_ordered : @PartialOrder A _} := {
 Class HasAbs `{R_Ring :Ring} `{R_ordered : @PartialOrder A _} := {
     abs : A -> A;
     abs_proper :: (Proper (SetoidClass.equiv ==> SetoidClass.equiv) abs);
-    abs_pos : forall x, 0 <= x -> abs x = x;
-    abs_neg : forall x, x <= 0 -> abs x = -x;
+    abs_pos : forall x, 0 <= x -> abs x == x;
+    abs_neg : forall x, x <= 0 -> abs x == -x;
     abs_mult a b: abs (a * b) == abs a * abs b;
     abs_triangle : forall x y, abs (x+y) <= abs x + abs y;
     abs_nonneg a: 0 <= abs a; 
