@@ -1,6 +1,7 @@
 -R . TR
 tuple.v
 algebra.v
+archimedean.v
 combinatorics.v
 functions.v
 polynomial.v

@@ -2,7 +2,7 @@ From Coq Require Import Psatz.
 From Coq Require Import List.
 From Coq Require Import ZArith.
 Import ListNotations.
-Require Import algebra.
+Require Import algebra archimedean.
 Require Import abstractpowerseries.
 Require Import functions.
 Require Import polynomial.
@@ -298,9 +298,10 @@ Section PowerSeriesSolution.
       replace (n+1)%nat with (S n) by lia.
       setoid_replace ( inv_Sn k * [k + 1 ! S n] * 1 * y_i (S n + k) i) with ( inv_Sn k * ([k + 1 ! S n] * 1 * y_i (S n + k) i)) by ring.
       rewrite <-IHk;try lia.
-      setoid_replace ((Fi f n i) \o1 yt t( S k)) with (inv_Sn k *  (# (S k) * (Fi f n i) \o1 yt t( S k))) by (rewrite <-mulA, (mulC (inv_Sn k)); rewrite inv_Sn_spec;ring).
+      setoid_replace ((Fi f n i) \o1 yt t( S k)) with (inv_Sn k *  ((ntimes  (S k) 1) * (Fi f n i) \o1 yt t( S k))) by (rewrite <-mulA, (mulC (inv_Sn k)); rewrite inv_Sn_spec;ring).
 
       replace (S k) with (k+1)%nat by lia.
+      rewrite <-ntimes_embed.
       rewrite <-deriv_next.
       apply ring_eq_mult_eq; try reflexivity.
       pose proof (pdiff_chain (d:=0) (Fi f n i) yt).

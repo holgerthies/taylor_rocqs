@@ -235,8 +235,21 @@ Definition test0 := (approximate exp_approx0 (Qpos2QposInf (QabsQpos (q 1 100)))
 Time Eval vm_compute in test0.
 
 
-Definition testc0 := (approximate (exp_continue0 3) (Qpos2QposInf (QabsQpos (q 1 100)))).
+Definition testc0 := (approximate (exp_continue0 1) (Qpos2QposInf (QabsQpos (q 1 3)))).
+
 Time Eval vm_compute in testc0.
+Require Import CoRN.ode.Picard.
+Require Import CoRN.ode.FromMetric2.
+Require Import CoRN.model.metric2.Qmetric.
+Notation sx := (sig (@ball Q (msp_mspc_ball Q_as_MetricSpace) (proj1_sig rx) x0)).
+Program Definition half : sx := q 1 2.
+Next Obligation.
+apply mspc_ball_Qabs_flip. unfold x0. rewrite negate_0, plus_0_r.
+rewrite abs.abs_nonneg; [reflexivity |].
+change (0 <= 1 # 2)%Q. auto with qarith.
+Qed.
+Check (picard_iter 2 (inv_Sn_ARbigD 1)).
+
 Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 
 (* First compute finite Taylor polynomial *)

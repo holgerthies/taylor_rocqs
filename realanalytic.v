@@ -2,7 +2,7 @@ From Coq Require Import Psatz.
 From Coq Require Import List.
 From Coq Require Import ZArith.
 Import ListNotations.
-Require Import algebra.
+Require Import algebra archimedean.
 Require Import abstractpowerseries.
 Require Import functions.
 Require Import polynomial.
@@ -20,7 +20,7 @@ Require Import odebounds.
 Section Completeness.
   Class ConstrComplete `{ArchimedeanField} :=
   {
-    has_limit : forall (xn : nat -> A), fast_cauchy_neighboring xn -> { x | forall n, norm (x - xn n) <= npow inv2 n}
+    has_limit : forall (xn : nat -> A), fast_cauchy_neighboring xn -> { x | forall n, abs (x - xn n) <= npow inv2 n}
   }.
 
 End Completeness.
@@ -85,8 +85,7 @@ Section Analytic.
 
    Definition analytic_solution_ps  (F : Analytic) (i : nat) (n : nat)  : (A 0)  :=  ![n] * (Fi F.(f) n i){y0}.
 
-
-  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (H1 0) A_Ring _ _ _ _ _ _ d  (f_to_ps F).
+  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (H1 0) _ _ _ _ _  d  (f_to_ps F).
 
 
   Lemma eval_sum_compat f N :  (sum f N){y0} == (sum (fun n => (f n){y0}) N).
@@ -285,8 +284,10 @@ Section Analytic.
    Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)).
    Proof.
      setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
+     rewrite <-ntimes_embed.
      rewrite <-!(nat_mult_compat (A := A 0)).
      apply ntimes_monotone;lia.
+     rewrite ntimes_embed.
      setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring.
      rewrite ntimes_mult.
      ring.
@@ -296,15 +297,19 @@ Section Analytic.
    Proof.
       rewrite nat_pow_compat.
      setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
+     rewrite <-ntimes_embed.
      rewrite <-!(nat_mult_compat (A := A 0)).
+     rewrite !ntimes_embed.
      destruct (M F).
      simpl.
      replace (d * 0)%nat with 0%nat by lia.
      simpl.
      ring_simplify.
      apply le_0_1.
+     rewrite <-!ntimes_embed.
      apply ntimes_monotone.
      apply Nat.log2_up_le_pow2; try lia.
+     rewrite !ntimes_embed.
      setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring.
      rewrite ntimes_mult.
      ring.
@@ -347,7 +352,7 @@ Section Analytic.
 
    Lemma bound_solution F : forall i, i < (S d) -> (mps_bound (to_ps_remove0 ( (analytic_solution_ps F i))) (bound_ps F) ).
    Proof.
-     Opaque ntimes.
+     Opaque ntimes embNat.
      intros.
      unfold mps_bound.
      intros k.
@@ -365,15 +370,18 @@ Section Analytic.
        ring_simplify.
        simpl.
        apply npow_pos.
+       rewrite ntimes_embed.
        apply le_0_n.
      }
      setoid_rewrite y_ps_same;try (simpl;lia).
      assert (rpos : 0 <= #F.(r)).
+     rewrite ntimes_embed.
      apply ntimes_nonneg;apply le_0_1.
      assert (Mpos : 0 <= #F.(M)).
+     rewrite ntimes_embed.
      apply ntimes_nonneg;apply le_0_1.
      (* destruct (destruct_tuple1 (S k0)) as [k0 ->]. *)
-     pose proof (y_bound (f_bounded := (f_mps_bound F)) (rpos := rpos) (Mpos := Mpos) (normK := normK)  i k0 H7).
+     pose proof (y_bound (f_bounded := (f_mps_bound F)) (rpos := rpos) (Mpos := Mpos)   i k0 H7).
      unfold powerseries_yi.
      rewrite yt_spec in H8;auto.
      apply (le_trans _ _ _ H8).
@@ -386,16 +394,20 @@ Section Analytic.
      simpl.
      Transparent ntimes.
      destruct a.
-     apply mul_le_le_compat_pos; try apply npow_pos; try apply mul_pos_pos;try apply ntimes_nonneg; try apply ntimes_nonneg;try apply mul_pos_pos; try apply ntimes_nonneg;try apply le_0_1;try apply le_0_n.
+     apply mul_le_le_compat_pos;  try apply npow_pos; try apply mul_pos_pos;try rewrite !ntimes_embed;try apply ntimes_nonneg; try apply ntimes_nonneg;try apply mul_pos_pos;try rewrite !ntimes_embed; try apply ntimes_nonneg;try apply le_0_1;try apply le_0_n.
+     rewrite <-ntimes_embed.
      apply l.
      enough (#1 <= #x0).
      simpl in H11.
      ring_simplify in H11.
      apply (le_trans _ (npow #x0 k0 * 1)).
      ring_simplify;apply npow_monotone;auto.
-     apply mul_pos_pos; try apply mul_pos_pos;try apply mul_pos_pos; try apply npow_pos; try apply ntimes_nonneg;try apply ntimes_nonneg;try apply le_0_1.
+     apply mul_pos_pos; try apply mul_pos_pos;try apply mul_pos_pos; try rewrite !ntimes_embed; try apply npow_pos; try apply ntimes_nonneg;try apply ntimes_nonneg;try apply le_0_1.
+
      rewrite (mulC #x0).
-     apply mul_le_compat_pos;try apply npow_pos;try apply le_0_n;auto.
+     apply mul_le_compat_pos;try apply npow_pos;try rewrite !ntimes_embed;try apply le_0_n;auto.
+     rewrite !ntimes_embed in H11.
+     simpl in H11; ring_simplify in H11;auto.
      destruct x0; try lia;auto.
      apply ntimes_monotone;lia.
 
@@ -417,7 +429,7 @@ Section Analytic.
     apply C.
   Qed.
 
-   Definition analytic_modulus (F : Analytic) (t : (A 0)) i  : i<(S d) -> norm (t) <= inv2 * (inv_Sn (proj1_sig (analytic_solution_r F))) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps (analytic_solution_ps F i)) t ((proj1_sig (analytic_solution_logM F)) + n + 1)).
+   Definition analytic_modulus (F : Analytic) (t : (A 0)) i  : i<(S d) -> abs (t) <= inv2 * (inv_Sn (proj1_sig (analytic_solution_r F))) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps (analytic_solution_ps F i)) t ((proj1_sig (analytic_solution_logM F)) + n + 1)).
    Proof.
      intros.
      apply fast_cauchy_neighboring_r0.
@@ -427,7 +439,7 @@ Section Analytic.
      destruct (analytic_solution_r F) as [r pr].
        Opaque ntimes.
      simpl in *.
-     assert (#(S r) * inv_Sn r == 1) by apply inv_Sn_spec.
+     assert (#(S r) * inv_Sn r == 1) by (rewrite ntimes_embed; apply inv_Sn_spec).
       assert (mps_bound (to_ps_remove0 ( analytic_solution_ps F i)) (a_bound_series (npow #2 logM) # (S r))).
      {
        intros k.
@@ -436,8 +448,9 @@ Section Analytic.
        
        rewrite !to_ps_simpl.
        unfold bound_ps; simpl.
-       apply mul_le_compat_pos; try apply npow_pos; try apply le_0_n.
-       apply npow_monotone; try apply le_0_n.
+       apply mul_le_compat_pos; try apply npow_pos;try rewrite !ntimes_embed; try apply le_0_n.
+       apply npow_monotone; try rewrite ntimes_embed;try apply le_0_n.
+       rewrite <-ntimes_embed.
        apply ntimes_monotone;lia.
      }
 
@@ -504,7 +517,7 @@ Section AnalyticPoly.
  Definition poly_norm {d} (p : A{x^d}) : A.
  Proof.
    induction d.
-   apply (norm p).
+   apply (abs p).
    induction p.
    apply 0.
    apply ((IHd a) + IHp).
@@ -513,7 +526,7 @@ Section AnalyticPoly.
  Definition bounding_poly {d} (p : A{x^d}) : A{x^d}.
  Proof.
    induction d.
-   apply (norm p).
+   apply (abs p).
    induction p.
    apply 0.
    apply ([IHd a] ++  IHp).
@@ -524,7 +537,7 @@ Section AnalyticPoly.
    induction d.
    apply 0.
    destruct (destruct_tuple_cons x) as [h [t P]].
-   apply (tuple_cons ((norm h) + 1) (IHd t)).
+   apply (tuple_cons ((abs h) + 1) (IHd t)).
  Defined.
 
 
@@ -564,11 +577,11 @@ Section AnalyticPoly.
    (*   destruct (X (fast_cauchy_neighboring_approx F t i H15 H14 )). *)
    (*   apply x. *)
    (* Defined. *)
-   Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps (invSn := invSn) (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t ((proj1_sig (analytic_solution_logM  F )) + n + 1).
+   Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps  (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t ((proj1_sig (analytic_solution_logM  F )) + n + 1).
 
 
 
-   Lemma fast_cauchy_neighboring_approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) t i : norm t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r   F))-> i < S d -> fast_cauchy_neighboring (approx F t i).
+   Lemma fast_cauchy_neighboring_approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) t i : abs t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r   F))-> i < S d -> fast_cauchy_neighboring (approx F t i).
    Proof.
      intros.
      apply (analytic_modulus (H3 := mpoly_comp_diff_algebra));auto.
@@ -581,8 +594,8 @@ Section AnalyticPoly.
    (* Qed. *)
    Definition ivp_r_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))   := ((inv2 * inv_Sn (proj1_sig (analytic_solution_r (A := @mpoly A)  F)))).
 
-   Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (A_Ring := _ ) (R_Field0 := _) (R_Field := R_Field) (R_TotalOrder := _) (normK := _)  (H0 := H0) (invSn := _)}.
-   Definition ivp_solution_i {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat) t  :  norm t <= (ivp_r_max F)  -> A.
+   Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (R_Ring := _) (R_ordered := _)  (emb := _) (hasAbs := _) (H0 := H0) }.
+   Definition ivp_solution_i {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat) t  :  abs t <= (ivp_r_max F)  -> A.
    Proof.
      intros.
      destruct (le_lt_dec i d); [|apply 0].
@@ -599,9 +612,9 @@ Section AnalyticPoly.
 
    Definition ivp_solution_i_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat)  : A * A.
    Proof.
-     assert (norm (ivp_r_max F) <= ivp_r_max F).
+     assert (abs (ivp_r_max F) <= ivp_r_max F).
      {
-       rewrite norm_abs;try apply le_refl.
+       rewrite abs_pos;try apply le_refl.
        apply mul_pos_pos.
        apply inv2_pos.
        apply inv_Sn_pos.

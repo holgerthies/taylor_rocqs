@@ -1,7 +1,7 @@
 From Coq Require Import Psatz.
 From Coq Require Import Setoid.
 Require Import Coq.Classes.SetoidClass.
-Require Import algebra.
+Require Import algebra archimedean.
 From Coq Require Import ZArith.
 Require Import tuple.
 From Coq Require Import List.
@@ -34,7 +34,12 @@ Open Scope algebra_scope.
     constructor;intros;simpl;try lia;intros a b eq c d eq';lia.
   Defined.
 
-  Notation "# n" := (ntimes n 1) (at level 2) : algebra_scope.
+  Notation "# n" := (embNat n) (at level 2) : algebra_scope.
+  #[global] Instance embNatNat : @EmbedNat nat _ _. 
+  Proof.
+   exists (fun n => n);simpl;auto;lia.
+  Defined.
+
 (* Results about multiindices (tuples of nat) *)
 Section Multiindex.
 
@@ -125,8 +130,9 @@ Section Multiindex.
     Proof.
       induction n.
       simpl;reflexivity.
-      simpl.
+      rewrite embNat_S.
       rewrite IHn.
+      simpl.
       lia.
     Qed.
    Lemma ntimes_int (n m : nat): ntimes n #m == #(n*m).
@@ -139,6 +145,7 @@ Section Multiindex.
      replace (S m) with (m+1)%nat by lia.
      rewrite ntimes_plus.
      rewrite IHm.
+     rewrite ntimes_spec.
      rewrite nemb_nat.
      simpl;lia.
    Qed.
@@ -146,7 +153,7 @@ Section Multiindex.
 
 (* factorial, inverse factorial and rising factorials *)
 Section factorial.
-  Context `{SemiRing}.
+  Context `{SemiRing} `{@EmbedNat A _ _}.
   Context `{Sn_invertible (A := A) (H := H) (R_rawRing := R_rawRing) (H0 := H0)}.
   Definition inv_factorial  (n : nat) : A.
   Proof.
@@ -159,7 +166,7 @@ Section factorial.
   Proof.
     induction n.
     apply 1.
-    apply  ((ntimes (S n) 1)  * IHn).
+    apply  (embNat (S n)  * IHn).
   Defined.
 
   Definition rising_factorial  k n := factorial(k+n-1) * inv_factorial(k-1).
@@ -198,7 +205,7 @@ Notation "t[ k ! n ]" := (rising_factorialt k n).
 Notation "t![ n ]" := (inv_factorialt n).
 Notation "t[ n ]!" := (factorialt n).
 Section factorialTheorems.
-  Context `{SemiRing}.
+  Context `{SemiRing} `{He : @EmbedNat A _ _}.
   Context `{invSn : (Sn_invertible (A := A) (H:=_) (R_rawRing := _) (H0 := H0))}.
   Add Ring TRing: (ComSemiRingTheory (A := A)). 
 
@@ -259,9 +266,10 @@ Section factorialTheorems.
     simpl.
     ring.
     simpl.
+    rewrite embNat_S.
     ring_simplify.
     rewrite mulC.
-    rewrite (mulC (ntimes  _ _)).
+    rewrite (mulC (embNat  _)).
     rewrite <-!(mulA ![n]).
     rewrite (mulC ![n]).
     rewrite IHn.
@@ -269,8 +277,11 @@ Section factorialTheorems.
     rewrite mulA.
     rewrite IHn.
     ring_simplify.
-    setoid_replace (ntimes n 1 * inv_Sn n + inv_Sn n ) with (ntimes (S n) 1 * inv_Sn n).
+    setoid_replace (embNat n * inv_Sn n + inv_Sn n ) with (ntimes (S n) 1 * inv_Sn n).
     rewrite inv_Sn_spec;reflexivity.
+    rewrite <-ntimes_spec.
+    rewrite mulC, <-ntimes_mult.
+    setoid_rewrite mul1.
     simpl;ring.
   Qed.
 
@@ -340,9 +351,11 @@ Defined.
     replace (k + 2 + n- 1)%nat with (S (k + n))%nat by lia.
     replace (k + 2 - 1)%nat with (S k)%nat by lia.
     replace (k +1 )%nat with (S k)%nat by lia.
-    enough (![k] == ntimes (S k) 1 * ![S k]) as -> by ring.
+    enough (![k] == # (S k) * ![S k]) as -> by ring.
     simpl inv_factorial.
     rewrite <-mulA.
+    setoid_replace (# (S k)) with (# (S k) * 1) by ring.
+    rewrite <-ntimes_spec.
     rewrite inv_Sn_spec.
     ring.
   Qed.
@@ -370,6 +383,12 @@ Defined.
     simpl.
     ring.
   Qed.
+  Lemma ntimes_embed n : #n == ntimes n 1.
+  Proof.
+    rewrite ntimes_spec.
+    ring.
+  Qed.
+
   Lemma rising_factorial_sk n k : [k+1!n] ==   #(k+1) *  inv_Sn (k+n) * [(k+2) ! n].
   Proof.
     simpl.
@@ -380,6 +399,7 @@ Defined.
     replace (k + 2 - 1)%nat with (S k)%nat by lia.
     replace (k + 1)%nat with (S k)%nat by lia.
     setoid_replace (#(S k) * inv_Sn (k + n) * ([S (k + n) ]! * ![ S k])) with ([k+n]!*![k] * (#(S (k+n))  * inv_Sn (k+n)) * (#(S k) * inv_Sn k)) by (simpl;ring).
+    rewrite !ntimes_embed.
     rewrite !inv_Sn_spec;ring.
   Qed.
   Lemma rising_factorial_sn n k : [S k! S n] ==   #(k+n+1) * [S k ! n].
@@ -494,15 +514,17 @@ Defined.
   rewrite inv_factt_S.
   rewrite <-mulA.
   replace (n0+1)%nat with (S n0) by lia.
+  rewrite ntimes_embed.
   rewrite inv_Sn_spec.
   ring.
 Qed.
 
 Lemma inv_Sn_unique a b : # (S a) * b == 1 <-> b == inv_Sn a.   
   Proof.
+    rewrite ntimes_embed.
     split; [|intros ->;apply inv_Sn_spec].
     intros.
-    setoid_replace (inv_Sn a) with (# (S a) * b * inv_Sn a) by (rewrite H1;ring).
+    setoid_replace (inv_Sn a) with (ntimes (S a) 1 * b * inv_Sn a) by (rewrite H1;ring).
     rewrite  mulA.
     rewrite (mulC b), <-mulA.
     rewrite inv_Sn_spec.
@@ -529,9 +551,7 @@ Qed.
  End factorialTheorems.
 
 Section FactorialOrderTheorems.
-  Context `{TotallyOrderedField}.
- Context `{normK : (NormedSemiRing A A (H := _)  (H0 := _)  (R_rawRing0 := _) (R_rawRing := _) (R_TotalOrder := R_TotalOrder)) }.
-  Context `{invSn : Sn_invertible (A := A) (H := _) (R_rawRing := _) (H0 := _)}. (* Replace by proof *)
+  Context `{ArchimedeanField}.
 
   Add Ring TRing: (ComRingTheory (A := A)). 
   Lemma ntimes_nonneg x n: (0 <= x) -> 0 <= ntimes n x.
@@ -548,29 +568,15 @@ Section FactorialOrderTheorems.
     induction n.
     simpl.
     apply le_0_1.
-    simpl.
     apply mul_pos_pos;try apply IHn.
     setoid_replace (0 : A) with (0+0 ) by ring.
-    apply le_le_plus_le; [apply le_0_1|].
+    rewrite embNat_S.
+    apply le_le_plus_le; [|apply le_0_1].
+    rewrite ntimes_embed.
     apply ntimes_nonneg;apply le_0_1.
   Qed.
 
     
-  Lemma inv_Sn_pos n : 0 <= inv_Sn n.
-  Proof.
-    destruct (le_total 0 (inv_Sn n));auto.
-    assert (#(S n) * inv_Sn n  <= 0).
-    {
-      setoid_replace 0 with (# (S n) * 0) by ring.
-      apply mul_le_compat_pos;auto.
-      apply ntimes_nonneg;apply le_0_1.
-    }
-    rewrite inv_Sn_spec in H2.
-    pose proof (distinct_0_1).
-    contradict H3.
-    apply le_anti_sym;auto.
-    apply le_0_1.
- Qed.
 
   Lemma invfact_pos n : 0 <= ![n].
   Proof.
@@ -586,7 +592,7 @@ End FactorialOrderTheorems.
 
 Section EmbedNat.
    
-   Context `{SemiRing}.
+   Context `{SemiRing} `{@EmbedNat A _ _}.
 
   Context `{invSn : (Sn_invertible (A := A) (H:=_) (R_rawRing := _))}.
 
@@ -596,9 +602,11 @@ Section EmbedNat.
       induction b.
       replace (a+0)%nat with a by lia.
       simpl.
+      rewrite embNat0.
       ring.
       replace (a+S b)%nat  with (S (a+b)) by lia.
       simpl.
+      rewrite !embNat_S.
       rewrite IHb.
       ring.
     Qed.
@@ -608,8 +616,10 @@ Section EmbedNat.
       induction b.
       replace (a*0)%nat with 0%nat by lia.
       simpl.
+      rewrite embNat0.
       ring.
       replace (a*S b)%nat  with (a+a*b)%nat by lia.
+      rewrite embNat_S.
       rewrite nat_plus_compat.
       rewrite IHb.
       simpl.
@@ -620,6 +630,7 @@ Section EmbedNat.
     Proof.
       induction b.
       simpl.
+      rewrite embNat_S, embNat0.
       ring.
       simpl.
       rewrite nat_mult_compat.
@@ -634,6 +645,7 @@ Section EmbedNat.
      replace (c+1)%nat with (S c) by lia.
      rewrite mulA.
      rewrite (mulC _ (# (S c))).
+     rewrite !ntimes_embed.
      rewrite inv_Sn_spec.
      ring.
    Qed.

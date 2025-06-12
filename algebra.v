@@ -25,6 +25,11 @@ Class RawRing  {A : Type} `{Setoid A}:= {
 
  }.
 
+Class EmbedNat   `{R_rawRing : RawRing} := {
+  embNat     : nat -> A ;
+  embNat0     : embNat 0 == zero ;
+  embNat_S     : forall n, embNat (S n) == add (embNat n) one ;
+ }.
 
   Definition sum `{A_Rawring : RawRing } (f : nat -> A) n := (fold_right add zero (map f (seq 0 n))).
 
@@ -89,11 +94,11 @@ Defined.
 Notation "- x" := (opp x) : algebra_scope.
 Infix "-" := minus : algebra_scope.
 
-Class Field `{A_Ring : Ring} := {
-      inv : forall {x}, (not (x == zero)) -> A;
-      mulI : forall x (p : (not (x == zero))), mul (inv p) x == one;
-      distinct_0_1 : (not (zero == one))
-    }.
+(* Class Field `{A_Ring : Ring} := { *)
+(*       inv : forall {x}, (not (x == zero)) -> A; *)
+(*       mulI : forall x (p : (not (x == zero))), mul (inv p) x == one; *)
+(*       distinct_0_1 : (not (zero == one)) *)
+(*     }. *)
 
   Lemma sum_S_fun `{RawRing} (f : nat -> A) n : (sum f ( S n)) == f 0%nat + (sum (fun n => (f (S n))) n).
   Proof.
@@ -394,45 +399,44 @@ Notation "Dx[ x ] f" := (derive_rec f x) (at level 4) : algebra_scope.
 (* Notation "D[ i ]n f" := (nth_derivative i f n) (at level 4) : algebra_scope. *)
 
 
-Class TotalOrder {A} `{Setoid A}:= {
-      le : A -> A -> Prop;
-      le_proper :: Proper (equiv ==> equiv ==> equiv) le;
-      le_refl : forall x, le x x;
-      le_anti_sym : forall x y, le x y -> le y x -> x == y;
-      le_trans : forall x y z, le x y -> le y z -> le x z;
-      le_total : forall x y, le x y \/ le y x
- }.
+(* Class TotalOrder {A} `{Setoid A}:= { *)
+(*       le : A -> A -> Prop; *)
+(*       le_proper :: Proper (equiv ==> equiv ==> equiv) le; *)
+(*       le_refl : forall x, le x x; *)
+(*       le_anti_sym : forall x y, le x y -> le y x -> x == y; *)
+(*       le_trans : forall x y z, le x y -> le y z -> le x z; *)
+(*       le_total : forall x y, le x y \/ le y x *)
+(*  }. *)
 
-   Infix "<=" := le.
+(*    Infix "<=" := le. *)
 
-  Class TotallyOrderedField `{R_Field :Field} `{R_TotalOrder : TotalOrder (A := A) (H:=H)} := {
-      le_plus_compat : forall x y z, le x y -> le (add x z) (add y z);
-      mul_pos_pos : forall x y, le zero x -> le zero y -> le zero (mul x y)
-    }.
+(*   Class TotallyOrderedField `{R_Field :Field} `{R_TotalOrder : TotalOrder (A := A) (H:=H)} := { *)
+(*       le_plus_compat : forall x y z, le x y -> le (add x z) (add y z); *)
+(*       mul_pos_pos : forall x y, le zero x -> le zero y -> le zero (mul x y) *)
+(*     }. *)
 
-Section Norm.
-  Context `{A: Type} `{B : Type}.
-  Context `{semiRingA : SemiRing A}.
-  Context `{TotallyOrderedFieldB : TotallyOrderedField B}.
-  Class NormedSemiRing := {
-    norm : A -> B ;
-    norm_proper :: Proper (SetoidClass.equiv ==> SetoidClass.equiv) norm;
-    norm_nonneg : forall x, 0 <= norm x;
-    norm_zero : forall x,  norm x == 0 <-> x == 0;
-    norm_triangle : forall x y, norm (x+y) <= norm x + norm y;
-    norm_mult : forall x y, norm (x*y) <= norm x * norm y;
-  }.
+(* Section Norm. *)
+(*   Context `{A: Type} `{B : Type}. *)
+(*   Context `{semiRingA : SemiRing A}. *)
+(*   Context `{TotallyOrderedFieldB : TotallyOrderedField B}. *)
+(*   Class NormedSemiRing := { *)
+(*     norm : A -> B ; *)
+(*     norm_proper :: Proper (SetoidClass.equiv ==> SetoidClass.equiv) norm; *)
+(*     norm_nonneg : forall x, 0 <= norm x; *)
+(*     norm_zero : forall x,  norm x == 0 <-> x == 0; *)
+(*     norm_triangle : forall x y, norm (x+y) <= norm x + norm y; *)
+(*     norm_mult : forall x y, norm (x*y) <= norm x * norm y; *)
+(*   }. *)
 
 
-End Norm.
+(* End Norm. *)
 
-Notation "|| x ||" := (norm x) (at level 2).
+(* Notation "|| x ||" := (norm x) (at level 2). *)
 
 
 Section RingTheory.
   Context `{A_Ring : Ring }.
   Add Ring ARing : ComSemiRingTheory.
-
  Fixpoint ntimes (n : nat) x := 
    match n with
     | 0 => 0
@@ -540,108 +544,17 @@ Section RingTheory.
   Qed.
 
 
-End RingTheory.
-
-
-Section OrderTheory.
-Context {A : Type} `{TotallyOrderedField A}.
-Add Ring TRing: ComRingTheory.
-
-Lemma le_le_plus_le a b c d: a <= c -> b <= d -> a + b <= c + d.
-Proof.
-  intros.
-  apply (le_trans _ _ _ (le_plus_compat _ _ _ H1)).
-  rewrite !(addC c).
-  apply le_plus_compat;auto.
-Qed.
-Lemma le_iff_le0 (x y : A) : (x <= y) <-> (0 <= (y - x)).
-Proof.
-  split;intros.
-  setoid_replace 0 with (x-x) by ring.
-  apply le_plus_compat;auto.
-  setoid_replace x with (0 + x ) by ring.
-  setoid_replace y with ((y-x)+x) by ring.
-  apply le_plus_compat;auto.
-Qed.
-
-Lemma mul_le_compat_pos {r r1 r2} : 0 <= r -> r1 <= r2 -> r * r1 <= r * r2.
-Proof.
-  intros.
-  apply le_iff_le0.
-  setoid_replace (r*r2 - r*r1) with (r * (r2 - r1)) by ring.
-  apply mul_pos_pos;auto.
-  rewrite <-le_iff_le0;auto.
-Qed.
-
-Lemma mul_le_le_compat_pos {r1 r2 x y} : 0 <= r1 -> (0 <= x) -> r1 <= r2 -> x <= y -> r1 * x <= r2 * y.
-Proof.
-  intros.
-  apply (le_trans _ _ _ (mul_le_compat_pos H1 H4 )).
-  rewrite !(mulC _ y).
-  apply mul_le_compat_pos;auto.
-  apply (le_trans _ _ _ H2);auto.
-Qed.
-Lemma le_0_1 : 0 <= 1.
-Proof.
-  destruct (le_total 0 1);auto.
-  setoid_replace 1 with (opp 1 * opp 1) by ring.
-  setoid_replace 0 with ((opp 1) * 0) by ring.
-  enough (0 <= (opp 1))by (apply mul_le_compat_pos;auto).
-  setoid_replace (opp 1) with (0 + (opp 1)) by ring.
-  setoid_replace 0 with (1 + (opp 1)) at 1 by ring.
-  apply le_plus_compat;auto.
-Qed.
-
-Lemma le_0_n n : 0 <= (ntimes n 1).
-Proof.
-  induction n.
-  simpl;apply R_TotalOrder.
-  simpl.
-  setoid_replace 0 with (0 + 0) by ring.
-  apply le_le_plus_le; [|apply IHn].
-  apply le_0_1.
-Qed.
-
- Lemma lt_0_2 : 0 <= (1+1).
+ Lemma ntimes_spec `{@EmbedNat A _ _} n x:  ntimes n x == embNat n * x.
  Proof.
-   setoid_replace (1+1) with (ntimes 2 1).
-   apply le_0_n.
+   induction n.
    simpl.
+   rewrite embNat0;ring.
+   simpl.
+   rewrite embNat_S.
+   rewrite IHn.
    ring.
  Qed.
-Lemma char0 : forall n, not ((ntimes (S n) 1) == 0).
-Proof.
-  intros.
-  induction n;simpl;intros Hn.
-  apply distinct_0_1;rewrite <-Hn; ring.
-  contradict IHn.
-  enough (ntimes (S n) 1 <= 0)by (apply le_anti_sym;auto;apply le_0_n).
-  rewrite <- Hn.
-  setoid_replace (ntimes (S n) 1) with (0 + ntimes (S n) 1) at 1 by ring.
-  apply le_plus_compat.
-  apply le_0_1.
-Defined.
-
-
- Lemma npow_pos : forall x n, (0 <= x) -> 0 <= npow x n.
- Proof.
-   intros.
-   induction n.
-   simpl;apply le_0_1.
-   simpl.
-   apply mul_pos_pos;auto.
- Qed.
-
- Lemma sum_le (f g : nat -> A) d : (forall i, i < d -> (f i) <= (g i)) -> sum f d <= sum g d.
- Proof.
-   intros.
-   induction d.
-   unfold sum;simpl.
-   apply le_refl.
-   rewrite !sum_S.
-   apply le_le_plus_le;auto.
-Qed.
-End OrderTheory.
+End RingTheory.
 
 Section VectorRawRing.
   Context `{RawRing}.
@@ -1001,60 +914,8 @@ Qed.
 End PartialDiffAlgebraTheory.
 
 
-(* Archimedean Field with some useful functions *)
-
+Infix "\o" := multi_composition (at level 2).
   Class Sn_invertible `{SemiRing} := {
       inv_Sn  (n : nat) : A; 
       inv_Sn_spec : forall n, (ntimes (S n) 1) * inv_Sn n == 1
   }.
-
-  Class ArchimedeanField `{R_Field :TotallyOrderedField} `{normK : (NormedSemiRing (A := A) (B:=A) (H := H) (H0 := H) (R_rawRing := _) (R_rawRing0 := _) (R_TotalOrder := _) )} `{invSn : (Sn_invertible (A:=A) (H:=H) (H0 := _) (R_rawRing := _))}  := {
-      norm_abs : forall x, 0 <= x -> norm x == x;
-      norm_abs_neg : forall x,  x <= 0 -> norm x == (- x);
-      upper : forall (x : A), {n : nat | x <= ntimes n 1}
-     
-     }.
-Infix "\o" := multi_composition (at level 2).
-Section ArchimedeanFieldProperties.
-  Context `{ArchimedeanField}.
-  Add Ring ARing: (ComRingTheory (A := A)). 
-
-  Lemma  opp_pos  x y : opp y <= opp x -> x <= y.
-  Proof.
-    intros.
-    setoid_replace x with (-y + (x + y)) by ring.
-    setoid_replace y with (-x + (x + y) ) at 3 by ring.
-    apply (le_plus_compat);apply H1.
-  Qed.
-
-  Lemma abs_mult a b: norm (a * b) == norm a * norm b.
-  Proof.
-    destruct (le_total a 0); destruct (le_total b 0).
-    rewrite (norm_abs_neg _ H1).
-    rewrite (norm_abs_neg _ H2).
-    ring_simplify.
-    rewrite norm_abs; try reflexivity.
-    setoid_replace (a * b) with (-a * - b) by ring.
-    apply mul_pos_pos;apply opp_pos;ring_simplify;auto.
-    rewrite (norm_abs_neg _ H1).
-    rewrite (norm_abs _ H2).
-    rewrite norm_abs_neg; try ring.
-    apply opp_pos.
-    ring_simplify.
-    apply mul_pos_pos;auto.
-    apply opp_pos.
-    ring_simplify;auto.
-    rewrite (norm_abs_neg _ H2).
-    rewrite (norm_abs _ H1).
-    rewrite norm_abs_neg; try ring.
-    apply opp_pos.
-    setoid_replace (-0) with 0 by ring.
-    setoid_replace (-(a*b)) with (a * (-b)) by ring.
-    apply mul_pos_pos;auto.
-    apply opp_pos.
-    ring_simplify;auto.
-    rewrite !norm_abs; auto; try reflexivity.
-    apply mul_pos_pos;auto.
-  Qed.
-
-End ArchimedeanFieldProperties.

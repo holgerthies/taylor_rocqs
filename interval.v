@@ -97,6 +97,14 @@ Proof.
   destruct i.
   apply (map interval_to_cr_string x).
 Defined.
+
+Definition output_intervals {d} (i : list (I^d)) : string.
+Proof.
+  induction i.
+  apply "".
+  apply ((fold_right (fun x y => (x++" "++y)) "" (intervalt_to_string a))++";"++ IHi).
+Defined.
+
 Close Scope string_scope.
   
 #[global] Instance I_setoid: Setoid I.
@@ -299,6 +307,13 @@ Section QIVP.
     | (S n) => let r := (isolution_r y0) in let t := (SFBI2.min t_end (FI.F.div_DN prec r (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 (singleton t) order) in ode_solution (t0+(singleton t)) (tuple_map (add_error (itail_error p step_factor order)) p) (FI.F.sub_UP prec t_end t) order step_factor n
     end.
 
+  Fixpoint ode_solution_trajectory (t0 : I) (y0 : I^(S d)) (t_end : F) (order : nat) (step_factor : positive) (max_steps : nat) :  list (I^(S (S d))) :=
+    if (FI.F'.le t_end SFBI2.zero) then cons (tuple_cons t0 y0) nil else
+    match max_steps with
+    | 0%nat => cons (tuple_cons t0 y0) nil
+    | (S n) => let r := (isolution_r y0) in let t := (SFBI2.min t_end (FI.F.div_DN prec r (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 (singleton t) order) in (cons (tuple_cons t0 y0) (ode_solution_trajectory (t0+(singleton t)) (tuple_map (add_error (itail_error p step_factor order)) p) (FI.F.sub_UP prec t_end t) order step_factor n))
+    end.
+
   Fixpoint ode_trajectory' (t0 : I) (y0 : I^(S d)) (order : nat) (step_factor : positive) (steps : nat) :   list (I^(S (S d))) :=
     match steps with
     | 0%nat => cons (tuple_cons t0 y0) nil
@@ -330,11 +345,11 @@ Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 Definition t := (itail_error (d:=1)  1 2 10).
 Definition a := (add_error t 1).
 Eval vm_compute in (interval_to_cr_string a).
-Definition t' := (ode_trajectory exp_ivp.(pf) 0 1 20 2 11).
-Definition t'' := (ode_solution exp_ivp.(pf) 0 1 1 10 2 1000).
-Eval vm_compute in (map intervalt_to_cr_string t').
-Eval vm_compute in (intervalt_to_cr_string t'').
-Eval vm_compute in (map intervalt_to_string t').
+Definition t' := (ode_solution_trajectory exp_ivp.(pf) 0 1 (1+1+1+1+1+1+1) 10 2 1000).
+
+Definition out := append "time_series;Test;x,y,z;" (output_intervals t').
+
+Redirect "data" Eval vm_compute in out.
                                                                     
 Definition sin_cos_example := sin_cos_ivp (A := Q).
 Definition sc_pf := Q2Ipolyt sin_cos_example.(pf).
@@ -343,67 +358,29 @@ Definition test := (ode_solution sin_cos_example.(pf) 0 (sc_y0) 1 10 2 100).
 
 Eval vm_compute in (intervalt_to_cr_string test).
 
+Definition sc := (ode_solution_trajectory sin_cos_example.(pf) 0 (sc_y0) (1+1+1+1+1+1+1+1) 3 20 1000).
+
+Definition out' := append "both;Test;x,y,z;" (output_intervals sc).
+
+Redirect "data" Eval vm_compute in out'.
 
 Definition vdp_example := vdp_ivp (A := Q) (q 1 2).
-Definition test_vdp := (ode_solution vdp_example.(pf) 0 (tuple_map Q2I (vdp_example.(py0))) 1 10 2 100).
-Eval vm_compute in (intervalt_to_cr_string test_vdp).
-Fixpoint interval_trajectory (n : nat) := match n with
-                          | 0%nat => exp_y0\_0 
-                          | (S n') => (add_error (eval_poly (Fi_to_taylor exp10 (tuple_cons (interval_trajectory n') nil_tuple)) 1 ) (taylor_error exp_analytic 1 10))
-                                       end.
+(* Definition test_vdp := (ode_solution vdp_example.(pf) 0 (tuple_map Q2I (vdp_example.(py0))) 1 10 2 100). *)
+(* Eval vm_compute in (intervalt_to_cr_string test_vdp). *)
 
+Definition vdp_y0 := tuple_map Q2I (tuple_cons (q 1 100) (tuple_cons (q 0 10) nil_tuple)).
+Definition vdp := (ode_solution_trajectory vdp_example.(pf) 0 vdp_y0 ((1+1)*(1+1)*(1+1)*(1+1)*(1+1)*(1+1)) 15 2 400).
 
-Eval vm_compute in (interval_to_string (add_error 1 (q 1 2))).
+Definition out'' := append "both;Test;x,y,z;" (output_intervals vdp).
 
-Eval vm_compute in (interval_to_string (interval_trajectory 1)).
-(* Definition output_bound_normalize (b : Interval.output_bound) : Interval.output_bound. *)
-(* Proof. *)
-(*    destruct b. *)
-(*    apply (Interval.BDecimal (q z 1)). *)
-(*    apply (Interval.BDecimal q). *)
-(*    apply (Interval.BDecimal (q z z0)). *)
-(*   Print Interval.output_bound.  *)
+Redirect "data" Eval vm_compute in out''.
 
-Definition exp_approx0 : I :=  (eval_poly exp_taylor10 ((FI.bnd (SFBI2.fromZ (1)) (SFBI2.fromZ  (1))))).
+Definition lorenz_example := lorenz_ivp (A := Q) ((q 10 1)) (q 28 1) (q 8 3).
 
-Eval vm_compute in (interval_to_string exp_approx0).
-Eval vm_compute in (taylor_error exp_analytic 1 10).
+Definition test_lorenz := (ode_solution lorenz_example.(pf) 0 (tuple_map Q2I (lorenz_example.(py0))) 1 10 2 10).
 
+Definition lorenz_y0 := tuple_map Q2I lorenz_example.(py0).
+Definition lorenz := (ode_solution_trajectory lorenz_example.(pf) 0 lorenz_y0 (SFBI2.fromZ 2) 10 100 10).
 
-Eval vm_compute in (output_bound_to_string (Interval.BDecimal (q (-3) 10))).
-
-Ltac print_interval' e :=
-  let I_val := (eval vm_compute in e) in
-  let lo := (eval vm_compute in (SFBI2.toR (FI.lower I_val))) in
-  let hi := (eval vm_compute in (SFBI2.toR (FI.upper I_val))) in
-  idtac "⟦" lo "," hi "⟧" .
-
-  Goal True.
-  Check FI.output.
-  Print Interval.output_bound.
-  Eval vm_compute in (print_interval exp_approx0).
-  Search BinarySingleNaN.B2R.
- Eval vm_compute in  (BinarySingleNaN.B2R (FI.lower exp_approx0)).
- Check  BinarySingleNaN.B2R.
- Locate B2R.
- Search (SFBI2.type -> R).
- Print SFBI2.type.
- Search FI.F.type.
-
-  interval_intro (SFBI2.toR (FI.lower (1 : I))).
-Search Interval.output_bound.
-
-Eval vm_compute in (print_interval test').
-Goal True.
-  let t := reify_R (R0 +
- (R1 + R1) * (R1 + (R1 + R1) * (R1 + R1)) * (R1 + (R1 + R1) * (R1 + (R1 + R1) * (R1 + R1)) * R0))%R in (interval_intro t).
-Definition test' :=exp_ivp.(pf)\_0.
-Definition test'' := Eval vm_compute in (hd 0 test').
-Open Scope R_scope.
-Definition a := 
-Definition test0 := exp_approx0.
-Time Eval vm_compute in test0.
-
-
-Definition testc0 := (exp_continue0 1000).
-Time Eval vm_compute in testc0.
+Definition out''' := append "both;Test;x,y,z;" (output_intervals lorenz).
+Redirect "data" Eval native_compute in out'''.

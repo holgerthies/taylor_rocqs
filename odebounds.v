@@ -2,7 +2,7 @@ From Coq Require Import Psatz.
 From Coq Require Import List.
 From Coq Require Import ZArith.
 Import ListNotations.
-Require Import algebra.
+Require Import algebra archimedean.
 Require Import abstractpowerseries.
 Require Import functions.
 Require Import polynomial.
@@ -21,16 +21,16 @@ Section Bounds.
 
   Context `{ArchimedeanField}.
 
-  Lemma norm1 : norm 1 == 1.  
+  Lemma norm1 : abs 1 == 1.  
   Proof.
-    apply norm_abs.
+    rewrite abs_pos;try reflexivity.
     apply le_0_1.
   Qed.
 
  Add Ring KRing: (ComRingTheory (A := A)).
 
 (* First the single-variate case *)
- Definition mps_bound {d} (a : (nat^d -> A)) (b : (nat^1 -> A)) := forall n, norm (a n) <= (b t(order n)).
+ Definition mps_bound {d} (a : (nat^d -> A)) (b : (nat^1 -> A)) := forall n, abs (a n) <= (b t(order n)).
  Notation "| a | <= b" := (mps_bound a b) (at level 70).
  Definition mps_tuple_bound {d} {e} (a : (nat^d -> A )^e) (b : (nat^1 -> A)):=  forall i, i < e -> |a\_i| <= b.
 
@@ -262,16 +262,22 @@ Section Bounds.
      assert (x0 = []) as ->; (apply length_zero_iff_nil;auto).
    Qed.
 
-  Lemma sum_norm : forall f i, norm (sum f i) <= sum (fun n => (norm (f n))) i.
+  Lemma sum_norm : forall f i, abs (sum f i) <= sum (fun n => (abs (f n))) i.
   Proof.
     intros.
     induction i.
     unfold sum;simpl.
-    rewrite (proj2 (norm_zero 0)); try apply le_refl;try reflexivity.
+    rewrite (proj2 (abs_zero 0)); try apply le_refl;try reflexivity.
     rewrite !sum_S.
-    apply (le_trans _ _ _ (norm_triangle _ _)).
+    apply (le_trans _ _ _ (abs_triangle _ _)).
     apply le_plus_compat.
     apply IHi.
+  Qed.
+
+  Lemma norm_mult a b : abs (a * b) <= abs a * abs b.
+  Proof.
+    apply le_eq.
+    apply abs_mult.
   Qed.
 
   Lemma mult_monotone1  (a b : nat^1 -> A) (A1 B1 : nat^1 -> A) : (|a| <= A1) -> |b| <= B1 -> |a*b| <= A1*B1.
@@ -285,24 +291,24 @@ Section Bounds.
     - simpl order.
       rewrite !ps_mul0.
       apply (le_trans _ _ _ (norm_mult _ _ )).
-      apply (mul_le_le_compat_pos); try apply norm_nonneg;auto.
+      apply (mul_le_le_compat_pos); try apply abs_nonneg;auto.
     - simpl order.
       rewrite !coeff_shift_mul1.
-      apply (le_trans _ _ _ (norm_triangle  _ _ )).
+      apply (le_trans _ _ _ (abs_triangle  _ _ )).
       apply le_le_plus_le.
       specialize (IHi (coeff_shift1 a) (coeff_shift1 A1)).
       simpl order in IHi.
       apply IHi.
       apply coeff_shift1_bound;apply H1.
       apply (le_trans _ _ _ (norm_mult _ _ )).
-      apply (mul_le_le_compat_pos); try apply norm_nonneg;auto.
+      apply (mul_le_le_compat_pos); try apply abs_nonneg;auto.
    Qed.
 
 
   
-    Lemma norm_zero_eq : norm 0 == 0.
+    Lemma norm_zero_eq : abs 0 == 0.
     Proof.
-        setoid_replace (norm 0) with 0 by (rewrite norm_zero;reflexivity).
+        setoid_replace (abs 0) with 0 by (rewrite abs_zero;reflexivity).
         apply reflexivity.
      Qed.
 
@@ -319,7 +325,7 @@ Section Bounds.
      rewrite !sum_S.
      intros k.
      rewrite !index_plus.
-     apply (le_trans _ _ _ (norm_triangle _ _)).
+     apply (le_trans _ _ _ (abs_triangle _ _)).
      apply le_le_plus_le.
      apply IHN.
      intros;apply H1;lia.
@@ -356,35 +362,35 @@ Section Bounds.
       reflexivity.
     Qed.
 
-  Lemma norm_n_le_n n : norm (ntimes n 1) <= ntimes n 1.
+  Lemma norm_n_le_n n : abs (ntimes n 1) <= ntimes n 1.
   Proof.
     induction n.
     simpl.
-    assert (norm 0 == 0) as -> by (apply norm_zero;reflexivity).
+    assert (abs 0 == 0) as -> by (apply abs_zero;reflexivity).
     apply le_refl.
     simpl.
-    apply (le_trans _ _ _ (norm_triangle _ _ )).
+    apply (le_trans _ _ _ (abs_triangle _ _ )).
     rewrite norm1.
     apply le_le_plus_le;auto.
     apply le_refl.
   Qed.
 
-  Lemma norm_ntimes_le n x : norm (ntimes n x) <= ntimes n 1 * norm x.
+  Lemma norm_ntimes_le n x : abs (ntimes n x) <= ntimes n 1 * abs x.
   Proof.
     induction n.
     simpl.
-    assert (norm 0 == 0) as -> by (apply norm_zero;reflexivity).
+    assert (abs 0 == 0) as -> by (apply abs_zero;reflexivity).
     ring_simplify.
     apply le_refl.
     simpl.
-    apply (le_trans _ _ _ (norm_triangle _ _ )).
+    apply (le_trans _ _ _ (abs_triangle _ _ )).
     ring_simplify.
     rewrite addC.
     apply le_plus_compat.
     rewrite mulC.
     apply IHn.
   Qed.
-  Lemma norm_ntimes_le_ntimes_norm n x : norm (ntimes n x) <= ntimes n (norm x).
+  Lemma norm_ntimes_le_ntimes_norm n x : abs (ntimes n x) <= ntimes n (abs x).
   Proof.
     apply (le_trans _ _ _ (norm_ntimes_le _ _)).
     rewrite mulC, <-ntimes_mult.
@@ -398,6 +404,7 @@ Section Bounds.
     setoid_replace (x) with (x*1) by ring.
     rewrite !ntimes_mult.
     apply mul_le_compat_pos;auto.
+    rewrite <-!ntimes_embed.
     apply ntimes_monotone;auto.
   Qed.
 
@@ -419,8 +426,10 @@ Section Bounds.
        destruct (destruct_tuple_cons k) as [hd [tl ->]].
        setoid_rewrite deriv_next.
        apply (le_trans _ _ _ (norm_mult _ _)).
-       apply (mul_le_le_compat_pos); try apply ntimes_nonneg; try apply le_0_1; try apply norm_nonneg.
+       rewrite !ntimes_embed.
+       apply (mul_le_le_compat_pos); try apply ntimes_nonneg; try apply le_0_1; try apply abs_nonneg.
        apply (le_trans _ _ _ (norm_n_le_n _)).
+       rewrite <-!ntimes_embed.
        apply ntimes_monotone.
        rewrite order_cons.
        lia.
@@ -437,7 +446,7 @@ Section Bounds.
     {
       specialize (H1 t).
       rewrite T in H1.
-      apply (le_trans _ _ _ (norm_nonneg  (a t))).
+      apply (le_trans _ _ _ (abs_nonneg  (a t))).
       apply (le_trans _ _ _ H1).
       rewrite P.
       apply le_eq.
@@ -543,6 +552,7 @@ Section Bounds.
      - rewrite ps_mul0.
        rewrite !to_ps_simpl0.
        unfold f_bound, g_bound, fg_bound.
+       Opaque inv_Sn.
        simpl.
        ring_simplify.
        replace  (n + (n+0)+2)%nat with (S (2*n+1))%nat by lia.
@@ -552,6 +562,7 @@ Section Bounds.
        rewrite !mulA.
        rewrite <-(mulA (inv_Sn _ )).
        rewrite (mulC (inv_Sn _ )).
+       rewrite ntimes_embed.
        rewrite inv_Sn_spec.
        ring.
      - rewrite !mul_ps_S.
@@ -575,7 +586,7 @@ Section Bounds.
       replace (k+1 + (2*n+1)+1)%nat with (S (2*n + k +2)) by lia.
       rewrite !mulA.
       enough (1 + inv_Sn (2 * n + 1) * # (k + 1) ==  inv_Sn (2 * n + 1) * # (S (2 * n + k + 2))) as <- by ring.
-      setoid_replace 1 with (#1) at 1 by (simpl;ring).
+      setoid_replace 1 with (#1) at 1 by (rewrite ntimes_embed;simpl;ring).
       rewrite rat_plus1.
       replace (1*(2*n+1+1) + (k+1))%nat with (S (2*n+k+2)) by lia.
       ring.
@@ -597,7 +608,8 @@ Section Bounds.
    unfold DFn_bound.
    apply (le_trans _ _ _  (norm_mult _ _)).
    rewrite mulC.
-   apply (le_trans _ _ _  (mul_le_compat_pos (norm_nonneg _ ) (norm_n_le_n _ ))). 
+   rewrite ntimes_embed.
+   apply (le_trans _ _ _  (mul_le_compat_pos (abs_nonneg _ ) (norm_n_le_n _ ))). 
    rewrite rising_factorial_s.
    rewrite mulC.
    rewrite !mulA.
@@ -605,6 +617,7 @@ Section Bounds.
    rewrite !mulA.
    rewrite (mulC ![n]).
    rewrite !mulA.
+   rewrite ntimes_embed.
    apply mul_le_compat_pos.
    apply ntimes_nonneg.
    apply le_0_1.
@@ -667,7 +680,7 @@ Section Bounds.
    rewrite nat_mult_compat.
    setoid_replace (#2 * # (S n) * (inv2 * inv_Sn n)) with ((#2 * inv2 ) * (# (S n) * inv_Sn n)) by ring.
    unfold inv2.
-   rewrite !inv_Sn_spec.
+   rewrite !ntimes_embed, !inv_Sn_spec.
    ring.
  Qed.
 
@@ -679,7 +692,7 @@ Section Bounds.
    setoid_replace (npow # (S m) (S n) * npow (inv_Sn m) (S n)) with (# (S m) * inv_Sn m * ((npow (# (S m)) n) * (npow (inv_Sn m) n))) by (simpl;ring).
    rewrite IHn.
    ring_simplify.
-   rewrite inv_Sn_spec.
+   rewrite !ntimes_embed,inv_Sn_spec.
    ring.
  Qed.
 
@@ -702,7 +715,7 @@ Section Bounds.
    rewrite (mulC [n]!).
    setoid_replace (npow inv2 n) with (npow #2 n * npow inv2 n * npow inv2 n) by (rewrite npow_inv;ring).
    rewrite !mulA.
-   apply mul_le_compat_pos; try (apply npow_pos;apply ntimes_nonneg;apply le_0_1).
+   apply mul_le_compat_pos; try (apply npow_pos;rewrite ntimes_embed;apply ntimes_nonneg;apply le_0_1).
    rewrite <-!mulA.
    rewrite <-npow_plus.
    rewrite (mulC _ ![n]).
@@ -716,30 +729,38 @@ Section Bounds.
     replace (2*S n)%nat with (S (S (2*n))) by lia.
     setoid_replace (![S n] * npow inv2 (S (S (n+n))) * [S(S (2 *n))]!) with (((![n] * npow inv2 (n+n) * [2*n]!)) * (inv2 * inv2 * # (S (S (2 *n))) *# (S (2 * n)) * inv_Sn n)) by (simpl;ring).
     setoid_replace [S n]! with ([n]! * #(S n)) by (simpl;ring).
+    rewrite !ntimes_embed.
     apply mul_le_le_compat_pos.
     apply mul_pos_pos;try apply fact_pos.
     apply mul_pos_pos;try apply invfact_pos;apply npow_pos;apply inv_Sn_pos.
     apply mul_pos_pos; try apply mul_pos_pos; try apply mul_pos_pos; try apply ntimes_nonneg; try apply le_0_1; try apply inv_Sn_pos.
     apply mul_pos_pos; apply inv_Sn_pos.
+
     apply IHn.
     replace (S (S (2 *n))) with (2*(S n))%nat by lia. 
+    rewrite <-!ntimes_embed.
     rewrite nat_mult_compat.
     rewrite <-mulA.
     rewrite (mulC _ #2).
     rewrite <-mulA.
     unfold inv2.
+    rewrite !ntimes_embed.
     rewrite inv_Sn_spec.
     ring_simplify.
+    rewrite <-!ntimes_embed.
     setoid_replace (inv_Sn 1 * #(S n) * #(S(2*n)) * inv_Sn n) with ((#(S n) * inv_Sn n) * (inv_Sn 1 * #(S(2*n)))) by ring.
+    rewrite !ntimes_embed.
     rewrite inv_Sn_spec.
     ring_simplify.
 
     apply (le_trans _ (inv_Sn 1 * # (2*(S n)))).
     apply mul_le_compat_pos;try apply inv_Sn_pos.
+    rewrite <-!ntimes_embed.
     apply ntimes_monotone;lia.
     rewrite nat_mult_compat.
     rewrite <-mulA.
     rewrite (mulC _ (#2)).
+    rewrite !ntimes_embed.
     rewrite inv_Sn_spec.
     ring_simplify.
     apply le_refl.
@@ -747,7 +768,7 @@ Section Bounds.
 
   Definition a_bound_series M r: (nat^1 -> A)  := to_ps (fun n => M * (npow r n)).
 
-  Lemma Fn_bound_spec d M r n k : (0 <= M) -> (0 <= r) ->  norm (Fi (H3 := ps_diffAlgebra) (ntimes d t(a_bound_series M r))  (S n) 0 t(k)) <= Fn_bound (ntimes d M) r n k.
+  Lemma Fn_bound_spec d M r n k : (0 <= M) -> (0 <= r) ->  abs (Fi (H3 := ps_diffAlgebra) (ntimes d t(a_bound_series M r))  (S n) 0 t(k)) <= Fn_bound (ntimes d M) r n k.
  Proof.
    intros Mgt0 rgt0.
    revert k.
@@ -776,7 +797,7 @@ Section Bounds.
      rewrite rising_factorial0.
      ring_simplify.
      apply (le_trans _ _ _ (norm_ntimes_le_ntimes_norm _ _)).
-     rewrite norm_abs.
+     rewrite abs_pos.
      rewrite mulC.
      rewrite ntimes_mult.
      rewrite mulC;apply le_refl.
@@ -797,7 +818,7 @@ Section Bounds.
        apply (le_trans _ _ _ (norm_ntimes_le_ntimes_norm _ _)).
        rewrite order1d.
        rewrite to_ps_simpl.
-       rewrite norm_abs; [rewrite mulC,ntimes_mult,mulC; apply le_refl|].
+       rewrite abs_pos; [rewrite mulC,ntimes_mult,mulC; apply le_refl|].
        apply mul_pos_pos;auto.
        apply npow_pos;auto.
      }
@@ -931,7 +952,7 @@ Section Bounds.
   intros n.
   apply (le_trans _ _ _ (sum_order_diff_le _ _ _ H1)).
   setoid_rewrite deriv_next.
-  apply mul_le_compat_pos; try apply ntimes_nonneg; try apply le_0_1.
+  apply mul_le_compat_pos; try rewrite ntimes_embed;try apply ntimes_nonneg; try apply le_0_1.
   apply H2.
   Qed.
 
@@ -1004,7 +1025,7 @@ Section Bounds.
     Qed.
 
 
-    Lemma F_bound {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n  : forall i, i<d -> (tuple_bound_strong a b\_0) -> norm ((Fi a n) i 0) <=  (Fi (ntimes d b) n 0 0).
+    Lemma F_bound {d :nat} (a : (nat^d -> A)^d) (b : (nat^1 -> A)^1) n  : forall i, i<d -> (tuple_bound_strong a b\_0) -> abs ((Fi a n) i 0) <=  (Fi (ntimes d b) n 0 0).
     intros.
     pose proof (F_monotone a b n i H1 H2 0).
     rewrite sum_order0 in H3.
@@ -1036,7 +1057,7 @@ Section Bounded_PS.
     rewrite comp1_0;reflexivity.
   Defined.
 
-  Lemma y_bound_Fn i n: i < (S d) -> norm ((y\_i) t(S n))  <= ![S n] * Fn_bound (ntimes (S d) M) r n 0.  
+  Lemma y_bound_Fn i n: i < (S d) -> abs ((y\_i) t(S n))  <= ![S n] * Fn_bound (ntimes (S d) M) r n 0.  
   Proof.
    intros.
    pose proof (F_bound  _ _ (S n) i H1 f_bounded).
@@ -1046,14 +1067,14 @@ Section Bounded_PS.
    rewrite yt_spec;auto.
    unfold y_i.
    apply (le_trans _ _ _ (norm_mult _ _)).
-   rewrite norm_abs;try apply invfact_pos.
+   rewrite abs_pos;try apply invfact_pos.
    apply mul_le_compat_pos;try apply invfact_pos.
    apply (le_trans _ _ _ (H2)).
-   rewrite norm_abs in H3;auto.
-   apply (le_trans _ (norm (Fi (H3:=ps_diffAlgebra) f (S n) i 0)));try apply norm_nonneg;auto.
+   rewrite abs_pos in H3;auto.
+   apply (le_trans _ (abs (Fi (H3:=ps_diffAlgebra) f (S n) i 0)));try apply abs_nonneg;auto.
  Qed.
 
-Lemma y_bound i n: i < (S d) -> norm (y\_i t(S n)) <= ntimes (S d) M  * npow (ntimes 2 1 * ntimes (S d) M * r) n.
+Lemma y_bound i n: i < (S d) -> abs (y\_i t(S n)) <= ntimes (S d) M  * npow (# 2 * ntimes (S d) M * r) n.
   Proof.
      intros.
      apply (le_trans _ _ _ (y_bound_Fn _ _ H1)).
@@ -1061,14 +1082,14 @@ Lemma y_bound i n: i < (S d) -> norm (y\_i t(S n)) <= ntimes (S d) M  * npow (nt
     pose proof (mul_le_compat_pos (invfact_pos (S n)) (Fn_bound0 (ntimes (S d) M) r H2 rpos n)).
        apply (le_trans _ _ _ H3).
        rewrite <-!mulA.
-       enough (![ S n] * [n ]! * ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n  <= ( [S n ]! * ![ S n]) * ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n ).
+       enough (![ S n] * [n ]! * ntimes (S d) M * npow (#2 * ntimes (S d) M * r) n  <= ( [S n ]! * ![ S n]) * ntimes (S d) M * npow (#2 * ntimes (S d) M * r) n ).
        {
          apply (le_trans _ _ _ H4).
          rewrite fact_invfact.
          ring_simplify.
          apply le_refl.
        }
-       setoid_replace (([S n ]! * ![ S n]) * ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n ) with (![ S n] * ([S n ]! * (ntimes (S d) M * npow (ntimes 2 1 * ntimes (S d) M * r) n ))) by ring.
+       setoid_replace (([S n ]! * ![ S n]) * ntimes (S d) M * npow (# 2 * ntimes (S d) M * r) n ) with (![ S n] * ([S n ]! * (ntimes (S d) M * npow (#2 * ntimes (S d) M * r) n ))) by ring.
        rewrite !mulA.
        apply mul_le_compat_pos; try apply invfact_pos.
        rewrite mulC.
@@ -1078,16 +1099,18 @@ Lemma y_bound i n: i < (S d) -> norm (y\_i t(S n)) <= ntimes (S d) M  * npow (nt
        apply ntimes_nonneg;auto.
        apply npow_pos.
        apply mul_pos_pos;auto.
-       apply mul_pos_pos; apply ntimes_nonneg;auto.
+       apply mul_pos_pos; try rewrite ntimes_embed;apply ntimes_nonneg;auto.
        apply le_0_1.
+       Opaque embNat.
        simpl.
        rewrite mulC.
        setoid_replace ([n]!) with ([n]!*1) at 1 by ring.
        apply mul_le_compat_pos.
        apply fact_pos.
-       rewrite addC.
+       rewrite embNat_S.
        setoid_replace 1 with (0 + 1) at 1 by ring.
        apply le_plus_compat.
+       rewrite ntimes_embed.
        apply ntimes_nonneg.
        apply le_0_1.
    Qed.
@@ -1099,26 +1122,26 @@ Section Modulus.
   Context `{ArchimedeanField}.
   Add Ring TRing: (ComRingTheory (A := A)). 
 
-   Definition fast_cauchy_neighboring (a : nat -> A) := forall n, norm (a (S n) - a n) <= npow inv2 (S n).
+   Definition fast_cauchy_neighboring (a : nat -> A) := forall n, abs (a (S n) - a n) <= npow inv2 (S n).
 
     Definition partial_sum (a : nat^1 -> A) (x : A) (N : nat) := sum (fun n => a t(n) * npow x n) N.
 
-    Lemma partial_sum_neighboring (a : nat^1 -> A) (x : A) (N : nat) : norm (partial_sum a x (S N) - partial_sum a x N) == norm (a t(N) * npow x N).
+    Lemma partial_sum_neighboring (a : nat^1 -> A) (x : A) (N : nat) : abs (partial_sum a x (S N) - partial_sum a x N) == abs (a t(N) * npow x N).
     Proof.
       unfold partial_sum.
       rewrite sum_S.
-      apply norm_proper.
+      apply abs_proper.
       ring.
    Qed.
       
-    Lemma npow_norm_le x n : norm (npow x n) <= npow (norm x) n.
+    Lemma npow_norm_le x n : abs (npow x n) <= npow (abs x) n.
     Proof.
       induction n.
       simpl.
-      rewrite norm_abs; try reflexivity;try apply le_0_1; try apply le_refl.
+      rewrite abs_pos; try reflexivity;try apply le_0_1; try apply le_refl.
       simpl.
       apply (le_trans _ _ _ (norm_mult _ _)).
-      apply mul_le_compat_pos; try apply norm_nonneg.
+      apply mul_le_compat_pos; try apply abs_nonneg.
       apply IHn.
     Qed.
 
@@ -1148,20 +1171,20 @@ Section Modulus.
       rewrite IHn, H1.
       ring.
     Qed.
-    Lemma ps_modulus_helper x r n m :  norm x <= r -> norm (npow x (n + m)) <= npow r n * npow r m. 
+    Lemma ps_modulus_helper x r n m :  abs x <= r -> abs (npow x (n + m)) <= npow r n * npow r m. 
     Proof.   
       intros.
       rewrite npow_plus.
       apply (le_trans _ _ _ (norm_mult _ _)).
-      apply mul_le_le_compat_pos; try apply norm_nonneg;apply (le_trans _ _ _ (npow_norm_le _ _)).
-      apply npow_monotone; try apply norm_nonneg;auto.
-      apply npow_monotone; try apply norm_nonneg;auto.
+      apply mul_le_le_compat_pos; try apply abs_nonneg;apply (le_trans _ _ _ (npow_norm_le _ _)).
+      apply npow_monotone; try apply abs_nonneg;auto.
+      apply npow_monotone; try apply abs_nonneg;auto.
     Qed.
 
     Definition bps_modulus logM n := (n+1+logM)%nat.
     Definition bps_radius invr := inv2 * invr.
 
-    Lemma bounded_ps_modulus_spec  (a : nat^1 -> A) (M r : A) invr logM x: (r * invr == 1) -> (M <= npow (#2) logM) ->  norm x <= (bps_radius invr) -> (mps_bound a (a_bound_series M r)) -> fast_cauchy_neighboring (fun n => (partial_sum a x) (bps_modulus logM n)). 
+    Lemma bounded_ps_modulus_spec  (a : nat^1 -> A) (M r : A) invr logM x: (r * invr == 1) -> (M <= npow (#2) logM) ->  abs x <= (bps_radius invr) -> (mps_bound a (a_bound_series M r)) -> fast_cauchy_neighboring (fun n => (partial_sum a x) (bps_modulus logM n)). 
     Proof.
       unfold bps_modulus, bps_radius.
       intros.
@@ -1172,7 +1195,7 @@ Section Modulus.
       apply (le_trans _ _ _ (norm_mult _ _)).
       rewrite mulC.
         
-      apply (le_trans _ _ _ (mul_le_compat_pos (norm_nonneg _) (H4 _))).
+      apply (le_trans _ _ _ (mul_le_compat_pos (abs_nonneg _) (H4 _))).
       rewrite mulC.
       pose proof (bound_nonneg a (a_bound_series M r) H4).
       apply  (le_trans _ _ _ (mul_le_compat_pos  (H5 _) (ps_modulus_helper _ _ _ logM H3))).
@@ -1201,6 +1224,7 @@ Section Modulus.
       unfold inv2.
       apply le_eq.
       apply npow1.
+      rewrite ntimes_embed.
       apply inv_Sn_spec.
    Qed.
 

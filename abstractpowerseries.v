@@ -1,7 +1,7 @@
 From Coq Require Import List.
 From Coq Require Import ZArith.
 Import ListNotations.
-Require Import algebra.
+Require Import algebra archimedean.
 Require Import functions.
 Require Import polynomial.
 From Coq Require Import Setoid.
@@ -717,11 +717,14 @@ Section AbstractPowerSeries.
   Defined.
 
 
+  Opaque embNat.
   Lemma ps_ntimes_S {d} (a : ps d) n  : (fun k => #(S n) * a k) == (fun k => #n * a k) + a.
   Proof.
     intros k.
     simpl.
     setoid_rewrite ps_plus_index.
+    rewrite !ntimes_embed.
+    simpl.
     ring.
   Qed.
 
@@ -1168,6 +1171,7 @@ Qed.
     rewrite <-mul1.
     rewrite <-H1.
     rewrite mulC.
+    rewrite <-ntimes_embed.
     rewrite (mulC (# (S hd))).
     rewrite mulA.
     replace (S hd) with (hd + 1)%nat by lia.
@@ -1533,6 +1537,7 @@ Qed.
     - rewrite tuple_nth_cons_hd.
       destruct k0.
       simpl.
+      rewrite ntimes_embed;simpl.
       ring_simplify.
       rewrite index_proper; try (apply tuple_cons_plus;try rewrite add0); try reflexivity.
       rewrite !fold_partial_index.
@@ -1876,7 +1881,7 @@ Qed.
     revert n.
     induction d;intros.
     destruct n.
-    apply (norm (a t())).
+    apply (abs (a t())).
     apply 0.
     apply (sum (fun i => (IHd (partial_index a i) (n-i)%nat)) (S n)).
   Defined.
@@ -1902,14 +1907,14 @@ Qed.
      induction d;intros.
      simpl.
      destruct n; try apply le_refl.
-     apply norm_nonneg.
+     apply abs_nonneg.
      simpl.
      apply sum_nonneg.
      intros.
      apply IHd.
    Qed.
 
-   Lemma sum_order0  {d}  (a :  nat^d -> A):  sum_order  a 0 == norm (a 0).
+   Lemma sum_order0  {d}  (a :  nat^d -> A):  sum_order  a 0 == abs (a 0).
    Proof.
      induction d.
      simpl;reflexivity.
@@ -1920,7 +1925,7 @@ Qed.
      reflexivity.
    Qed.
 
-   Lemma sum_order1d  (a :  nat^1 -> A)  k :  sum_order (d:=1) a k == norm (a t(k)).
+   Lemma sum_order1d  (a :  nat^1 -> A)  k :  sum_order (d:=1) a k == abs (a t(k)).
    Proof.
      simpl sum_order.
      rewrite sum_S.
@@ -1942,7 +1947,7 @@ Qed.
      induction d;intros.
      simpl.
      destruct n; try reflexivity.
-     apply norm_proper.
+     apply abs_proper.
      apply eq.
      simpl.
      apply sum_ext.
@@ -1959,7 +1964,7 @@ Qed.
     destruct n.
     simpl.
     setoid_rewrite index_plus.
-    apply norm_triangle.
+    apply abs_triangle.
     simpl.
     rewrite add0.
     apply le_refl.
@@ -1977,7 +1982,7 @@ Qed.
     revert n.
     induction d;intros;rewrite H1.
     simpl.
-    destruct n;simpl; try rewrite ps0,norm_zero; try reflexivity.
+    destruct n;simpl; try rewrite ps0,abs_zero; try reflexivity.
     simpl.
     apply sum_zero.
     intros.
@@ -2035,7 +2040,7 @@ Qed.
          simpl.
          ring_simplify.
          enough (one_ps d 0 == 1).
-         rewrite H2;rewrite norm_abs;try reflexivity; apply le_0_1.
+         rewrite H2;rewrite abs_pos;try reflexivity; apply le_0_1.
          unfold one_ps.
          assert (is_zero_tuple 0 = true) as ->; try reflexivity.
          apply is_zero_tuple_spec;reflexivity.
@@ -2085,7 +2090,7 @@ Qed.
       reflexivity.
    Qed.
 
-   Lemma sum_order_smult {d} (a :  nat^d -> A) n x : sum_order (x [*] a) n == norm x * sum_order a n.
+   Lemma sum_order_smult {d} (a :  nat^d -> A) n x : sum_order (x [*] a) n == abs x * sum_order a n.
    Proof.
      revert n.
      induction d.
@@ -2115,6 +2120,8 @@ Qed.
     assert (n <= m \/ n = S m)%nat by lia.
     destruct H2.
     simpl.
+    rewrite embNat_S.
+    rewrite addC.
     setoid_replace (#n) with (0 + #n) by ring.
     apply le_le_plus_le.
     apply le_0_1.
@@ -2126,6 +2133,7 @@ Qed.
    Lemma sum_order_diff_le {d} (a :  nat^d -> A) i n : i < d -> sum_order (D[i] a) n <= #(n+1)%nat * sum_order a (n+1)%nat.
    Proof.
      intros.
+     rewrite ntimes_embed.
      revert n a .
      generalize dependent i.
      induction d; intros; try lia.
@@ -2149,10 +2157,14 @@ Qed.
        apply sum_le;intros.
        replace (S n - S i)%nat with (n - i)%nat by lia.
        rewrite sum_order_smult.
-       rewrite norm_abs; try apply le_0_n.
-       rewrite !(mulC (# _)).
+       rewrite abs_pos; try apply le_0_n.
+       rewrite ntimes_embed.
+       rewrite !(mulC (ntimes _ _)).
        apply mul_le_compat_pos; try apply sum_order_nonneg.
+       rewrite <-!ntimes_embed.
        apply ntimes_monotone;lia.
+       rewrite ntimes_embed.
+       apply ntimes_nonneg;apply le_0_1.
     - rewrite sum_order_next.
        assert (sum (fun j => sum_order (partial_index D[S i] a j) (n-j)) (S n) == sum (fun j => sum_order (D[i] (partial_index  a j)) (n-j)) (S n)) as ->.
        {
@@ -2173,8 +2185,9 @@ Qed.
        assert (i < d) by lia.
        apply (le_trans _ _ _ (IHd _ H3 _ _)).
        replace (n -i0 + 1)%nat with (S n - i0)%nat by lia.
-       rewrite !(mulC (# _)).
+       rewrite !(mulC (ntimes _ _)).
        apply mul_le_compat_pos; try apply sum_order_nonneg.
+       rewrite <-!ntimes_embed.
        apply ntimes_monotone;lia.
    Qed.
 
