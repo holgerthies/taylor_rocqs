@@ -1,5 +1,5 @@
 Require Import combinatorics.
-Require Import algebra.
+Require Import algebra archimedean.
 From Coq Require Import Setoid.
 Require Import
   CoRN.model.totalorder.QposMinMax
@@ -49,25 +49,64 @@ Proof.
   rewrite eqH;auto.
 Defined.
 
-(* Lemma neg_apart x y : (not (x == y)) -> apart x y.  *)
-(* Proof. *)
-(*  unfold apart, ARapart. *)
-(*  intros. *)
-(* Admitted. *)
 
-(* Definition AR_recip' (x : ARbigD) : (not (x == 0)) -> ARbigD. *)
-(* Proof. *)
-(*   intros. *)
-(* Admitted. *)
+    #[global] Instance AR_partialOrder : (archimedean.PartialOrder (A :=ARbigD)).
+  Proof.
+    exists (fun x y => (ARle x y)); intros;simpl;auto.
+    intros a b Heq c d Heq';rewrite Heq, Heq';split;auto.
+     apply ARtoCR_preserves_le;auto.
+     apply orders.dec_from_lt_dec_obligation_1;auto.
+     apply ARtoCR_preserves_le;auto.
+  Defined.
 
-#[global] Instance AR_field: (algebra.Field (A := ARbigD)).
-Proof.
-Admitted.
-
-  Lemma AR_total (x y : ARbigD): (ARle x  y) \/ (ARle y x). 
+  Lemma inject_Q_AR_opp x :   inject_Q_AR (AQ := bigD) (- x) = - inject_Q_AR (AQ := bigD) x.
   Proof.
   Admitted.
 
+  Lemma inject_Q_AR_inj x y :   inject_Q_AR (AQ := bigD) x = inject_Q_AR (AQ := bigD) y -> (x == y)%Q.
+  Admitted.
+
+   #[global] Instance AR_embedQ : (QEmbedding (A:=ARbigD)).
+   Proof.
+   exists inject_Q_AR; simpl;intros;try reflexivity;auto.
+   - intros a b eq.
+     apply inject_Q_AR_wd;auto.
+  - apply inject_Q_AR_0.
+  - apply inject_Q_AR_1.
+  - apply inject_Q_AR_plus.
+  - apply inject_Q_AR_mult.
+  - apply inject_Q_AR_opp.
+  - apply inject_Q_AR_inj;auto.
+   - apply inject_Q_AR_le;auto.
+  Defined.
+
+   #[global] Instance AR_hasAbs : HasAbs.
+   Proof.
+    exists (ARabs (AQ := bigD)).
+    - intros a b ->;reflexivity.
+    - intros;apply Qabs_pos;auto.
+    - intros;apply Qabs_neg;auto.
+    - intros;apply Qabs_Qmult;auto.
+    - intros;apply Qabs_triangle.
+    - intros; apply Qabs_nonneg.
+    - intros.
+      simpl.
+      apply Qabs_case;intros;split;intros;auto;lra.
+  Defined.
+
+   #[global] Instance Q_ArchimedeanField : ArchimedeanField.
+   Proof.
+     constructor;simpl;intros; try lra.
+    - intros;apply Qmult_le_0_compat;auto.
+    - intros.
+      destruct (Qarchimedean x).
+      exists (Pos.to_nat x0).
+      rewrite <-ntimes_embed.
+      simpl.
+      rewrite positive_nat_Z.
+      apply Qlt_le_weak.
+      apply q.
+   Defined.
   #[global] Instance AR_totalOrder : algebra.TotalOrder.
   Proof.
     exists (fun x y => (ARle x y)); intros;simpl;auto.
