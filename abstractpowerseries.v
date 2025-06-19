@@ -1,4 +1,4 @@
-From Coq Require Import List.
+Require Import List.
 From Coq Require Import ZArith.
 Import ListNotations.
 Require Import algebra archimedean.

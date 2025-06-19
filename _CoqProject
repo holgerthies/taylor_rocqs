@@ -9,6 +9,7 @@ abstractpowerseries.v
 ode.v
 odebounds.v
 realanalytic.v
+pivp.v
 coqreals.v
 examples.v
 coqrationals.v

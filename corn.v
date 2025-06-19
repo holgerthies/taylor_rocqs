@@ -1,14 +1,21 @@
+From Coq Require Import QArith.
 Require Import combinatorics.
 Require Import algebra archimedean.
 From Coq Require Import Setoid.
 Require Import
+  CoRN.reals.Q_in_CReals
+  CoRN.reals.fast.CRFieldOps
+  CoRN.reals.fast.CRArith
+  CoRN.algebra.CFields
   CoRN.model.totalorder.QposMinMax
   CoRN.metric2.Metric
   CoRN.metric2.Complete
   CoRN.reals.faster.ARexp
   CoRN.reals.faster.ARbigD
   CoRN.reals.faster.ARQ
-  CoRN.reals.faster.ARabs.
+  CoRN.reals.faster.ARabs
+  CoRN.reals.faster.ARArith
+  CoRN.reals.CReals.
 
 
 Require Import Coq.Classes.SetoidClass.
@@ -59,6 +66,7 @@ Defined.
      apply ARtoCR_preserves_le;auto.
   Defined.
 
+   Transparent msp_car.
   Lemma inject_Q_AR_opp x :   inject_Q_AR (AQ := bigD) (- x) = - inject_Q_AR (AQ := bigD) x.
   Proof.
   Admitted.
@@ -79,114 +87,68 @@ Defined.
   - apply inject_Q_AR_inj;auto.
    - apply inject_Q_AR_le;auto.
   Defined.
-
-   #[global] Instance AR_hasAbs : HasAbs.
+   Lemma ARabs_mult (x y : ARbigD) : ARabs (x * y) == ARabs x * ARabs y. 
    Proof.
-    exists (ARabs (AQ := bigD)).
+   Admitted.
+
+   Lemma ARabs_triangle (x y : ARbigD) : le (ARabs (x + y)) (ARabs x + ARabs y).
+   Proof.
+   Admitted.
+   Lemma ARabs_nonneg (x : ARbigD) : le 0 (ARabs x).
+   Proof.
+   Admitted.
+
+   Lemma ARabs_zero (x : ARbigD) : ARabs x == 0 <-> x == 0.
+   Proof.
+   Admitted.
+
+   #[global] Instance AR_hasAbs : (HasAbs (A := ARbigD)).
+   Proof.
+   exists ARabs.
     - intros a b ->;reflexivity.
-    - intros;apply Qabs_pos;auto.
-    - intros;apply Qabs_neg;auto.
-    - intros;apply Qabs_Qmult;auto.
-    - intros;apply Qabs_triangle.
-    - intros; apply Qabs_nonneg.
-    - intros.
-      simpl.
-      apply Qabs_case;intros;split;intros;auto;lra.
+    - intros;apply ARabs_pos;auto.
+    - intros;apply ARabs_neg;auto.
+    - intros;apply ARabs_mult;auto.
+    - intros;apply ARabs_triangle.
+    - intros; apply ARabs_nonneg.
+    - intros;apply ARabs_zero.
   Defined.
 
-   #[global] Instance Q_ArchimedeanField : ArchimedeanField.
+   Lemma AR_0_1_distinct : not (0 == 1).
+   Proof.
+   Admitted.
+
+   Definition AR_b' (x : ARbigD) : Q :=  ('(approximate x (QabsQpos 1)) + 1).
+   Lemma AR_b_spec (x : ARbigD) : ARle x (inject_Q_AR (AR_b' x)).
+   Proof.
+      unfold AR_b'.
+   Admitted.
+
+
+   #[global] Instance AR_ArchimedeanField : ArchimedeanField.
    Proof.
      constructor;simpl;intros; try lra.
-    - intros;apply Qmult_le_0_compat;auto.
-    - intros.
-      destruct (Qarchimedean x).
-      exists (Pos.to_nat x0).
-      rewrite <-ntimes_embed.
-      simpl.
-      rewrite positive_nat_Z.
-      apply Qlt_le_weak.
-      apply q.
+     - apply AR_0_1_distinct.
+     - apply ARplus_le_compat_r;auto.
+     - apply AR_mult_0_le_compat;auto.
+     - exists (Z.to_nat (Qround.Qceiling (AR_b' x))).
+     rewrite <-ntimes_embed.
+     rewrite embNatQ.
+     simpl.
+     apply (ARle_trans _ (inject_Q_AR (AR_b' x))).
+     apply AR_b_spec.
+     apply inject_Q_AR_le.
+     apply (Qle_trans _ ((Qround.Qceiling (AR_b' x)))%Q).
+     apply Qround.Qle_ceiling.
+     rewrite <-Q.Zle_Qle.
+     enough (forall z, (z <= Z.to_nat z)%Z) by auto.
+     intros.
+     destruct (Z.le_ge_cases z 0).
+     rewrite Z.Zto_nat_nonpos;auto.
+     rewrite Z2Nat.id;auto;lia.
    Defined.
-  #[global] Instance AR_totalOrder : algebra.TotalOrder.
-  Proof.
-    exists (fun x y => (ARle x y)); intros;simpl;auto.
-    intros a b Heq c d Heq';rewrite Heq, Heq';split;auto.
-     apply ARtoCR_preserves_le;auto.
-     apply orders.dec_from_lt_dec_obligation_1;auto.
-     apply ARtoCR_preserves_le;auto.
-     apply AR_total.
-  Defined.
-
-  #[global] Instance AR_totallyOrderedField : TotallyOrderedField.
-  Proof.
-    constructor;simpl;intros;auto.
-    apply ARplus_le_compat_r;auto.
-    apply AR_mult_0_le_compat;auto.
-  Defined.
 
 
-  Definition inv_Sn_ARbigD (n : nat) : ARbigD :=  (inject_Q_AR ( / inject_Z (Z.of_nat (S n)))).
-  #[global] Instance invSn : Sn_invertible.
-  Proof.
-    exists inv_Sn_ARbigD.
-    intros.
-    enough (forall m, ntimes m 1 == inject_Q_AR (inject_Z (Z.of_nat m))) as ->.
-    {
-      simpl.
-      unfold inv_Sn_ARbigD.
-      rewrite <-inject_Q_AR_1.
-      rewrite <-inject_Q_AR_mult.
-      apply inject_Q_AR_wd.
-      rewrite Qmult_inv_r;try reflexivity.
-      unfold Qeq;simpl;lia.
-    }
-    intros.
-    induction m.
-    simpl;rewrite inject_Q_AR_0;reflexivity.
-    simpl.
-    rewrite IHm.
-    rewrite <-inject_Q_AR_1.
-    rewrite <-inject_Q_AR_plus.
-    apply inject_Q_AR_wd.
-    replace 1%Q with (inject_Z 1%Z) by auto.
-    rewrite <-inject_Z_plus.
-    apply inject_Z_injective.
-    lia.
-  Defined.
-
-Transparent msp_car.
-
-  Lemma ARabs_zero (x : ARbigD) :   ARabs x == 0 -> x == 0.
-  Proof.
-  Admitted.
-
-Lemma magic : False.
-Admitted.
-
-  #[global] Instance AR_norm : NormedSemiRing (A := ARbigD).
-  Proof.
-    exists (ARabs);contradict magic.
-
-   (* Opaque msp_car ARabs. *)
-   (*  intros;simpl. *)
-   (*  intros a b Heq. *)
-   (*  rewrite Heq;auto. *)
-   (*  intros. *)
-   (*  simpl. *)
-  Defined.
-
- #[global] Instance ArchimedeanFieldQ : algebra.ArchimedeanField (A := ARbigD).
-  Proof.
-    unshelve eapply algebra.Build_ArchimedeanField.
-    - intros.
-      simpl.
-      simpl in H.
-      contradict magic.
-   - contradict magic.
-   - intros.
-     exists 1%nat.
-     contradict magic.
-  Defined.
 
 Require Import polynomial.
 Require Import examples.
@@ -223,6 +185,9 @@ Definition approx_index (e : Q)  := 4%nat. (* S (Z.to_nat (Qdlog.Qdlog2 (Qinv e)
     intros.
     unfold to_reg.
     Admitted.
+
+  Lemma magic : False.
+  Admitted.
 
   #[global] Instance constrComplete : (ConstrComplete (A := ARbigD)).
   Proof.
@@ -264,17 +229,17 @@ Definition exp10 := (Fi_fast exp_example.(pf) 5 0).
 
 Definition exp_taylor10 := Fi_to_taylor exp10 exp_example.(py0).
 
-Definition exp_approx0 : ARbigD :=(ARcompress  (eval_poly exp_taylor10 (inv_Sn_ARbigD 1))).
+Definition exp_approx0 : ARbigD :=(ARcompress  (eval_poly exp_taylor10 (inv_Sn 1))).
 
 Fixpoint exp_continue0 (n : nat) := match n with
-                          | 0%nat => (ARcompress (eval_poly exp_taylor10 (inv_Sn_ARbigD 1)))
-                          | (S n') => (ARcompress (eval_poly (Fi_to_taylor exp10 (tuple_cons (exp_continue0 n') nil_tuple)) (inv_Sn_ARbigD 1)))
+                          | 0%nat => (ARcompress (eval_poly exp_taylor10 (inv_Sn 1)))
+                          | (S n') => (ARcompress (eval_poly (Fi_to_taylor exp10 (tuple_cons (exp_continue0 n') nil_tuple)) (inv_Sn 1)))
                                        end.
 Definition test0 := (approximate exp_approx0 (Qpos2QposInf (QabsQpos (q 1 100)))).
 Time Eval vm_compute in test0.
 
 
-Definition testc0 := (approximate (exp_continue0 1) (Qpos2QposInf (QabsQpos (q 1 3)))).
+Definition testc0 := (approximate (exp_continue0 2) (Qpos2QposInf (QabsQpos (q 1 3)))).
 
 Time Eval vm_compute in testc0.
 Require Import CoRN.ode.Picard.

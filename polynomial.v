@@ -1150,7 +1150,7 @@ Definition eval_tuple {R} `{R_rawRing : RawRing (A:=R)} {n} (p : @mpoly R n) (t 
 Proof.
    induction n.
    apply p.
-   destruct (destruct_tuple t) as [hd [tl P]].
+   destruct (destruct_tuple_cons t) as [hd [tl P]].
    pose proof (p.{hd}) as p0.
    apply (IHn p0 tl).
 Defined.
@@ -1159,7 +1159,7 @@ Defined.
   Proof.
     intros a b H0.
     induction n; simpl;auto.
-    destruct (destruct_tuple t) as [x0 [tl P]].
+    destruct (destruct_tuple_cons t) as [x0 [tl P]].
     apply IHn.
     apply eval_proper;auto.
   Defined.
@@ -1180,25 +1180,25 @@ Defined.
      induction n;intros.
      simpl;auto.
      simpl.
-     destruct (destruct_tuple c) as [c0 [ctl Pc]].
-     destruct (destruct_tuple d) as [d0 [dtl Pd]].
+     (* destruct (destruct_tuple c) as [c0 [ctl Pc]]. *)
+     (* destruct (destruct_tuple d) as [d0 [dtl Pd]]. *)
      destruct (destruct_tuple_cons c) as [ch [t0 ->]].
      destruct (destruct_tuple_cons d) as [dh [t1 ->]].
-     rewrite <-proj1_sig_tuple_cons in Pc.
-     rewrite <-proj1_sig_tuple_cons in Pd.
-     apply Subset.subset_eq in Pc.
-     apply Subset.subset_eq in Pd.
-     apply tuple_cons_ext in Pc.
-     apply tuple_cons_ext in Pd.
-     destruct Pc as [eq1 ->].
-     destruct Pd as [eq2 ->].
-     apply tuple_cons_equiv in H1.
-     enough (a.{c0} == b.{d0}).
+     (* rewrite <-proj1_sig_tuple_cons in Pc. *)
+     (* rewrite <-proj1_sig_tuple_cons in Pd. *)
+     (* apply Subset.subset_eq in Pc. *)
+     (* apply Subset.subset_eq in Pd. *)
+      apply tuple_cons_equiv in H1.
+     (* apply tuple_cons_ext in Pd. *)
+     (* destruct Pc as [eq1 ->]. *)
+     (* destruct Pd as [eq2 ->]. *)
+     (* apply tuple_cons_equiv in H1. *)
+     enough (a.{ch} == b.{dh}).
      apply IHn;auto.
      apply H1.
      unfold eval_mpoly.
      apply eval_proper2;auto.
-     rewrite <-eq1, <-eq2.
+     (* rewrite <-eq1, <-eq2. *)
      apply const_to_mpoly_proper;auto.
      apply H1.
   Qed.
@@ -1212,7 +1212,7 @@ Defined.
   Proof.
     revert x.
     induction n;intros;simpl; try ring; try reflexivity.
-    destruct (destruct_tuple x) as [x0 [tl P]].
+    destruct (destruct_tuple_cons x) as [x0 [tl P]].
     unfold eval_mpoly at 1.
     rewrite pmeval_proper; try apply sum_polyf_spec.
     rewrite IHn.
@@ -1224,18 +1224,18 @@ Defined.
   Proof.
     revert x.
     induction n;intros;simpl; try ring; try reflexivity.
-    destruct (destruct_tuple x) as [x0 [tl P]].
+    destruct (destruct_tuple_cons x) as [x0 [tl P]].
     rewrite pmeval_proper; try apply mult_polyf_spec.
     rewrite IHn.
     simpl.
     apply mul_proper;rewrite pmeval_proper;try apply const_to_mpoly_spec;reflexivity.
   Qed.
 
-  Lemma zero_poly_eval {R} `{R_semiRing : SemiRing (A:=R)}  {n} (x : @tuple n R)  : eval_tuple 0 x == 0.
+  Lemma zero_poly_eval {R} `{R_rawRing : RawRing (A:=R)}  {n} (x : @tuple n R)  : eval_tuple 0 x = 0.
   Proof.
     revert x.
     induction n;intros;simpl; try ring;try reflexivity.
-    destruct (destruct_tuple x) as [x0 [tl P]].
+    destruct (destruct_tuple_cons x) as [x0 [tl P]].
     rewrite IHn;reflexivity.
   Qed.
 
@@ -1243,39 +1243,43 @@ Defined.
   Proof.
     revert a x.
     induction n;intros;simpl;try reflexivity.
-    destruct (destruct_tuple x) as [x0 [tl P]].
+    destruct (destruct_tuple_cons x) as [x0 [tl P]].
     unfold eval_mpoly.
     simpl.
     rewrite mpoly_add_spec.
     rewrite mpoly_mul_spec.
     rewrite !IHn.
-    rewrite zero_poly_eval.
+    setoid_rewrite zero_poly_eval.
     rewrite mul0.
     rewrite add0.
     reflexivity.
   Qed.
 
+  Lemma eval_tuple_cons_simpl {R} `{R_rawRing : RawRing (A:=R)} {m}  (p : @mpoly R (S m)) hd (tl : R^m) : eval_tuple (p : mpoly (S m)) (tuple_cons hd tl) = eval_tuple (eval_mpoly p hd) tl.
+  Proof.
+    simpl.
+    destruct (destruct_tuple_cons (tuple_cons hd tl)) as [h0 [t0 P0]]. 
+    apply tuple_cons_ext in P0.
+    destruct P0 as [-> ->]. 
+    reflexivity.
+  Qed.
   Lemma eval_tuple_cons {R} `{R_semiRing : SemiRing (A:=R)} {m} (p0 : @mpoly R m) (p : @mpoly R (S m)) hd (tl : R^m) : eval_tuple ((p0 :: p) : mpoly (S m)) (tuple_cons hd tl) == eval_tuple p0 tl + hd * (eval_tuple p (tuple_cons hd tl)).
   Proof.
     simpl.
-    destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
-    setoid_replace t0 with tl.
+     destruct (destruct_tuple_cons (tuple_cons hd tl)) as [h0 [t0 P0]]. 
+    apply tuple_cons_ext in P0.
+    destruct P0.
+    replace t0 with tl by auto.
     unfold eval_mpoly.
     simpl.
+
     rewrite mpoly_add_spec.
+
     apply ring_eq_plus_eq; try reflexivity.
     rewrite mpoly_mul_spec.
     apply ring_eq_mult_eq;try reflexivity.
     rewrite const_to_mpoly_eval.
-    rewrite proj1_sig_tuple_cons in P0.
-    injection P0.
-    intros _ ->;reflexivity.
-    apply (tuple_nth_ext' _ _ 0 0).
-    intros.
-    destruct t0; destruct tl.
-    simpl in *.
-    injection P0.
-    intros -> _.
+    rewrite H0.
     reflexivity.
   Qed.
  Notation "p .[ x ]" := (eval_tuple  p x) (at level 3, left associativity).
@@ -1532,6 +1536,8 @@ Section MultiPolyComposition.
      + unfold mpoly_composition.
        rewrite to_mmpoly_zero.
        rewrite !zero_poly_eval.
+       setoid_rewrite zero_poly_eval.
+       simpl.
        reflexivity.
      +  rewrite mpoly_composition_cons.
         rewrite mpoly_add_spec.
@@ -2385,19 +2391,20 @@ Defined.
 
   Lemma poly_id_spec {m} hd (tl : A^m) :   ([0; 1] : mpoly (S m)) .[ tuple_cons hd tl] == hd. 
     simpl.
-    destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
+    destruct (destruct_tuple_cons (tuple_cons hd tl)) as [h0 [t0 P0]].
     unfold eval_mpoly.
     simpl.
     rewrite mul0,add0,mul1,addC,add0.
     rewrite const_to_mpoly_eval.
-    rewrite proj1_sig_tuple_cons in P0.
-    injection P0; intros _ ->;reflexivity.
+    apply tuple_cons_ext in P0.
+    destruct P0.
+    rewrite H1;reflexivity.
   Qed.
 
   Lemma eval_tuple_emb {m} (p : mpoly m) hd (tl : A^m) : eval_tuple ([p] : mpoly (S m)) (tuple_cons hd tl) == eval_tuple p tl.
   Proof.
     simpl.
-    destruct (destruct_tuple (tuple_cons hd tl)) as [h0 [t0 P0]].
+    destruct (destruct_tuple_cons (tuple_cons hd tl)) as [h0 [t0 P0]].
     setoid_replace t0 with tl.
     simpl.
     setoid_replace (p + const_to_mpoly m h0 * 0) with p.
@@ -2555,6 +2562,18 @@ Defined.
      apply poly_comp_diff1;auto.
    - intros. apply poly_comp_diff0;auto.
   Defined. 
+
+  Definition shift_mpoly {d e} (p : (@mpoly A (S d))^e ) (y0 : A^(S d)) : (@mpoly A (S d))^e.
+Proof.
+   destruct (seq_to_tuple (def := 0) (fun i => (poly_comp1  (m:=(S d)) i) + (const_to_mpoly (S d) y0\_i)) (S d)). 
+   apply (tuple_map (fun p => mpoly_composition p x) p).
+ Defined.
+
+  Definition shift_mpoly_fun {d e} (p : (@mpoly A (S d))^e ) : (@mpoly A (S d + S d))^e.
+Proof.
+   destruct (seq_to_tuple (def := 0) (fun i => (poly_comp1  (m:=(S d+ S d)) i) + poly_comp1 (m := S d + S d ) (S d + i)) (S d)). 
+   apply (p \o x).
+ Defined.
 End PartialDiffAlgebra.
 Notation "A {x ^ d }" := (@mpoly A d) (at level 2).
 Section Evaluation.
@@ -2569,7 +2588,7 @@ Section Evaluation.
      intros.
      rewrite H0, H1.
      reflexivity.
-   - apply zero_poly_eval.
+   - rewrite zero_poly_eval;reflexivity.
    - simpl.
      apply mpoly_add_spec.
     - simpl.
@@ -2656,4 +2675,5 @@ Section Evaluation.
 Defined.
 
 End Evaluation.
+
 

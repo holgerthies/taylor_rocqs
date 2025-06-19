@@ -9,7 +9,7 @@ From Coq Require Import Qpower.
 From Coq Require Import Qabs.
 From Coq Require Import Qround.
 Require Import odebounds.
-Require Import realanalytic.
+Require Import realanalytic pivp.
 Require Import abstractpowerseries.
 Open Scope algebra_scope.
 Open Scope fun_scope.
@@ -33,7 +33,7 @@ Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 
 (** exponential function (1d) **)
 
-Definition exp_example := exp_ivp (A := Q).
+Definition exp_example := convert_pivp exp_ivp (A := Q).
 
 Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 
@@ -42,10 +42,13 @@ Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 (* order 20 approximation *)
 Definition exp_taylor := taylor_poly exp_analytic 0 20.
 (*evaluate at 1/2 *)
-Definition exp_approx1 := (eval_poly exp_taylor ((1#2 ))).
+Definition exp_approx1 : Q := (eval_poly exp_taylor ((1#2 ))).
 Eval vm_compute in (taylor_error exp_analytic 2 10).
 Definition exp_approx1' := (rough_approx exp_approx1 520).
-Compute exp_approx1'.
+Compute exp_approx1.
+Require Extraction.
+Extraction Language OCaml.
+Extraction "test" exp_approx1.
  Definition exp_cont1  := analytic_poly exp_example.(pf) t(exp_approx1').
 
 Definition exp_taylor2 := taylor_poly exp_cont1 0 20.

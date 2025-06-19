@@ -211,6 +211,18 @@ Section Sums.
     intros.
     apply H2;lia.
   Qed.
+
+  Lemma sum_fin (f : nat -> A) m : (forall i, i >= m  -> f i == 0) -> forall d, (m <= d) -> (sum f d) == (sum f m). 
+  Proof.
+    intros.
+    induction d.
+    assert (m = 0)%nat as -> by lia; reflexivity.
+    assert (m <= d \/ m = S d) as [Hd| ->] by lia;rewrite !sum_S.
+    rewrite IHd;auto.
+    rewrite H1; try lia;ring;auto.
+    reflexivity.
+  Qed.
+
 End Sums.
 
 Class PartialDifferentialRing  `{R_semiRing : SemiRing}:= {

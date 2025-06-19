@@ -312,6 +312,7 @@ Section FunctionSpace.
     }.
 
 End FunctionSpace.
+
 Section AbstractFunctionTheory.
 
   Context `{AbstractFunctionSpace}.

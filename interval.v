@@ -2,8 +2,8 @@
 Interval version of the ODE solver.
 Uses coq-interval for operations on floating point intervals.
  *)
-
 From Coq Require Import QArith.
+Require Import pivp.
 Require Import Qreals.
 Require Import combinatorics.
 Require Import algebra.
@@ -276,49 +276,62 @@ Proof.
   apply (FI.F.max f0 (IHd ft)).
 Defined.
 
+Definition max_coeff {d} (p : @mpoly I d) : F.
+Proof.
+  induction d.
+  apply (FI.upper (FI.abs p)).
+  induction p.
+  apply 0.
+  apply (SFBI2.max (IHd a) IHp).
+Defined.
+
+Definition tuple_max {d} (t : F^d) : F.
+Proof.
+  induction d.
+  apply 0.
+  destruct (destruct_tuple_cons t) as [t0 [tt P]].
+  apply (SFBI2.max t0 (IHd tt)).
+Defined.
+
+Definition max_coefft {d e} (p : @mpoly I d ^ e) := tuple_max (tuple_map max_coeff p).
+
+   Definition poly_M {d e} (p : @mpoly I (S d) ^e) (y0 : I^(S d)) : F := let p' := (shift_mpoly p y0) in (max_coefft p').
+ 
+   Definition isolution_r {d e} (p :@mpoly I (S d)^e)(y0  : I^(S d)) := (FI.F.div_DN prec 1 ((FI.F.fromZ (Z.of_nat (S (S d)))) *  poly_M p y0)).
+
 Section QIVP.
    Context {d: nat} (p : (mpoly (A:=Q) (S d))^(S d)).
 
    Definition pi := Q2Ipolyt p.
    Definition abs_pi := tuple_map poly_abs pi.
 
-   Definition poly_Mi (y0 : I^(S d)) i := FI.upper (FI.abs (eval_tuple (abs_pi\_i) (tuple_map (add_error (FI.F.fromZ 1)) y0))).
+   (* Definition poly_Mi (y0 : I^(S d)) i := FI.upper (FI.abs (eval_tuple (abs_pi\_i) (tuple_map (add_error (FI.F.fromZ 1)) y0))). *)
 
-   Definition poly_M (y0 : I^(S d)) := (pos_tuple_max (proj1_sig (seq_to_tuple (def := 0) (poly_Mi y0) (S d)))).
-   Definition isolution_r (y0  : I^(S d)) := (FI.F.div_DN prec 1 ((FI.F.fromZ (Z.of_nat (S (S d)))) *  poly_M y0)).
+   (* Definition poly_M (y0 : I^(S d)) := (pos_tuple_max (proj1_sig (seq_to_tuple (def := 0) (poly_Mi y0) (S d)))). *)
 
-  Definition itail_error  (y0 : I^(S d)) (fact : positive) (n : nat) : F.
-  Proof.
-     remember (SFBI2.div_UP prec 1 (SFBI2.fromZ (Zpos fact))) as x.
-     remember (SFBI2.sub_UP prec 1 x) as y.
-     apply  ((FI.Fpower_pos_UP prec x (Pos.of_nat (S n))) * y).
-  Defined.
+
+  Definition itail_error  (y0 : I^(S d)) (fact : positive) (n : nat) : F := let x :=  (SFBI2.div_UP prec 1 (SFBI2.fromZ (Zpos fact))) in  let y:= (SFBI2.sub_UP prec 1 x) in  ((FI.Fpower_pos_UP prec x (Pos.of_nat (S n))) * y).
 
 
   Fixpoint ode_trajectory (t0 : I) (y0 : I^(S d)) (order : nat) (step_factor : positive) (steps : nat) :   list (I^(S (S d))) :=
     match steps with
     | 0%nat => cons (tuple_cons t0 y0) nil
-    | (S n) => let r := (isolution_r y0) in let t := (FI.div prec (singleton r) (singleton (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 t order) in ode_trajectory (t0+t) (tuple_map (add_error (itail_error p step_factor order)) p) order step_factor n
+    | (S n) => let r := (isolution_r pi y0) in let t := (FI.div prec (singleton r) (singleton (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 t order) in ode_trajectory (t0+t) (tuple_map (add_error (itail_error p step_factor order)) p) order step_factor n
     end.
   Fixpoint ode_solution (t0 : I) (y0 : I^(S d)) (t_end : F) (order : nat) (step_factor : positive) (max_steps : nat) :  I^(S (S d)) :=
     if (FI.F'.le t_end SFBI2.zero) then (tuple_cons t0 y0) else
     match max_steps with
     | 0%nat => (tuple_cons t0 y0)
-    | (S n) => let r := (isolution_r y0) in let t := (SFBI2.min t_end (FI.F.div_DN prec r (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 (singleton t) order) in ode_solution (t0+(singleton t)) (tuple_map (add_error (itail_error p step_factor order)) p) (FI.F.sub_UP prec t_end t) order step_factor n
+    | (S n) => let r := (isolution_r pi y0) in let t := (SFBI2.min t_end (FI.F.div_DN prec r (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 (singleton t) order) in ode_solution (t0+(singleton t)) (tuple_map (add_error (itail_error p step_factor order)) p) (FI.F.sub_UP prec t_end t) order step_factor n
     end.
 
   Fixpoint ode_solution_trajectory (t0 : I) (y0 : I^(S d)) (t_end : F) (order : nat) (step_factor : positive) (max_steps : nat) :  list (I^(S (S d))) :=
     if (FI.F'.le t_end SFBI2.zero) then cons (tuple_cons t0 y0) nil else
     match max_steps with
     | 0%nat => cons (tuple_cons t0 y0) nil
-    | (S n) => let r := (isolution_r y0) in let t := (SFBI2.min t_end (FI.F.div_DN prec r (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 (singleton t) order) in (cons (tuple_cons t0 y0) (ode_solution_trajectory (t0+(singleton t)) (tuple_map (add_error (itail_error p step_factor order)) p) (FI.F.sub_UP prec t_end t) order step_factor n))
+    | (S n) => let r := (isolution_r pi y0) in let t := (SFBI2.min t_end (FI.F.div_DN prec r (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 (singleton t) order) in (cons (tuple_cons t0 y0) (ode_solution_trajectory (t0+(singleton t)) (tuple_map (add_error (itail_error p step_factor order)) p) (FI.F.sub_UP prec t_end t) order step_factor n))
     end.
 
-  Fixpoint ode_trajectory' (t0 : I) (y0 : I^(S d)) (order : nat) (step_factor : positive) (steps : nat) :   list (I^(S (S d))) :=
-    match steps with
-    | 0%nat => cons (tuple_cons t0 y0) nil
-    | (S n) => let r := (isolution_r y0) in let t := (FI.div prec (singleton r) (singleton (SFBI2.fromZ (Zpos step_factor))))  in let p := (ode_isolution_partial pi y0 t order) in ode_trajectory (t0+t) p order step_factor n
-    end.
 (*    Fixpoint ode_isolution (order : nat) (step_size : Q) (steps : nat) :  I^d := *)
 (*    match steps with *)
 (*    | 0 => tuple_map Q2I y0 *)
@@ -333,24 +346,42 @@ Section QIVP.
 (* Proof. *)
 (* interval_intro (ln 2) with i_decimal. *)
 (* ). *)
+
+
 End QIVP.
-Definition exp_example := exp_ivp (A := Q).
-Definition exp_pf := Q2Ipolyt exp_example.(pf).
+
+Definition exp_example := convert_pivp Q exp_ivp.
+Definition exp_pf := Q2Ipolyt exp_example.(ivp_rhs).
 Definition exp_y0 := tuple_map Q2I exp_example.(py0).
 Definition exp_taylor10 := (ode_isolution_partial exp_pf 1 1 10).
-Definition r := singleton (isolution_r exp_ivp.(pf) 1).
+Definition r := singleton (isolution_r exp_pf t(Q2I 1000)).
 Eval vm_compute in (interval_to_string r).
 Eval vm_compute in (interval_to_cr_string r).
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 Definition t := (itail_error (d:=1)  1 2 10).
 Definition a := (add_error t 1).
 Eval vm_compute in (interval_to_cr_string a).
-Definition t' := (ode_solution_trajectory exp_ivp.(pf) 0 1 (1+1+1+1+1+1+1) 10 2 1000).
+Eval vm_compute in (interval_to_cr_string (singleton (poly_M exp_pf t(Q2I (q 100 1))))).
+(* Definition t' := (ode_solution_trajectory exp_ivp.(pf) 0 1 (1+1+1+1+1+1+1) 0 2 10000). *)
+Definition t' := (ode_solution_trajectory exp_ivp.(pf) 0 1 (Q2F 20) 10 2 400).
 
 Definition out := append "time_series;Test;x,y,z;" (output_intervals t').
 
-Redirect "data" Eval vm_compute in out.
+(* Time Eval vm_compute in t'. *)
+Time Redirect "data" Eval vm_compute in out.
                                                                     
+Definition atan_example := arctan_ivp (A := Q).
+
+Definition at_pf := Q2Ipolyt atan_example.(pf).
+Definition at_y0 := tuple_map Q2I atan_example.(py0).
+
+Definition at' := (ode_solution_trajectory atan_example.(pf) 0 (at_y0) (SFBI2.fromZ 20) 5 20 100).
+
+Definition out_at := append "time_series;Test;x,y,z;" (output_intervals at').
+
+Redirect "data" Eval vm_compute in out_at. 
+Eval vm_compute in (interval_to_cr_string (singleton (poly_M at_pf (tuple_cons (Q2I (q 3 2)) (tuple_cons 1 t(Q2I (q 2 10))))))).
+
 Definition sin_cos_example := sin_cos_ivp (A := Q).
 Definition sc_pf := Q2Ipolyt sin_cos_example.(pf).
 Definition sc_y0 := tuple_map Q2I sin_cos_example.(py0).
@@ -358,20 +389,23 @@ Definition test := (ode_solution sin_cos_example.(pf) 0 (sc_y0) 1 10 2 100).
 
 Eval vm_compute in (intervalt_to_cr_string test).
 
-Definition sc := (ode_solution_trajectory sin_cos_example.(pf) 0 (sc_y0) (1+1+1+1+1+1+1+1) 3 20 1000).
+Definition sc := (ode_solution_trajectory sin_cos_example.(pf) 0 (sc_y0) (Q2F 20) 10 10 1000).
 
 Definition out' := append "both;Test;x,y,z;" (output_intervals sc).
 
 Redirect "data" Eval vm_compute in out'.
 
 Definition vdp_example := vdp_ivp (A := Q) (q 1 2).
+
 (* Definition test_vdp := (ode_solution vdp_example.(pf) 0 (tuple_map Q2I (vdp_example.(py0))) 1 10 2 100). *)
 (* Eval vm_compute in (intervalt_to_cr_string test_vdp). *)
 
-Definition vdp_y0 := tuple_map Q2I (tuple_cons (q 1 100) (tuple_cons (q 0 10) nil_tuple)).
-Definition vdp := (ode_solution_trajectory vdp_example.(pf) 0 vdp_y0 ((1+1)*(1+1)*(1+1)*(1+1)*(1+1)*(1+1)) 15 2 400).
+Definition vdp_y0 := tuple_map Q2I (tuple_cons 0 (tuple_cons (q 1 10) nil_tuple)).
+Eval vm_compute in ((vdp_example.(pf))).
+Definition vdp := (ode_solution_trajectory vdp_example.(pf) 0 vdp_y0 (Q2F 30) 15 60 10000).
 
-Definition out'' := append "both;Test;x,y,z;" (output_intervals vdp).
+
+Definition out'' := append "both;Van der Pol Oscillator;x,$\dot x$;" (output_intervals vdp).
 
 Redirect "data" Eval vm_compute in out''.
 
@@ -380,7 +414,7 @@ Definition lorenz_example := lorenz_ivp (A := Q) ((q 10 1)) (q 28 1) (q 8 3).
 Definition test_lorenz := (ode_solution lorenz_example.(pf) 0 (tuple_map Q2I (lorenz_example.(py0))) 1 10 2 10).
 
 Definition lorenz_y0 := tuple_map Q2I lorenz_example.(py0).
-Definition lorenz := (ode_solution_trajectory lorenz_example.(pf) 0 lorenz_y0 (SFBI2.fromZ 2) 10 100 10).
+Definition lorenz := (ode_solution_trajectory lorenz_example.(pf) 0 lorenz_y0 (SFBI2.fromZ 2) 10 10 10000).
 
 Definition out''' := append "both;Test;x,y,z;" (output_intervals lorenz).
-Redirect "data" Eval native_compute in out'''.
+Redirect "data" Eval vm_compute in out'''.

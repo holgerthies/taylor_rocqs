@@ -12,7 +12,7 @@ From Coq Require Import Qpower.
 From Coq Require Import Qabs.
 From Coq Require Import Qround.
 Require Import odebounds.
-Require Import realanalytic.
+Require Import realanalytic pivp.
 Require Import abstractpowerseries.
 From Coq Require Import ConstructiveCauchyAbs.
 Open Scope algebra_scope.
@@ -33,8 +33,9 @@ Section Examples.
 
 (** exponential function (1d) **)
 
-Definition exp_example := exp_ivp (A := RQ).
+Definition exp_example := convert_pivp (A:=RQ) exp_ivp.
 
+Require Import pivp.
 Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 
 (* First compute finite Taylor polynomial *)
@@ -43,18 +44,19 @@ Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 Definition exp_taylor := taylor_poly exp_analytic 0 20.
 
 (*evaluate at 1/2 *)
-Definition exp_approx := (eval_poly exp_taylor (inject_Q (1#2 ))).
-Compute (seq (exp_approx) (-10)).
+Definition exp_approx := (eval_poly exp_taylor (inject_Q 0.5)).
+Time Eval vm_compute in (seq (exp_approx) (-10)).
 
 (* now with guaranteed error bound  at max time *)
 Definition exp_exact := (ivp_solution_max exp_analytic).
 
 (* prints the time and the value as pair *)
-Compute (seq_tuple (exp_exact) (-15)).
+Eval vm_compute in (seq_tuple (exp_exact) (-15)).
+
 
 (** sine/cosine  (2d) **)
 
-Definition sin_cos_example := sin_cos_ivp (A := RQ).
+Definition sin_cos_example := convert_pivp (A:=RQ) sin_cos_ivp.
 
 Definition sin_cos_analytic  := analytic_poly sin_cos_example.(pf) sin_cos_example.(py0).
 
@@ -74,15 +76,15 @@ Compute (seq (cos_approx) (-10)).
 Definition sin_cos_exact := (ivp_solution_max sin_cos_analytic).
 
 (* prints the time and the value as pair *)
-Compute (seq_tuple (sin_cos_exact) (-5)).
 
 (*trajectory *)
 
 Definition sin_cos_trajectory := (pivp_trajectory sin_cos_example.(pf) (inject_Q 0) sin_cos_example.(py0) 1).
-Compute (seq_trajectory (sin_cos_trajectory) 3).
+
+Eval vm_compute in (seq_trajectory (sin_cos_trajectory) 3).
 (** tan function (1d) **)
 
-Definition tan_example := tan_ivp (A := RQ).
+Definition tan_example := convert_pivp tan_ivp (A := RQ).
 
 Definition tan_analytic  := analytic_poly tan_example.(pf) tan_example.(py0).
 
@@ -93,19 +95,19 @@ Definition tan_taylor := taylor_poly tan_analytic 0 5.
 
 (*evaluate at 1/2 *)
 Definition tan_approx := (eval_poly tan_taylor (inject_Q (1#2 ))).
-Compute (seq (tan_approx) (-10)).
+Time Eval vm_compute in (seq (tan_approx) (-10)).
 
 (* now with guaranteed error bound  at max time *)
 Definition tan_exact := (ivp_solution_max tan_analytic).
 
 (* prints the time and the value as pair *)
 
-Compute (seq_tuple (tan_exact) (-1)).
+Time Eval vm_compute in (seq_tuple (tan_exact) (-1)).
 
 
 (** van der pol oscillator (2d) **)
 
-Definition vdp_example := vdp_ivp (A := RQ) (inject_Q (1#2)).
+Definition vdp_example := convert_pivp (A := RQ) (vdp_ivp 0.5).
 
 Definition vdp_analytic  := analytic_poly vdp_example.(pf) vdp_example.(py0).
 
@@ -118,8 +120,8 @@ Definition vdp_taylor2 := taylor_poly vdp_analytic 1 5.
 (*evaluate at 1/2 *)
 Definition vdp1_approx := (eval_poly vdp_taylor1 (inject_Q (1#2 ))).
 Definition vdp2_approx := (eval_poly vdp_taylor1 (inject_Q (1#2 ))).
-Compute (seq (vdp1_approx) (-10)).
-Compute (seq (vdp2_approx) (-10)).
+Time Eval vm_compute in (seq (vdp1_approx) (-10)).
+Time Eval vm_compute in  (seq (vdp2_approx) (-10)).
 
 (* now with guaranteed error bound  at max time *)
 Definition vdp_exact := (ivp_solution_max vdp_analytic).
@@ -131,7 +133,7 @@ Definition vdp_exact := (ivp_solution_max vdp_analytic).
 
 (** Lorenz system (3d) **)
 
-Definition lorenz_example := lorenz_ivp (A := RQ) (inject_Q (10)) (inject_Q 28) (inject_Q (8#3)).
+Definition lorenz_example := convert_pivp (A:=RQ) (lorenz_ivp 10 28 (8#3)).
 
 Definition lorenz_analytic  := analytic_poly lorenz_example.(pf) lorenz_example.(py0).
 
@@ -146,14 +148,14 @@ Definition lorenz_taylor3 := taylor_poly lorenz_analytic 2 5.
 Definition l1_approx := (eval_poly lorenz_taylor1 (inject_Q (1#4 ))).
 Definition l2_approx := (eval_poly lorenz_taylor2 (inject_Q (1#4 ))).
 Definition l3_approx := (eval_poly lorenz_taylor3 (inject_Q (1#4 ))).
-Compute (seq (l1_approx) (-10)).
-Compute (seq (l2_approx) (-10)).
-Compute (seq (l3_approx) (-10)).
+Time Eval vm_compute in (seq (l1_approx) (-10)).
+Time Eval vm_compute in (seq (l2_approx) (-10)).
+Time Eval vm_compute in (seq (l3_approx) (-10)).
 
 
 Definition lorenz_exact := (ivp_solution_max lorenz_analytic).
 (* prints the time and the value as pair *)
 
-Compute (seq_tuple (lorenz_exact) 0).  
+(* Compute (seq_tuple (lorenz_exact) 0).   *)
 
 End Examples.
