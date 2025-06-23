@@ -10,7 +10,9 @@ ode.v
 odebounds.v
 realanalytic.v
 pivp.v
+coqrationals.v
 coqreals.v
 examples.v
-coqrationals.v
+interval.v
+interval_string.v
 cauchyreal_examples.v

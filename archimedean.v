@@ -12,6 +12,12 @@ Declare Scope algebra_scope.
 Open Scope algebra_scope.
 Declare Scope fun_scope.
 
+Class RawFieldOps   `{RawRingWithOpp}  := {
+      inject_Q : QArith_base.Q ->  A;
+      abs : A -> A;
+      max: A -> A -> A;
+      inv_approx: A -> A;
+}.
 
 Class PartialOrder {A} `{Setoid A}:= {
       le : A -> A -> Prop;
@@ -27,21 +33,18 @@ Class PartialOrder {A} `{Setoid A}:= {
     exists Qeq.
     apply Q_Setoid.
   Defined.
-
-Class QEmbedding `{R_Ring :Ring} `{R_ordered : @PartialOrder A _} := {
-  embedQ : Q -> A ;
-  embedQ_proper :: (Proper (SetoidClass.equiv ==> SetoidClass.equiv) embedQ);
-  Q0     : embedQ 0%Q == zero ;
-  Q1     : embedQ 1%Q == one ;
-  Qplus  : forall x y, embedQ (x + y)%Q == add (embedQ x) (embedQ y) ;
-  Qmult  : forall x y, embedQ(x * y)%Q == mul (embedQ x) (embedQ y) ;
-  Qneg   : forall x, embedQ (- x)%Q == opp (embedQ x) ;
-  Qinj   : forall x y, embedQ x == embedQ y -> (x == y)%Q;
-  Qle : forall x y, (x <= y)%Q -> embedQ x <= embedQ y 
+Class QEmbedding `{R_Ring :Ring} `{R_ordered : @PartialOrder A H} `{hasOps : @RawFieldOps A _ _ _} := {
+  injectQ_proper :: (Proper (SetoidClass.equiv ==> SetoidClass.equiv) inject_Q);
+  Q0     : inject_Q 0%Q == zero ;
+  Q1     : inject_Q 1%Q == one ;
+  Qplus  : forall x y, inject_Q (x + y)%Q == add (inject_Q x) (inject_Q y) ;
+  Qmult  : forall x y, inject_Q(x * y)%Q == mul (inject_Q x) (inject_Q y) ;
+  Qneg   : forall x, inject_Q (- x)%Q == opp (inject_Q x) ;
+  Qinj   : forall x y, inject_Q x == inject_Q y -> (x == y)%Q;
+  Qle : forall x y, (x <= y)%Q -> inject_Q x <= inject_Q y
 }.
 
-Class HasAbs `{R_Ring :Ring} `{R_ordered : @PartialOrder A _} := {
-    abs : A -> A;
+Class HasAbs `{R_Ring :Ring} `{R_ordered : @PartialOrder A _} `{@RawFieldOps A _ _ _} := {
     abs_proper :: (Proper (SetoidClass.equiv ==> SetoidClass.equiv) abs);
     abs_pos : forall x, 0 <= x -> abs x == x;
     abs_neg : forall x, x <= 0 -> abs x == -x;
@@ -52,7 +55,7 @@ Class HasAbs `{R_Ring :Ring} `{R_ordered : @PartialOrder A _} := {
 
  }.
 
-Class ArchimedeanField `{emb : QEmbedding} `{hasAbs : @HasAbs A _ _ _ _ _ }     := {
+Class ArchimedeanField `{emb : QEmbedding} `{hasAbs : @HasAbs A _ _ _ _ _ _ _ }     := {
        distinct_0_1 : not (0 == 1);
        le_plus_compat : forall x y z, le x y -> le (add x z) (add y z);
        mul_pos_pos : forall x y, le zero x -> le zero y -> le zero (mul x y); 
@@ -66,7 +69,7 @@ Add Ring TRing: ComRingTheory.
 
 #[global] Instance ArchimedeanFieldNatEmb : EmbedNat (A := A).
 Proof.
-  exists (fun n => (embedQ (inject_Z (Z.of_nat n)))).
+  exists (fun n => (inject_Q (inject_Z (Z.of_nat n)))).
   simpl;exact Q0.
   intros.
   rewrite Nat2Z.inj_succ.
@@ -76,20 +79,20 @@ Defined.
 
 #[global] Instance ArchimedeanInvSn : Sn_invertible (A := A).
 Proof.
-  exists (fun n => (embedQ (1 # (Pos.of_succ_nat n)))).
+  exists (fun n => (inject_Q (1 # (Pos.of_succ_nat n)))).
   intros.
   rewrite ntimes_spec.
   simpl;ring_simplify.
   rewrite <-Qmult, <-Q1.
   unfold inject_Z.
-  apply embedQ_proper.
+  apply injectQ_proper.
   rewrite <-Qmult_frac_r.
   simpl.
   replace (Z.pos (Pos.of_succ_nat n)) with (1 * Z.pos (Pos.of_succ_nat n))%Z by lia.
   rewrite Qreduce_den_inject_Z_r.
   unfold inject_Z;reflexivity.
 Defined.
-Lemma embedQ_inv : forall x, (not (x == 0)%Q) -> embedQ (/ x)%Q * embedQ x == 1. 
+Lemma injectQ_inv : forall x, (not (x == 0)%Q) -> inject_Q (/ x)%Q * inject_Q x == 1. 
 Proof.
   intros.
   rewrite <-Qmult.
@@ -139,7 +142,7 @@ Proof.
    lra.
 Qed.
 
-Lemma embNatQ : forall n, embNat n == embedQ (inject_Z (Z.of_nat n)).
+Lemma embNatQ : forall n, embNat n == inject_Q (inject_Z (Z.of_nat n)).
 Proof.
   intros;reflexivity.
 Qed.

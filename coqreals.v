@@ -13,6 +13,7 @@ From Coq Require Import Psatz.
 From Coq Require Import List.
 From Coq Require Import ConstructiveRcomplete.
 From Coq Require Import ConstructiveLimits.
+From Coq Require Import Reals.Abstract.ConstructiveMinMax.
 (* From Coq Require Import Classical. *)
 
 (* Require Import examples. *)
@@ -37,6 +38,22 @@ Section ConstructiveReals.
     apply CRmult.
 Defined.
 
+#[global] Instance R_rawRingWithOpp: (@RawRingWithOpp (CRcarrier R) _ _).
+Proof.
+  constructor.
+  apply CRopp.
+Defined.
+
+  Definition CR_inv_approx :  CRcarrier R -> CRcarrier R.
+  Admitted.
+ #[global] Instance R_rawFieldOps: (@RawFieldOps (CRcarrier R) _ _ _).
+Proof.
+  constructor.
+  apply (CR_of_Q R).
+  apply (CRabs R).
+  apply CRmax.
+  apply CR_inv_approx.
+Defined.
 
   #[global] Instance R_comSemiRing : SemiRing (A := (CRcarrier R)).
   Proof.
@@ -55,7 +72,7 @@ Defined.
 
   #[global] Instance R_comRing : Ring (A := (CRcarrier R)).
   Proof.
-    exists (CRopp R).
+    constructor.
     apply CRopp_morph_Proper.
     apply CRplus_opp_r.
   Defined.
@@ -90,7 +107,7 @@ Defined.
 
    #[global] Instance R_embedQ : QEmbedding.
    Proof.
-     exists (CR_of_Q R); simpl;try reflexivity.
+     constructor; simpl;try reflexivity.
      - intros a b eq.
        rewrite eq;reflexivity.
     - intros;rewrite CR_of_Q_plus;reflexivity.
@@ -102,7 +119,7 @@ Defined.
 
    #[global] Instance R_hasAbs : HasAbs.
    Proof.
-    exists (CRabs R).
+    constructor.
     - intros a b ->;reflexivity.
     - intros;apply CRabs_right;auto.
     - intros;apply CRabs_left;auto.
@@ -117,6 +134,8 @@ Defined.
       rewrite CRopp_0 in H0.
       split;auto.
       rewrite H.
+      unfold abs.
+      unfold R_rawFieldOps.
       rewrite CRabs_right;[reflexivity | apply CRle_refl].
   Defined.
 
@@ -160,6 +179,7 @@ Require Import Qabs.
 Require Import Qround.
 Require Import QArith.
 Section CauchyReals.
+Print CRealLt.
 
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 (* Need to relate our definition of fast Cauchy sequence to the modulus definition *)
@@ -202,5 +222,4 @@ Proof.
     generalize dependent n.
     contradict magic.
    Defined.
-
 End CauchyReals.

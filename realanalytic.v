@@ -85,7 +85,7 @@ Section Analytic.
 
    Definition analytic_solution_ps  (F : Analytic) (i : nat) (n : nat)  : (A 0)  :=  ![n] * (Fi F.(f) n i){y0}.
 
-  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (H1 0) _ _ _ _ _  d  (f_to_ps F).
+  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (Ropp) (H1 0) _ _ _ _ _  _ d  (f_to_ps F).
 
 
   Lemma eval_sum_compat f N :  (sum f N){y0} == (sum (fun n => (f n){y0}) N).
@@ -281,7 +281,7 @@ Section Analytic.
      rewrite H7.
      reflexivity.
    Qed.
-   Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)).
+   Local Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)).
    Proof.
      setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
      rewrite <-ntimes_embed.
@@ -293,7 +293,7 @@ Section Analytic.
      ring.
    Qed.
 
-   Lemma calc2 F :  ntimes (S d) # (M F) <= npow # 2 (Nat.log2_up (S d * M F)).
+   Local Lemma calc2 F :  ntimes (S d) # (M F) <= npow # 2 (Nat.log2_up (S d * M F)).
    Proof.
       rewrite nat_pow_compat.
      setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
@@ -317,7 +317,7 @@ Section Analytic.
 
    Definition analytic_solution_r F : {ry : nat | #2 * (ntimes (S d) #F.(M)) * #F.(r) <= #ry /\ 0 < ry   }.
    Proof.
-     exists (max 1 (2*(S d) * F.(M) * F.(r)))%nat.
+     exists (Nat.max 1 (2*(S d) * F.(M) * F.(r)))%nat.
      split;try lia.
      pose proof (ntimes_int (S d ) (M F)).
      apply calc1.

@@ -22,9 +22,10 @@ Class RawRing  {A : Type} `{Setoid A}:= {
       one : A;
       add : A -> A -> A;
       mul : A -> A -> A;
-
  }.
-
+Class RawRingWithOpp `{R_rawRing :RawRing} :={
+    opp : A ->A
+  } .
 Class EmbedNat   `{R_rawRing : RawRing} := {
   embNat     : nat -> A ;
   embNat0     : embNat 0 == zero ;
@@ -76,13 +77,12 @@ Lemma ComSemiRingTheory `{A_comSemiRing : SemiRing } : semi_ring_theory 0 1 add 
     apply distrL.
 Qed.
 
-Class Ring `{R_semiRing : SemiRing} := {
-    opp : A -> A;
+Class Ring `{Ropp : RawRingWithOpp} `{R_semiRing : @SemiRing A _ _} := {
     opp_proper :: Proper (equiv ==> equiv) opp;
     addI : forall a, add a (opp a) == zero;
 }.
 
-Definition minus  `{Ring} (x y : A)  := add x (opp y).
+Definition minus  `{RawRingWithOpp} (x y : A)  := add x (opp y).
 
  #[global] Instance minus_proper `{Ring} : Proper (equiv ==> equiv ==> equiv) minus.
   Proof.
@@ -570,7 +570,7 @@ End RingTheory.
 
 Section VectorRawRing.
   Context `{RawRing}.
-  #[global] Instance  VectorRawRing m  :  RawRing (A := A^m).  
+  #[global] Instance  VectorRawRing m  :  RawRing (A := A^m).
   Proof.
   induction m;[constructor;intros; apply nil_tuple|].
   destruct IHm; constructor.
@@ -586,6 +586,11 @@ Section VectorRawRing.
     apply (tuple_cons (hd0*hd1) (mul2 tl0 tl1)).
   Defined.
 
+  #[global] Instance  VectorRawRingWithOpp m `{@RawRingWithOpp A _ _ } :  RawRingWithOpp (A := A^m).
+  Proof.
+    constructor.
+    apply (fun x => tuple_map opp x).
+  Defined.
   Lemma vec0_cons {m} : (0 : A^(S m)) = (tuple_cons 0 (0 : A^m)).
   Proof.
   simpl.
@@ -754,14 +759,14 @@ Section VectorRing.
   Qed.
   #[global] Instance  VectorRing {m}:  Ring (A := A^m).  
   Proof.
-   exists  (tuple_map opp).
+   constructor.
    apply tuple_map_proper.
    apply H0.
    intros.
    apply (tuple_nth_ext' _ _ 0 0).
    intros.
    rewrite vec_plus_spec;auto.
-   rewrite (tuple_map_nth _ _ _ _ 0);auto.
+   setoid_rewrite (tuple_map_nth _ _ _ _ 0);auto.
    rewrite addI.
    rewrite vec0_nth.
    reflexivity.

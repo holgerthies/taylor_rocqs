@@ -35,8 +35,9 @@ Section Examples.
 
 Definition exp_example := convert_pivp (A:=RQ) exp_ivp.
 
-Require Import pivp.
 Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
+Set Printing Implicit.
+Check @exp_analytic.
 
 (* First compute finite Taylor polynomial *)
 
@@ -45,15 +46,23 @@ Definition exp_taylor := taylor_poly exp_analytic 0 20.
 
 (*evaluate at 1/2 *)
 Definition exp_approx := (eval_poly exp_taylor (inject_Q 0.5)).
+Definition exp_approx' := approx_pivp exp_example (inject_Q 0.5) 20.
 Time Eval vm_compute in (seq (exp_approx) (-10)).
-
+Definition a := poly_vec_bound (A:=RQ) exp_example.(pf).
+Eval vm_compute in (proj1_sig (archimedean.upper  (poly_vec_bound (exp_analytic.(f))))).
+Time Eval vm_compute in (exp_analytic.(M)).
+(* Time Eval vm_compute in (@analytic_solution_r (@mpoly RQ) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ exp_analytic). *)
+Time Eval vm_compute in (seq_tuple (inject_Q (1#2) ,exp_approx') (-10)).
 (* now with guaranteed error bound  at max time *)
 Definition exp_exact := (ivp_solution_max exp_analytic).
 
 (* prints the time and the value as pair *)
-Eval vm_compute in (seq_tuple (exp_exact) (-15)).
 
+Eval vm_compute in (seq_tuple (exp_exact) (-10)).
 
+Definition exp_approx'' := approx_pivp (Build_PIVP 1 (exp_example.(pf)) exp_approx') (inject_Q 0.5) 20.
+
+Time Eval vm_compute in (seq_tuple (inject_Q 1 ,exp_approx'') (-10)).
 (** sine/cosine  (2d) **)
 
 Definition sin_cos_example := convert_pivp (A:=RQ) sin_cos_ivp.
@@ -65,13 +74,14 @@ Definition sin_cos_analytic  := analytic_poly sin_cos_example.(pf) sin_cos_examp
 (* order 10 approximation *)
 Definition sin_taylor := taylor_poly sin_cos_analytic 0 10.
 Definition cos_taylor := taylor_poly sin_cos_analytic 1 10.
-
+Definition sin_cos_approx := approx_pivp sin_cos_example (inject_Q 0.5) 10.
 (*evaluate at 1/2 *)
 Definition sin_approx := (eval_poly sin_taylor (inject_Q (1#2 ))).
 Definition cos_approx := (eval_poly cos_taylor (inject_Q (1#2 ))).
-Compute (seq (sin_approx) (-10)).
-Compute (seq (cos_approx) (-10)).
-
+Time Eval vm_compute in (seq (sin_approx) (-10)).
+Time Eval vm_compute in (seq (cos_approx) (-10)).
+Time Eval vm_compute in (seq_tuple (inject_Q (1#2) ,sin_cos_approx)).
+(* Time Eval vm_compute in (seq (approx_nb_error (inject_nat := algebra.embedNat) sin_cos_example (inject_Q (1#34)) 10) (-10)). *)
 (* now with guaranteed error bound  at max time *)
 Definition sin_cos_exact := (ivp_solution_max sin_cos_analytic).
 
@@ -81,7 +91,7 @@ Definition sin_cos_exact := (ivp_solution_max sin_cos_analytic).
 
 Definition sin_cos_trajectory := (pivp_trajectory sin_cos_example.(pf) (inject_Q 0) sin_cos_example.(py0) 1).
 
-Eval vm_compute in (seq_trajectory (sin_cos_trajectory) 3).
+Eval vm_compute in (seq_trajectory (sin_cos_trajectory) (-3)).
 (** tan function (1d) **)
 
 Definition tan_example := convert_pivp tan_ivp (A := RQ).

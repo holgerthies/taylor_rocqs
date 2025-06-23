@@ -18,8 +18,125 @@ Require Import odebounds.
 Require Import realanalytic.
 
 
+Section PolyOde.
+
+  Context `{RawFieldOps}. 
+  
+
+  Record PIVP  {d} := {
+    pf : A{x^d}^d;
+    py0 : A^d
+  }.
+
+  Definition inject_nat n := inject_Q (QArith_base.inject_Z (Z.of_nat n)).
+  Definition inject_nat_inv (n : nat) :=inject_Q (QArith_base.Qmake 1 (Pos.of_nat n)).
+  Fixpoint inv_fact (n : nat) :=
+    match n with
+    | 0 => 1
+    | (S n') => inject_nat_inv n  * inv_fact n'
+   end.
+
+  Definition poly_to_ps {d} (p : A{x^d}) (k : nat^d) : A.
+  Proof.
+    induction d.
+    apply p.
+    destruct (destruct_tuple_cons k) as [hd [tl P]].
+    apply (IHd (nth hd p 0) tl).
+  Defined.
+
+  Local Definition Fi {d} (f : (tuple (S d) (@mpoly A (S d)))) (n i : nat) : list (@mpoly A (S d)).
+  Proof.
+    induction n.
+    apply (cons (poly_comp1 i) nil).
+    apply (cons (sum (fun j =>  (tuple_nth j f 0) * (poly_pdiff j (hd 0 IHn))) (S d))  IHn).
+Defined.
+
+  Definition pivp_F {d} (f : (tuple (S d) (@mpoly A (S d)))) n := proj1_sig (seq_to_tuple (def:=0) (Fi (d:=d) f n) (S d)).
+
+  Local Definition Fi_to_taylor {d} (l : list (@mpoly A (S d)))  : @poly A.
+Proof.
+  induction l.
+  apply nil.
+  apply ( IHl ++ (cons (inv_fact (Datatypes.length IHl) * (poly_to_ps a 0)) nil)).
+  Defined.
+
+  Local Definition Fi_to_taylor' {d} (l : list (@mpoly A (S d))) (y0 : A^(S d))  : @poly A.
+Proof.
+  induction l.
+  apply nil.
+  apply ( IHl ++ (cons (inv_fact (Datatypes.length IHl) * (eval_tuple a y0)) nil)).
+  Defined.
+  Local Definition poly_taylor {d} (p : @mpoly A (S d)^(S d))  n i := Fi_to_taylor (Fi p n i).
+
+  Definition approx' {d} (p : @mpoly A (S d)^(S d))  (t : A)  ( n i : nat) : A :=  (eval_poly (poly_taylor p n i)  t) .
+
+  Definition approx_pivp_raw {d} (p : PIVP (d:=(S d))) (t : A) (n : nat) : A^(S d) := let p' := shift_mpoly p.(pf) p.(py0)  in (proj1_sig (seq_to_tuple (def := 0) (fun i => approx' p'  t  n i) (S d)))+p.(py0).
+
+  Definition poly_norm {d} (p : A{x^d}) : A.
+  Proof.
+    induction d.
+    apply (abs p).
+    induction p.
+    apply 0.
+    apply (IHp + (IHd a)).
+  Defined.
+
+
+   Definition poly_vec_bound {d} {e} (p : A{x^S d}^e)  : A.  
+   Proof.
+     induction e.
+     apply 0.
+     destruct (destruct_tuple_cons p) as [p0 [tl P]].
+     apply (max (poly_norm p0)  (IHe tl)).
+   Defined.
+
+  Definition approx_nb_error {d} (p : PIVP (d := (S d))) (t_factor :A) (n : nat) : A.
+  Proof.
+    pose (p' := (shift_mpoly p.(pf) p.(py0))).
+    pose (M := poly_vec_bound p').
+    pose (M' := inject_nat ((S d)) * M).
+    (* todo *)
+    apply ( inject_nat 2 * npow (t_factor * M')  n).
+  Qed.
+
+  Definition min x y:= - (max (-x) (-y)).
+
+  Definition approx_pivp_step {d} (p : PIVP (d:=(S d))) (t : A) (step_factor : A) (n : nat) : A * A^(S d) * A.
+  Proof.
+    pose (p' := (shift_mpoly p.(pf) p.(py0))).
+    pose (M := inject_nat (S d) * poly_vec_bound p').
+    pose (r := (inject_nat 2*M)).
+    pose (t1 := min t ((inv_approx r*step_factor))).
+    pose (t_fact := (t1 * r)).
+    pose (y1 := proj1_sig (seq_to_tuple (def := 0) (fun i => approx' p'  t1  n i) (S d))+p.(py0)).
+    pose (err := M*inv_approx (1-t_fact) * npow (t_fact ) (S n)).
+    apply (t1,y1,err).
+  Defined.
+
+  Definition approx_pivp_step' {d} (p : A{x^(S d)}^(S d)) (y0 : A^(S d)) (Fis : list (@mpoly A (S d))^(S d)) (t : A) (step_factor : A) (n : nat) : A * A^(S d) * A.
+  Proof.
+    pose (p' := (shift_mpoly p y0)).
+    pose (M := inject_nat (S d) * poly_vec_bound p').
+    pose (r := (inject_nat 2*M)).
+    pose (t1 := (inv_approx r*step_factor)).
+    pose (t_fact := step_factor).
+    pose (y1 := proj1_sig (seq_to_tuple (def := 0) (fun i => eval_poly (Fi_to_taylor' Fis\_i y0)  t1) (S d))).
+    pose (err := M*inv_approx (1-t_fact) * npow (t_fact ) (S n)).
+    apply (t1,y1,err).
+  Defined.
+  Definition update_y0 {d} (p : PIVP (d:=d)) (y0 : A^d) := Build_PIVP d p.(pf) y0.
+End PolyOde.
 Section AnalyticPoly.
+
+
   Context `{ArchimedeanField}.
+
+  Definition approx_pivp { d} := approx_pivp_raw (d := d) .
+  (* Local Fixpoint poly_taylor_acc {d} (p: @mpoly A (S d)^(S d)) (y0 : A) n i  acc  : @mpoly A 1:= *)
+  (*   match n with *)
+  (*     | 0 => y0 :: acc *)
+  (*    | (S n') => poly_taylor_acc p y0 n' i (((Fi (A := ps (A:=A)) (tuple_map poly_to_ps p) n i) 0)  :: acc) *)
+  (*   end. *)
    Add Ring KRing: (ComRingTheory (A :=A)).
   Lemma poly_tot {d} (y0 : A^(S d)) : forall (f : @mpoly A (S d)), @in_domain _ _ _ (mpoly_setoid (S d) (A := A)) _ _ _ _ _ f y0.
   Proof.
@@ -34,30 +151,15 @@ Section AnalyticPoly.
     apply 0.
     induction p.
     apply 0.
-    apply (max (S IHp) (IHd a)).
+    apply (Nat.max (S IHp) (IHd a)).
   Defined.
 
-  Definition poly_norm {d} (p : A{x^d}) : A.
-  Proof.
-    induction d.
-    apply (abs p).
-    induction p.
-    apply 0.
-    apply (IHp + (IHd a)).
-  Defined.
 
-  Lemma max_order_cons {d} a (p : A{x^(S d)})  : max_order (a :: p : A{x^(S d)}) = max (S (max_order p)) (max_order a).
+  Lemma max_order_cons {d} a (p : A{x^(S d)})  : max_order (a :: p : A{x^(S d)}) = Nat.max (S (max_order p)) (max_order a).
   Proof.
     simpl;reflexivity.
   Qed.
 
-  Definition poly_to_ps {d} (p : A{x^d}) (k : nat^d) : A.
-  Proof.
-    induction d.
-    apply p.
-    destruct (destruct_tuple_cons k) as [hd [tl P]].
-    apply (IHd (nth hd p 0) tl).
-  Defined.
 
   Lemma poly_to_ps_cons {d} (p : A{x^(S d)}) hd tl : poly_to_ps p (tuple_cons hd tl) = poly_to_ps (nth hd p 0) tl.
   Proof.
@@ -94,13 +196,13 @@ Section AnalyticPoly.
     intros k.
     rewrite poly_to_ps_cons;reflexivity.
   Qed.
-
-  Lemma poly_norm_sum {d} (p : A{x^(S d)}) :  poly_norm p == (sum (fun i => (poly_norm (nth i p 0))) (length p)).
+  Definition poly_norm' {d} := poly_norm (d:=d) .
+  Lemma poly_norm_sum {d} (p : A{x^(S d)}) :  poly_norm'  p == (sum (fun i => (poly_norm' (nth i p 0))) (length p)).
   Proof.
     induction p.
     unfold sum;simpl;reflexivity.
     simpl length.
-    replace (poly_norm (a :: p : A{x^(S d)})) with (poly_norm (p : A{x^(S d)}) + poly_norm a) by (simpl;auto).
+    replace (poly_norm' (a :: p : A{x^(S d)})) with (poly_norm' (p : A{x^(S d)}) + poly_norm' a) by (simpl;auto).
     rewrite IHp.
     rewrite sum_S_fun.
     rewrite addC;simpl nth.
@@ -121,7 +223,7 @@ Section AnalyticPoly.
     apply le_le_plus_le;auto.
   Qed.
 
-  Lemma poly_norm_spec {d} (p : A{x^(d)}) n : sum_order (poly_to_ps p) n <= poly_norm p.
+  Lemma poly_norm_spec {d} (p : A{x^(d)}) n : sum_order (poly_to_ps p) n <= poly_norm' p.
   Proof.
     revert n.
     induction d;intros.
@@ -144,18 +246,11 @@ Section AnalyticPoly.
   Qed.
 
 
-   Definition poly_vec_bound {d} {e} (p : A{x^S d}^e)  : A.  
-   Proof.
-     induction e.
-     apply 0.
-     destruct (destruct_tuple_cons p) as [p0 [tl P]].
-     apply ((poly_norm p0) +  (IHe tl)).
-   Defined.
-
-   Lemma poly_vec_bound_spec {d} {e} (p : A{x^S d}^e) i n : i < S d -> sum_order  (poly_to_ps p\_i) n <= poly_vec_bound p.   
+  Definition poly_vec_bound' {d e} := poly_vec_bound (A:=A)  (d:=d) (e:=e).
+   Lemma poly_vec_bound_spec {d} {e} (p : A{x^S d}^e) i n : i < S d -> sum_order  (poly_to_ps p\_i) n <= poly_vec_bound' p.   
    Admitted.
 
-   Lemma poly_bound_spec {d} (p : A{x^S d}^S d) i : i < S d -> strong_bound (poly_to_ps p\_i) (to_ps (fun (n : nat) => #(proj1_sig (upper (poly_vec_bound p)))  * npow #1 n)).
+   Lemma poly_bound_spec {d} (p : A{x^S d}^S d) i : i < S d -> strong_bound (poly_to_ps p\_i) (to_ps (fun (n : nat) => #(proj1_sig (upper (poly_vec_bound' p)))  * npow #1 n)).
    Proof.
      intros.
      unfold strong_bound.
@@ -163,7 +258,7 @@ Section AnalyticPoly.
      rewrite to_ps_simpl.
      rewrite npow1; [|rewrite ntimes_embed;simpl;ring].
      rewrite mul1.
-     destruct (upper (poly_vec_bound p)) as [x P].
+     destruct (upper (poly_vec_bound' p)) as [x P].
      
      apply (le_trans _ _ _ (poly_vec_bound_spec _ _ n H1)).
      apply (le_trans _ _ _ P).
@@ -179,12 +274,12 @@ Section AnalyticPoly.
    Proof.
    Admitted.
 
-  Definition analytic_poly {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d))  : Analytic (A := mpoly) (d := d) (y0 := 0) (in_dom := poly_tot 0).
+  Definition analytic_poly {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d))  : Analytic (A := @mpoly A) (d := d) (y0 := 0) (in_dom := poly_tot 0).
   Proof.
     pose (p' := shift_mpoly p y0).
     unshelve eapply Build_Analytic.
     apply p'.
-    apply (upper (poly_vec_bound p')).
+    apply (@upper A _ _ _ _ _ _ _ _ _ _ (poly_vec_bound' p')).
     apply 1.
     intros.
     rewrite <-fun_ps_poly_ps.
@@ -192,6 +287,7 @@ Section AnalyticPoly.
     apply poly_bound_spec;auto.
   Defined.
     
+
 
    Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps  (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t ((proj1_sig (analytic_solution_logM  F )) + n + 1).
 
@@ -203,7 +299,11 @@ Section AnalyticPoly.
 
    Definition ivp_r_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))   := ((inv2 * inv_Sn (proj1_sig (analytic_solution_r (A := @mpoly A)  F)))).
 
-   Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (R_Ring := _) (R_ordered := _)  (emb := _) (hasAbs := _) (H0 := H0) }.
+   (* Lemma neighboring_error   *)
+
+   (* Definition pivp_approx_with_error {d} (p : @mpoly A d) (t : A) (n : nat) : {yt : A^t * A | dist  }. *)
+
+   Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (R_Ring := _) (R_ordered := _)  (emb := _) (hasAbs := _) (Ropp := _) (hasOps := _) (H0 := H0) }.
    Definition ivp_solution_i {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat) t  :  abs t <= (ivp_r_max F)  -> A.
    Proof.
      intros.
@@ -292,28 +392,23 @@ Record APIVP {d}:= {
     ivp_y0 : QArith_base.Q^d
   }.
 Section MakeIVP.
-Context `{ArchimedeanField}.
+Context `{RawFieldOps}.
 Definition make_poly  d (p : PolyExpr)  : (@mpoly A d).
 Proof.
   induction p.
-  - apply (const_to_mpoly d (embedQ q)).
+  - apply (const_to_mpoly d (inject_Q q)).
   - apply (poly_comp1 n).
   - apply (IHp1 + IHp2).
-  - apply (IHp1 + (opp 1) [*]IHp2).
-  - apply ((opp 1) [*]IHp).
+  - apply (IHp1 + const_to_mpoly d (opp 1) * IHp2).
+  - apply (const_to_mpoly d (opp 1) * IHp).
   - apply (IHp1 * IHp2).
   - apply (npow IHp n).
 Defined.
 Definition vecp  {e} d  (p : PolyExpr^e)  : (@mpoly A d)^e := tuple_map (make_poly d) p.
 
-Record PIVP  {d} := {
-    pf : A{x^d}^d;
-    py0 : A^d
-  }.
-
 Definition convert_pivp {d} (ivp : APIVP (d :=d)) : PIVP (d:=d) := {|
 pf := vecp d ivp.(ivp_rhs);
-py0 := tuple_map embedQ ivp.(ivp_y0);
+py0 := tuple_map inject_Q ivp.(ivp_y0);
  |}.
 
 End MakeIVP.

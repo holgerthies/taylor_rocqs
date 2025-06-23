@@ -25,6 +25,21 @@ Import ListNotations.
 Defined.
 
 
+#[global] Instance Q_rawRingWithOpp: (@RawRingWithOpp Q _ _).
+Proof.
+  constructor.
+  apply Qopp.
+Defined.
+
+ #[global] Instance Q_rawFieldOps: (@RawFieldOps Q _ _ _).
+Proof.
+  constructor.
+  apply (fun x => x).
+  apply Qabs.
+  apply Qminmax.Qmax.
+  apply Qinv.
+Defined.
+
   #[global] Instance R_comSemiRing : SemiRing (A := Q).
   Proof.
     constructor;simpl;intros; try ring.
@@ -34,7 +49,7 @@ Defined.
 
   #[global] Instance R_comRing : Ring (A := Q).
   Proof.
-    exists Qopp;intros;simpl;try ring.
+    constructor;intros;simpl;try ring.
     apply Qopp_comp.
   Defined.
   Definition Q_inv' x : (not (x == 0)) -> Q.
@@ -66,14 +81,14 @@ Defined.
 
    #[global] Instance Q_embedQ : (QEmbedding (A:=Q)).
    Proof.
-   exists (fun x => x); simpl;intros;try reflexivity;auto.
+   constructor;simpl;intros;try reflexivity;auto.
     intros a b eq.
     rewrite eq;reflexivity.
   Defined.
 
    #[global] Instance R_hasAbs : HasAbs.
    Proof.
-    exists (Qabs).
+   constructor.
     - intros a b ->;reflexivity.
     - intros;apply Qabs_pos;auto.
     - intros;apply Qabs_neg;auto.
