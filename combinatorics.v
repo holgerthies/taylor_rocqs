@@ -194,7 +194,6 @@ Section factorial.
     apply ((rising_factorial k0 n0) * (IHd kt nt)).
   Defined.
 
-  Definition inv2 := inv_Sn 1%nat.
 End factorial.
 
 Notation "[ k ! n ]" := (rising_factorial k n).

@@ -44,14 +44,18 @@ Definition exp_taylor := taylor_poly exp_analytic 0 20.
 (*evaluate at 1/2 *)
 Definition exp_approx1 : Q := (eval_poly exp_taylor ((1#2 ))).
 Eval vm_compute in (taylor_error exp_analytic 2 10).
-Definition exp_approx1' := (rough_approx exp_approx1 520).
-Compute exp_approx1.
+Definition exp_approx1' := (rough_approx exp_approx1 512).
+Time Eval vm_compute in exp_approx1.
+Time Eval vm_compute in exp_approx1'.
 Require Extraction.
 Extraction Language OCaml.
 Extraction "test" exp_approx1.
- Definition exp_cont1  := analytic_poly exp_example.(pf) t(exp_approx1').
 
-Definition exp_taylor2 := taylor_poly exp_cont1 0 20.
+Time Eval vm_compute in exp_approx1'.
+Require Extraction.
+ Definition exp_cont1  := analytic_poly exp_example.(pf) t( 123 # 12281238312 ).
+
+Definition exp_taylor2 := taylor_poly exp_cont1 0 10.
 Definition exp_approx2 := (eval_poly exp_taylor2 ((1#2 ))).
 Definition exp_approx2' := (rough_approx exp_approx2 1200).
-Compute exp_approx2'.
+Time Eval vm_compute in exp_approx2.

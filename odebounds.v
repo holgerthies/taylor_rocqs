@@ -1122,7 +1122,6 @@ Section Modulus.
   Context `{ArchimedeanField}.
   Add Ring TRing: (ComRingTheory (A := A)). 
 
-   Definition fast_cauchy_neighboring (a : nat -> A) := forall n, abs (a (S n) - a n) <= npow inv2 (S n).
 
     Definition partial_sum (a : nat^1 -> A) (x : A) (N : nat) := sum (fun n => a t(n) * npow x n) N.
 

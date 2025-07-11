@@ -30,6 +30,7 @@ Section PolyOde.
 
   Definition inject_nat n := inject_Q (QArith_base.inject_Z (Z.of_nat n)).
   Definition inject_nat_inv (n : nat) :=inject_Q (QArith_base.Qmake 1 (Pos.of_nat n)).
+
   Fixpoint inv_fact (n : nat) :=
     match n with
     | 0 => 1
@@ -101,11 +102,18 @@ Proof.
 
   Definition min x y:= - (max (-x) (-y)).
 
+
+  Definition poly_r {d} (p : @mpoly A d ^d ) (y0 : A^d):= 1.
+  Definition poly_M {d} (p : @mpoly A (S d) ^ (S d)  ) (y0 : A^(S d)):= let p' := (shift_mpoly p y0) in max 1 (poly_vec_bound p').
+
   Definition approx_pivp_step {d} (p : PIVP (d:=(S d))) (t : A) (step_factor : A) (n : nat) : A * A^(S d) * A.
   Proof.
-    pose (p' := (shift_mpoly p.(pf) p.(py0))).
-    pose (M := inject_nat (S d) * poly_vec_bound p').
-    pose (r := (inject_nat 2*M)).
+    pose (p' := (shift_mpoly p.(pf) p.(py0))). 
+    pose (M0 := (poly_M p.(pf) p.(py0))).
+    pose (r0 := (poly_r p.(pf) p.(py0))).
+
+    pose (M := (analytic_solution_M M0 r0)).
+    pose (r := inject_nat (2 * (S d)) * M0 * r0).
     pose (t1 := min t ((inv_approx r*step_factor))).
     pose (t_fact := (t1 * r)).
     pose (y1 := proj1_sig (seq_to_tuple (def := 0) (fun i => approx' p'  t1  n i) (S d))+p.(py0)).
@@ -113,18 +121,73 @@ Proof.
     apply (t1,y1,err).
   Defined.
 
-  Definition approx_pivp_step' {d} (p : A{x^(S d)}^(S d)) (y0 : A^(S d)) (Fis : list (@mpoly A (S d))^(S d)) (t : A) (step_factor : A) (n : nat) : A * A^(S d) * A.
+  Definition approx_pivp_step' {d} (p : A{x^(S d)}^(S d)) (y0 : A^(S d)) (Fis : list (@mpoly A (S d))^(S d)) (step_factor : A) (n : nat) : A * A^(S d) * A.
   Proof.
-    pose (p' := (shift_mpoly p y0)).
-    pose (M := inject_nat (S d) * poly_vec_bound p').
-    pose (r := (inject_nat 2*M)).
+    pose (M0 := (poly_M p y0)).
+    pose (r0 := (poly_r p y0)).
+    (* pose (M := (analytic_solution_M M0 r0)). *)
+    pose (r := inject_nat (2 * (S d)) * M0 * r0).
     pose (t1 := (inv_approx r*step_factor)).
     pose (t_fact := step_factor).
     pose (y1 := proj1_sig (seq_to_tuple (def := 0) (fun i => eval_poly (Fi_to_taylor' Fis\_i y0)  t1) (S d))).
-    pose (err := M*inv_approx (1-t_fact) * npow (t_fact ) (S n)).
+    pose (err := inject_nat 2 * npow (t_fact ) (S n)).
     apply (t1,y1,err).
   Defined.
+
+
   Definition update_y0 {d} (p : PIVP (d:=d)) (y0 : A^d) := Build_PIVP d p.(pf) y0.
+
+  (* Definition approx_pivp_trajectory {d} (p : A{x^(S d)}^(S d)) (y0 : A^(S d)) (t0 : A) (step_factor : A) (n steps : nat) :  list (A * A^(S d)). *)
+  (* Proof. *)
+  (*    pose (Fis := pivp_F p n). *)
+  (*    revert y0 t0. *)
+  (*    induction steps;intros. *)
+  (*    apply [(t0,y0)]. *)
+  (*    pose (y_err := approx_pivp_step' p y0 Fis step_factor n). *)
+  (*    destruct (y_err) as [[t1 y1] err]. *)
+  (*    apply ((t0, y0) :: (IHsteps y1 (t0+t1))). *)
+  (* Defined. *)
+  Definition approx_pivp_trajectory {d} (p : A{x^(S d)}^(S d)) (y0 : A^(S d)) (t0 : A) (step_factor : A) (n steps : nat) :  list (A * A^(S d)).
+  Proof.
+     (* pose (Fis := pivp_F p n). *)
+     revert y0 t0.
+     induction steps;intros.
+
+     apply [(t0,y0)].
+      pose (pi := Build_PIVP (S d) p y0).
+     pose (y_err := approx_pivp_step pi 1 step_factor n).
+     destruct (y_err) as [[t1 y1] err].
+     apply ((t0, y0) :: (IHsteps y1 (t0+t1))).
+  Defined.
+
+  Definition approx_pivp_step_size {d} (p : A{x^(S d)}^(S d)) (y0 : A^(S d))  (step_factor : A)  : A.
+  Proof.
+    pose (M0 := (poly_M p y0)).
+    pose (r0 := (poly_r p y0)).
+    pose (M := (analytic_solution_M M0 r0)).
+    pose (r := inject_nat (2 * (S d)) * M0 * r0).
+    pose (t1 := (inv_approx r*step_factor)).
+    apply t1.
+  Defined.
+
+  Definition approx_pivp_step'' {d} (p : A{x^(S d)}^(S d)) (y0 : A^(S d)) (Fis : list (@mpoly A (S d))) (t1 : A) (i : nat) : A.
+  Proof.
+    pose (y1 := eval_poly (Fi_to_taylor' Fis y0)  t1).
+    apply y1.
+  Defined.
+
+   Definition pivp_trajectory_fast {lim : (nat -> A) -> A} {d} (p : (@mpoly A (S d))^(S d)) (t0 : A) (y0 : A^(S d)) (steps : nat) :  list (A * (A^(S d))).
+   Proof.
+     pose (Fis := pivp_F p 200).
+     revert t0 y0.
+     induction steps;intros.
+     apply [(t0,y0)].
+     pose (pi := Build_PIVP (S d) p y0).
+     pose (t1 := (approx_pivp_step_size p y0 (inject_Q (QArith_base.Qmake 1 2)))).
+     pose (f := (fun i n => approx_pivp_step'' p y0 (firstn n Fis\_i) t1 i)).
+     pose proof (seq_to_tuple (def:=0) (fun i => lim (f i)) (S d)).
+     apply ((t0, y0) :: (IHsteps (t0 + t1) (proj1_sig X))).
+   Defined.
 End PolyOde.
 Section AnalyticPoly.
 
@@ -247,24 +310,19 @@ Section AnalyticPoly.
 
 
   Definition poly_vec_bound' {d e} := poly_vec_bound (A:=A)  (d:=d) (e:=e).
-   Lemma poly_vec_bound_spec {d} {e} (p : A{x^S d}^e) i n : i < S d -> sum_order  (poly_to_ps p\_i) n <= poly_vec_bound' p.   
+   Lemma poly_vec_bound_spec {d} {e} (p : A{x^S d}^e) i n : i < S d -> sum_order  (poly_to_ps p\_i) n <= poly_vec_bound p.   
    Admitted.
 
-   Lemma poly_bound_spec {d} (p : A{x^S d}^S d) i : i < S d -> strong_bound (poly_to_ps p\_i) (to_ps (fun (n : nat) => #(proj1_sig (upper (poly_vec_bound' p)))  * npow #1 n)).
+   Lemma poly_bound_spec {d} (p : A{x^S d}^S d) i : i < S d -> strong_bound (poly_to_ps p\_i) (to_ps (fun (n : nat) => max 1 (poly_vec_bound p)  * npow 1 n)).
    Proof.
      intros.
      unfold strong_bound.
      intros.
      rewrite to_ps_simpl.
-     rewrite npow1; [|rewrite ntimes_embed;simpl;ring].
+     rewrite npow1; [|reflexivity].
      rewrite mul1.
-     destruct (upper (poly_vec_bound' p)) as [x P].
-     
-     apply (le_trans _ _ _ (poly_vec_bound_spec _ _ n H1)).
-     apply (le_trans _ _ _ P).
-     rewrite ntimes_embed.
-     simpl.
-     apply le_refl.
+     apply (le_trans _ (poly_vec_bound p)); [|apply max_le_right].
+     apply (le_trans _ _ _ (poly_vec_bound_spec _ _ n H1));apply le_refl.
    Qed.
 
 
@@ -279,9 +337,12 @@ Section AnalyticPoly.
     pose (p' := shift_mpoly p y0).
     unshelve eapply Build_Analytic.
     apply p'.
-    apply (@upper A _ _ _ _ _ _ _ _ _ _ (poly_vec_bound' p')).
-    apply 1.
+    apply (poly_M p y0).
+    apply (poly_r p y0).
+    apply max_le_left.
+    apply le_refl.
     intros.
+
     rewrite <-fun_ps_poly_ps.
     unfold a_bound_series.
     apply poly_bound_spec;auto.
@@ -289,15 +350,14 @@ Section AnalyticPoly.
     
 
 
-   Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps  (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t ((proj1_sig (analytic_solution_logM  F )) + n + 1).
-
-   Lemma fast_cauchy_neighboring_approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) t i : abs t <=inv2 * inv_Sn (proj1_sig (analytic_solution_r   F))-> i < S d -> fast_cauchy_neighboring (approx F t i).
+   Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps  (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t (n + 1).
+   Lemma fast_cauchy_neighboring_approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) t i : abs t <=inv2 * (solution_rinv (d:=d)   F.(M) F.(r))-> i < S d -> fast_cauchy_neighboring (approx F t i).
    Proof.
      intros.
      apply (analytic_modulus (H3 := mpoly_comp_diff_algebra));auto.
    Qed.
 
-   Definition ivp_r_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))   := ((inv2 * inv_Sn (proj1_sig (analytic_solution_r (A := @mpoly A)  F)))).
+   Definition ivp_r_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))   := ((inv2 * solution_rinv (d:=d) (A := @mpoly A)  F.(M) F.(r))).
 
    (* Lemma neighboring_error   *)
 
@@ -319,6 +379,9 @@ Section AnalyticPoly.
      apply x.
    Defined.
 
+   Lemma solution_r_pos  {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly)) : 0 <= solution_rinv F.(M) F.(r) (d:=d).
+   Admitted.
+
    Definition ivp_solution_i_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat)  : A * A.
    Proof.
      assert (abs (ivp_r_max F) <= ivp_r_max F).
@@ -326,7 +389,7 @@ Section AnalyticPoly.
        rewrite abs_pos;try apply le_refl.
        apply mul_pos_pos.
        apply inv2_pos.
-       apply inv_Sn_pos.
+       apply solution_r_pos.
      }
      apply ((ivp_r_max F), (ivp_solution_i F i (ivp_r_max F)) H2).
    Defined.
@@ -339,7 +402,7 @@ Section AnalyticPoly.
 
    Definition pivp_solution_ith {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) (t : A) i := ivp_solution_i (analytic_poly p y0) i t.
 
-   Definition pivp_solution_ith_max {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) i := ivp_solution_i_max (analytic_poly p y0) i.
+   Definition pivp_solution_ith_max {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) i := let s := ivp_solution_i_max (analytic_poly p y0) i in (fst s, snd s + y0\_i).
 
    Definition pivp_solution_max {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) :  (A * ( A^(S d))).
    Proof.
@@ -355,6 +418,15 @@ Section AnalyticPoly.
      pose proof (pivp_solution_max p y0).
      apply ((t0, y0) :: (IHsteps (t0 + fst X) (snd X))).
    Defined.
+   Definition pivp_solve {d} (p : (@mpoly A (S d))^(S d)) (t0 : A) (y0 : A^(S d)) (steps : nat) : (A * (A ^ (S d))).
+   Proof.
+     revert t0 y0.
+     induction steps;intros.
+     apply (t0,y0).
+     pose proof (pivp_solution_max p y0).
+     apply  (IHsteps (t0 + fst X) (snd X)).
+  Defined.
+
 End AnalyticPoly.
 
 (* for conveniently defining polynomials *)

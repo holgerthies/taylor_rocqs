@@ -37,7 +37,11 @@ Section ConstructiveReals.
     apply CRplus.
     apply CRmult.
 Defined.
-
+  Definition CR_upper (x : CRcarrier R): nat.
+  Proof.
+    destruct (CR_archimedean _ x).
+    apply (Pos.to_nat x0).
+  Defined.
 #[global] Instance R_rawRingWithOpp: (@RawRingWithOpp (CRcarrier R) _ _).
 Proof.
   constructor.
@@ -45,7 +49,16 @@ Proof.
 Defined.
 
   Definition CR_inv_approx :  CRcarrier R -> CRcarrier R.
-  Admitted.
+  Proof.
+    intros x.
+    assert (CRapart R (CRmax 1 x) (CR_of_Q R 0) ).
+    {
+      right.
+      apply (CRlt_le_trans _ _ _ (CRzero_lt_one R)).
+      apply CRmax_l.
+    }
+    apply (CRinv R _ H).
+  Defined.
  #[global] Instance R_rawFieldOps: (@RawFieldOps (CRcarrier R) _ _ _).
 Proof.
   constructor.
@@ -53,6 +66,7 @@ Proof.
   apply (CRabs R).
   apply CRmax.
   apply CR_inv_approx.
+  apply CR_upper.
 Defined.
 
   #[global] Instance R_comSemiRing : SemiRing (A := (CRcarrier R)).
@@ -148,13 +162,17 @@ Defined.
     - intros;apply CRplus_le_compat_r;auto.
     - intros;apply CRmult_le_0_compat;auto.
     - intros.
+      unfold CR_upper.
       destruct (CR_archimedean _ x).
-      exists (Pos.to_nat x0).
       rewrite <-ntimes_embed.
       simpl.
       rewrite positive_nat_Z.
       apply CRlt_asym.
       apply c.
+   - intros.
+     apply CRmax_l.
+   - intros.
+     apply CRmax_r.
    Defined.
 
 
@@ -197,19 +215,19 @@ Proof.
  Defined.
 
  (* Archimedean for Q seems to be opaque, so we built our own for now (correctness admitted for now) *)
-  Lemma magic : False.
+  Local Lemma magic : False.
   Admitted.
 
- #[global] Instance ArchimedeanFieldRQ : ArchimedeanField (A := RQ).
-  Proof.
-    unshelve eapply Build_ArchimedeanField.
-    contradict magic.
-    contradict magic.
-    contradict magic.
-   -  intros.
-      exists (Z.to_nat (Qceiling (seq x (-1))+1)).
-      contradict magic.
-  Defined.
+ (* #[global] Instance ArchimedeanFieldRQ : ArchimedeanField (A := RQ). *)
+ (*  Proof. *)
+ (*    unshelve eapply Build_ArchimedeanField. *)
+ (*    contradict magic. *)
+ (*    contradict magic. *)
+ (*    contradict magic. *)
+ (*   -  intros. *)
+ (*      exists (Z.to_nat (Qceiling (seq x (-1))+1)). *)
+ (*      contradict magic. *)
+ (*  Defined. *)
 
 
   #[global] Instance constrComplete : (ConstrComplete (A := RQ)).

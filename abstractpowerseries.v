@@ -1327,7 +1327,7 @@ Qed.
     - intros k.
       destruct (order k <? (S i)) eqn:E;[apply (IHi a k) | ].
       destruct (order k =? S i) eqn:E'; [|apply 0].
-      apply ((inv_Sn k\_(pred_index k)) * ((sum (fun j => D[pred_index k] bs\_j * (IHi (D[j] a))) n) (tuple_pred k))).
+      apply ((inv_Sn (pred k\_(pred_index k))) * ((sum (fun j => D[pred_index k] bs\_j * (IHi (D[j] a))) n) (tuple_pred k))).
  Defined.
 
 
@@ -1394,7 +1394,7 @@ Qed.
   Qed.
 
   Opaque order add tuple_pred sum mul.
-  Lemma ps_composition_ith_next n m a bs i k : order k = (S i) -> ps_composition_ith n m a bs (S i) k == (inv_Sn k\_(pred_index k))  * (sum (fun j => D[pred_index k] bs\_j * (ps_composition_ith n m (D[j] a) bs i)) n (tuple_pred k)).
+  Lemma ps_composition_ith_next n m a bs i k : order k = (S i) -> ps_composition_ith n m a bs (S i) k == (inv_Sn (pred k\_(pred_index k)))  * (sum (fun j => D[pred_index k] bs\_j * (ps_composition_ith n m (D[j] a) bs i)) n (tuple_pred k)).
   Proof.
      intros.
      simpl.

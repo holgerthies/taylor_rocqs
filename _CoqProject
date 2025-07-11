@@ -15,4 +15,5 @@ coqreals.v
 examples.v
 interval.v
 interval_string.v
+iode.v
 cauchyreal_examples.v

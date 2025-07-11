@@ -27,18 +27,25 @@ Require Import String.
 Require Import Coq.Numbers.DecimalString.
 Require Import Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
-
+Require Import pivp.
 Module SFBI2 := SpecificFloat BigIntRadix2.    
 Module FI   := FloatInterval SFBI2.         
 Definition I := FI.type.
 Definition F := SFBI2.type.
-
-Definition prec := (FI.F.PtoP 100).
 Definition print_interval := FI.output true.
 
-Definition singleton (f : F) := (FI.bnd f f).
-
+Definition Q2Fa (q : Q) : F := (FI.F.div_UP (FI.F.PtoP 30) (SFBI2.fromZ (Qnum q)) (SFBI2.fromZ (Z.pos (Qden q)))).
+Coercion Q2Fa : Q >-> F.
 Definition Z2I (z : Z) := FI.bnd (SFBI2.fromZ z) (SFBI2.fromZ z).
+Definition singleton (f : F) := (FI.bnd f f).
+Module Type PRECISION_POS.
+  Parameter precision : positive.
+End PRECISION_POS.
+
+Module FloatInterval (p : PRECISION_POS).
+Definition prec := (FI.F.PtoP p.precision).
+
+
 
 Definition Q2I (q : Q) := (FI.div prec (Z2I (Qnum q)) (Z2I (Z.pos (Qden q)))).
 
@@ -110,6 +117,8 @@ Proof.
   apply (SFBI2.abs).
   apply (SFBI2.max).
   apply (SFBI2.div_DN prec 1 ).
+  (* unused for now *)
+  apply (fun x => 0).
 Defined.
 
 #[global] Instance I_rawRingWithOpp: (@RawRingWithOpp I _ _).
@@ -126,6 +135,8 @@ Proof.
   intros x y.
   apply (singleton (max (FI.upper x) (FI.upper y))).
   apply (FI.inv prec).
+  (* unused for now *)
+  apply (fun x => 0).
 Defined.
 
 Definition Q2Ipoly {d} (p : @mpoly Q d) : @mpoly I d.
@@ -167,3 +178,7 @@ Definition F2err (f : F) := (FI.add prec (FI.bnd FI.F.zero f) (FI.bnd (FI.F.sub_
 Definition add_errorq (err : Q) (i : I) : I := FI.add prec i (Q2err err).
 Definition add_error (err : F) (i : I) : I := FI.add prec i (F2err err).
 Definition add_errort {d} (err : F) (i : I^d) : I^d := tuple_map (add_error err) i.
+
+Definition le_zero (t : I) := FI.F'.le (FI.lower t) SFBI2.zero.
+End FloatInterval.
+

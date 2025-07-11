@@ -30,7 +30,12 @@ Proof.
   constructor.
   apply Qopp.
 Defined.
-
+Definition Qupper : Q -> nat.
+Proof.
+ intros x.
+ destruct (Qarchimedean x).
+ apply (Pos.to_nat x0).
+Defined.
  #[global] Instance Q_rawFieldOps: (@RawFieldOps Q _ _ _).
 Proof.
   constructor.
@@ -38,6 +43,7 @@ Proof.
   apply Qabs.
   apply Qminmax.Qmax.
   apply Qinv.
+  apply Qupper.
 Defined.
 
   #[global] Instance R_comSemiRing : SemiRing (A := Q).
@@ -105,13 +111,15 @@ Defined.
      constructor;simpl;intros; try lra.
     - intros;apply Qmult_le_0_compat;auto.
     - intros.
-      destruct (Qarchimedean x).
-      exists (Pos.to_nat x0).
       rewrite <-ntimes_embed.
+      unfold Qupper.
+      destruct (Qarchimedean x).
       simpl.
-      rewrite positive_nat_Z.
       apply Qlt_le_weak.
+      rewrite positive_nat_Z.
       apply q.
+   -  apply Qminmax.Q.le_max_l.
+   -  apply Qminmax.Q.le_max_r.
    Defined.
 
 

@@ -17,6 +17,7 @@ Class RawFieldOps   `{RawRingWithOpp}  := {
       abs : A -> A;
       max: A -> A -> A;
       inv_approx: A -> A;
+      upper : A -> nat;
 }.
 
 Class PartialOrder {A} `{Setoid A}:= {
@@ -59,7 +60,9 @@ Class ArchimedeanField `{emb : QEmbedding} `{hasAbs : @HasAbs A _ _ _ _ _ _ _ } 
        distinct_0_1 : not (0 == 1);
        le_plus_compat : forall x y z, le x y -> le (add x z) (add y z);
        mul_pos_pos : forall x y, le zero x -> le zero y -> le zero (mul x y); 
-      upper : forall (x : A), {n : nat | x <= ntimes n 1}
+       upper_spec : forall (x : A),  x <= ntimes (upper x) 1;
+       max_le_left : forall (x y: A),  x <= max x y;
+       max_le_right : forall (x y: A),  y <= max x y
      }.
 
 
@@ -92,6 +95,8 @@ Proof.
   rewrite Qreduce_den_inject_Z_r.
   unfold inject_Z;reflexivity.
 Defined.
+  Definition inv2 := inv_Sn 1%nat.
+
 Lemma injectQ_inv : forall x, (not (x == 0)%Q) -> inject_Q (/ x)%Q * inject_Q x == 1. 
 Proof.
   intros.
@@ -215,6 +220,8 @@ End OrderTheory.
 Infix "\o" := multi_composition (at level 2).
 Section ArchimedeanFieldProperties.
   Context `{ArchimedeanField}.
+
+   Definition fast_cauchy_neighboring (a : nat -> A) := forall n, abs (a (S n) - a n) <= npow inv2 (S n).
   Add Ring ARing: (ComRingTheory (A := A)). 
 
   Lemma  opp_pos  x y : opp y <= opp x -> x <= y.
@@ -256,3 +263,11 @@ Section ArchimedeanFieldProperties.
   (* Qed. *)
 
 End ArchimedeanFieldProperties.
+
+Section Completeness.
+  Class ConstrComplete `{ArchimedeanField} :=
+  {
+    has_limit : forall (xn : nat -> A), fast_cauchy_neighboring xn -> { x | forall n, abs (x - xn n) <= npow inv2 n}
+  }.
+
+End Completeness.

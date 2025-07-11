@@ -49,9 +49,16 @@ Proof.
   rewrite eqH, eqH';auto.
 Defined.
 
-#[global] Instance AR_Ring: (algebra.Ring (A := ARbigD)).
+#[global] Instance AR_rawRingOppp: (algebra.RawRingWithOpp (A := ARbigD)).
 Proof.
-  exists (fun (x : ARbigD) => (-x));intros;simpl; try ring.
+  constructor.
+  intros x.
+  apply (-x).
+Defined.
+
+#[global] Instance AR_Ring: (algebra.Ring (A:=ARbigD)).
+Proof.
+  constructor;intros;simpl; try ring.
   intros a b eqH.
   rewrite eqH;auto.
 Defined.
@@ -74,9 +81,39 @@ Defined.
   Lemma inject_Q_AR_inj x y :   inject_Q_AR (AQ := bigD) x = inject_Q_AR (AQ := bigD) y -> (x == y)%Q.
   Admitted.
 
+  Definition ARmax (x y : ARbigD) := (x + y) + ARabs (x - y) * inject_Q_AR (Qmake 1 2).
+
+  Lemma CR_apart_max (x : ARbigD) : apart (ARmax 1 x) 0.
+  Proof.
+    unfold apart, ARapart.
+    right.
+  Admitted.
+
+  Definition ARinv_approx (x: ARbigD) : ARbigD.
+  Proof.
+     apply 1.
+   Defined.
+
+   Definition AR_b' (x : ARbigD) : Q :=  ('(approximate x (QabsQpos 1)) + 1).
+   Lemma AR_b_spec (x : ARbigD) : ARle x (inject_Q_AR (AR_b' x)).
+   Proof.
+      unfold AR_b'.
+
+   Admitted.
+
+   Definition AR_upper (x : ARbigD) : nat := (Z.to_nat (Qround.Qceiling (AR_b' x))).
+ #[global] Instance AR_rawFieldOps: (@RawFieldOps ARbigD _ _ _).
+Proof.
+  constructor.
+  apply inject_Q_AR.
+  apply (ARabs).
+  apply ARmax.
+  apply ARinv_approx.
+  apply AR_upper.
+Defined.
    #[global] Instance AR_embedQ : (QEmbedding (A:=ARbigD)).
    Proof.
-   exists inject_Q_AR; simpl;intros;try reflexivity;auto.
+   constructor;simpl;intros;try reflexivity;auto.
    - intros a b eq.
      apply inject_Q_AR_wd;auto.
   - apply inject_Q_AR_0.
@@ -87,6 +124,7 @@ Defined.
   - apply inject_Q_AR_inj;auto.
    - apply inject_Q_AR_le;auto.
   Defined.
+
    Lemma ARabs_mult (x y : ARbigD) : ARabs (x * y) == ARabs x * ARabs y. 
    Proof.
    Admitted.
@@ -104,7 +142,7 @@ Defined.
 
    #[global] Instance AR_hasAbs : (HasAbs (A := ARbigD)).
    Proof.
-   exists ARabs.
+   constructor.
     - intros a b ->;reflexivity.
     - intros;apply ARabs_pos;auto.
     - intros;apply ARabs_neg;auto.
@@ -118,21 +156,18 @@ Defined.
    Proof.
    Admitted.
 
-   Definition AR_b' (x : ARbigD) : Q :=  ('(approximate x (QabsQpos 1)) + 1).
-   Lemma AR_b_spec (x : ARbigD) : ARle x (inject_Q_AR (AR_b' x)).
-   Proof.
-      unfold AR_b'.
+   Lemma ARmax_le_left x y:   ARle x (ARmax x y).
    Admitted.
 
-
+   Lemma ARmax_le_right x y:   ARle y (ARmax x y).
+   Admitted.
    #[global] Instance AR_ArchimedeanField : ArchimedeanField.
    Proof.
      constructor;simpl;intros; try lra.
      - apply AR_0_1_distinct.
      - apply ARplus_le_compat_r;auto.
      - apply AR_mult_0_le_compat;auto.
-     - exists (Z.to_nat (Qround.Qceiling (AR_b' x))).
-     rewrite <-ntimes_embed.
+     - rewrite <-ntimes_embed.
      rewrite embNatQ.
      simpl.
      apply (ARle_trans _ (inject_Q_AR (AR_b' x))).
@@ -146,6 +181,8 @@ Defined.
      destruct (Z.le_ge_cases z 0).
      rewrite Z.Zto_nat_nonpos;auto.
      rewrite Z2Nat.id;auto;lia.
+   - apply ARmax_le_left.
+   - apply ARmax_le_right.
    Defined.
 
 
@@ -155,7 +192,7 @@ Require Import examples.
 Require Import tuple.
 From Coq Require Import List.
 Require Import odebounds.
-Require Import realanalytic.
+Require Import realanalytic pivp.
 Require Import abstractpowerseries.
 Require Import CoRN.metric2.Complete.
 Require Import String.
@@ -181,9 +218,9 @@ Definition approx_index (e : Q)  := 4%nat. (* S (Z.to_nat (Qdlog.Qdlog2 (Qinv e)
 
   Lemma fast_cauchy_reg u : fast_cauchy_neighboring u -> is_RegularFunction_noInf _ (to_reg  u).
   Proof.
-    unfold is_RegularFunction_noInf, approx.
-    intros.
-    unfold to_reg.
+    (* unfold is_RegularFunction_noInf, approx. *)
+    (* intros. *)
+    (* unfold to_reg. *)
     Admitted.
 
   Lemma magic : False.
@@ -223,12 +260,28 @@ Proof.
   apply (IHl ++ (cons (![Datatypes.length IHl] * eval_tuple a y0) nil)).
 Defined.
 
-Definition exp_example := exp_ivp (A := ARbigD).
+ Definition  approx_tuple {d} (p : (ARbigD * tuple d ARbigD))  (n : positive): string * list string.
+ Proof.
+   destruct p as [t v].
+   destruct v.
+   remember (Qpos2QposInf (QabsQpos (q 1 n))) as prec.
+   apply (to_string (approximate t prec) , (map (fun x => (to_string (approximate x prec))) x)).
+ Defined.
 
+ Definition  approx_trajectory {d} (p : list (ARbigD * tuple d ARbigD))   z :=  map (fun p => approx_tuple p z) p.
+
+Definition exp_example := convert_pivp exp_ivp (A := ARbigD).
+
+Definition exp_exact := (pivp_trajectory exp_example.(pf) 0 (exp_example.(py0)) 2).
+
+
+Eval vm_compute in (approx_trajectory (exp_exact) (5)).
 Definition exp10 := (Fi_fast exp_example.(pf) 5 0).
 
 Definition exp_taylor10 := Fi_to_taylor exp10 exp_example.(py0).
 
+
+Time Eval vm_compute in 
 Definition exp_approx0 : ARbigD :=(ARcompress  (eval_poly exp_taylor10 (inv_Sn 1))).
 
 Fixpoint exp_continue0 (n : nat) := match n with
@@ -236,39 +289,39 @@ Fixpoint exp_continue0 (n : nat) := match n with
                           | (S n') => (ARcompress (eval_poly (Fi_to_taylor exp10 (tuple_cons (exp_continue0 n') nil_tuple)) (inv_Sn 1)))
                                        end.
 Definition test0 := (approximate exp_approx0 (Qpos2QposInf (QabsQpos (q 1 100)))).
-Time Eval vm_compute in test0.
 
 
 Definition testc0 := (approximate (exp_continue0 2) (Qpos2QposInf (QabsQpos (q 1 3)))).
 
 Time Eval vm_compute in testc0.
-Require Import CoRN.ode.Picard.
-Require Import CoRN.ode.FromMetric2.
-Require Import CoRN.model.metric2.Qmetric.
-Notation sx := (sig (@ball Q (msp_mspc_ball Q_as_MetricSpace) (proj1_sig rx) x0)).
-Program Definition half : sx := q 1 2.
-Next Obligation.
-apply mspc_ball_Qabs_flip. unfold x0. rewrite negate_0, plus_0_r.
-rewrite abs.abs_nonneg; [reflexivity |].
-change (0 <= 1 # 2)%Q. auto with qarith.
-Qed.
-Check (picard_iter 2 (inv_Sn_ARbigD 1)).
+(* Require Import CoRN.ode.Picard. *)
+(* Require Import CoRN.ode.FromMetric2. *)
+(* Require Import CoRN.model.metric2.Qmetric. *)
+(* Notation sx := (sig (@ball Q (msp_mspc_ball Q_as_MetricSpace) (proj1_sig rx) x0)). *)
+(* Program Definition half : sx := q 1 2. *)
+(* Next Obligation. *)
+(* apply mspc_ball_Qabs_flip. unfold x0. rewrite negate_0, plus_0_r. *)
+(* rewrite abs.abs_nonneg; [reflexivity |]. *)
+(* change (0 <= 1 # 2)%Q. auto with qarith. *)
+(* Qed. *)
+(* Check (picard_iter 2 (inv_Sn_ARbigD 1)). *)
 
-Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
+(* Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0). *)
 
 (* First compute finite Taylor polynomial *)
 
 (* order 20 approximation *)
+Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
 Definition exp_taylor := taylor_poly exp_analytic 0 20.
 (*evaluate at 1/2 *)
-Definition exp_approx1 : ARbigD :=(ARcompress  (eval_poly exp_taylor (inv_Sn_ARbigD 1))).
+Definition exp_approx1 : ARbigD :=(ARcompress  (eval_poly exp_taylor ( embedQ 0.5 ))).
 Definition test := (approximate exp_approx1 (Qpos2QposInf (QabsQpos (q 1 100)))).
 Time Eval vm_compute in test.
 
  Definition exp_cont1  := analytic_poly exp_example.(pf) t(exp_approx1).
 
 Definition exp_taylor2 := taylor_poly exp_cont1 0 10.
-Definition exp_approx2 := (ARcompress ((eval_poly exp_taylor2 (inv_Sn_ARbigD 1)))).
+Definition exp_approx2 := (ARcompress ((eval_poly exp_taylor2 (embedQ 0.5)))).
   
 Definition test2 := (approximate exp_approx2 (Qpos2QposInf (QabsQpos (q 1 100)))).
 
@@ -283,25 +336,15 @@ Definition test2 := (approximate exp_approx2 (Qpos2QposInf (QabsQpos (q 1 100)))
 Check (exp_example.(pf)).
 
 Fixpoint exp_continue (n : nat) := match n with
-                          | 0%nat => (ARcompress (eval_poly' (taylor_poly (analytic_poly exp_example.(pf) exp_example.(py0)) 0 5) (inv_Sn_ARbigD 1)))
-                          | (S n') => (ARcompress (eval_poly' (taylor_poly (analytic_poly exp_example.(pf) t(exp_continue n')) 0 5) (inv_Sn_ARbigD 1)))
+                          | 0%nat => (ARcompress (eval_poly' (taylor_poly (analytic_poly exp_example.(pf) exp_example.(py0)) 0 5) (embedQ 0.5)))
+                          | (S n') => (ARcompress (eval_poly' (taylor_poly (analytic_poly exp_example.(pf) t(exp_continue n')) 0 5) (embedQ 0.5)))
                                        end.
 
 
 Definition test3 := (approximate (exp_continue 1) (Qpos2QposInf (QabsQpos (q 1 100)))).
 Time Eval vm_compute in test3.
 
- Definition  approx_tuple {d} (p : (ARbigD * tuple d ARbigD))  (n : positive): string * list string.
- Proof.
-   destruct p as [t v].
-   destruct v.
-   remember (Qpos2QposInf (QabsQpos (q 1 n))) as prec.
-   apply (to_string (approximate t prec) , (map (fun x => (to_string (approximate x prec))) x)).
- Defined.
-
- Definition  approx_trajectory {d} (p : list (ARbigD * tuple d ARbigD))   z :=  map (fun p => approx_tuple p z) p.
-
-Eval vm_compute in test2.
+(* Eval vm_compute in test2. *)
 
 (* now with guaranteed error bound  at max time *)
 Definition exp_exact := (ivp_solution_max exp_analytic).
@@ -320,7 +363,7 @@ Check pivp_trajectory.
      apply (cons (ARcompress t0, tuple_map ARcompress y0) (IHsteps (ARcompress (t0 + fst X)) (tuple_map ARcompress (snd X)))).
    Defined.
 Definition exp_trajectory := (pivp_trajectory exp_example.(pf) canonical_names.zero exp_example.(py0) 2).
-Eval vm_compute in (approx_trajectory exp_trajectory 1).
+Eval vm_compute in exp_trajectory.
 
 End examples.
 

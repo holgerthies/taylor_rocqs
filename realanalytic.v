@@ -17,13 +17,6 @@ Require Import polynomial.
 Require Import odebounds.
 
  Open Scope algebra_scope.
-Section Completeness.
-  Class ConstrComplete `{ArchimedeanField} :=
-  {
-    has_limit : forall (xn : nat -> A), fast_cauchy_neighboring xn -> { x | forall n, abs (x - xn n) <= npow inv2 n}
-  }.
-
-End Completeness.
 Section Analytic.
 
   Open Scope fun_scope.
@@ -43,12 +36,15 @@ Section Analytic.
 
   Notation "f {y0}" := (eval0 f) (at level 2).
 
+  Definition is_pos (x : A 0):= 0 <= x /\ not (x == 0). 
    Definition fun_ps (f : (A (S d))) (k : nat^(S d)) :=  t![k] * (Dx[k] (f)){y0}.
   Record Analytic  := {
       f : (A (S d))^(S d);
-      M : nat;
-      r : nat;
-      deriv_bound : forall i , i<(S d) -> strong_bound (fun_ps f\_i) (a_bound_series #M #r)
+      M : (A 0);
+      r : (A 0);
+      M_pos : 1 <= M;
+      r_pos : 1 <= r;
+      deriv_bound : forall i , i<(S d) -> strong_bound (fun_ps f\_i) (a_bound_series M r)
     }.
 
    Definition fi_to_ps (F : Analytic) i (k : nat^(S d)) :=  fun_ps (F.(f)\_i) k.
@@ -281,52 +277,55 @@ Section Analytic.
      rewrite H7.
      reflexivity.
    Qed.
-   Local Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)).
-   Proof.
-     setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
-     rewrite <-ntimes_embed.
-     rewrite <-!(nat_mult_compat (A := A 0)).
-     apply ntimes_monotone;lia.
-     rewrite ntimes_embed.
-     setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring.
-     rewrite ntimes_mult.
-     ring.
-   Qed.
+   (* Local Lemma calc1 F :   # 2 * ntimes (S d) # (M F) * # (r F) <= # (Init.Nat.max 1 (2 * S d * M F * r F)). *)
+   (* Proof. *)
+   (*   setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)). *)
+   (*   rewrite <-ntimes_embed. *)
+   (*   rewrite <-!(nat_mult_compat (A := A 0)). *)
+   (*   apply ntimes_monotone;lia. *)
+   (*   rewrite ntimes_embed. *)
+   (*   setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring. *)
+   (*   rewrite ntimes_mult. *)
+   (*   ring. *)
+   (* Qed. *)
 
-   Local Lemma calc2 F :  ntimes (S d) # (M F) <= npow # 2 (Nat.log2_up (S d * M F)).
-   Proof.
-      rewrite nat_pow_compat.
-     setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)).
-     rewrite <-ntimes_embed.
-     rewrite <-!(nat_mult_compat (A := A 0)).
-     rewrite !ntimes_embed.
-     destruct (M F).
-     simpl.
-     replace (d * 0)%nat with 0%nat by lia.
-     simpl.
-     ring_simplify.
-     apply le_0_1.
-     rewrite <-!ntimes_embed.
-     apply ntimes_monotone.
-     apply Nat.log2_up_le_pow2; try lia.
-     rewrite !ntimes_embed.
-     setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring.
-     rewrite ntimes_mult.
-     ring.
-   Qed.
+   (* Local Lemma calc2 F :  ntimes (S d) # (M F) <= npow # 2 (Nat.log2_up (S d * M F)). *)
+   (* Proof. *)
+   (*    rewrite nat_pow_compat. *)
+   (*   setoid_replace (ntimes (A := A 0)( S d) # (M F)) with (ntimes (A := A 0) (S d) 1 * # (M F)). *)
+   (*   rewrite <-ntimes_embed. *)
+   (*   rewrite <-!(nat_mult_compat (A := A 0)). *)
+   (*   rewrite !ntimes_embed. *)
+   (*   destruct (M F). *)
+   (*   simpl. *)
+   (*   replace (d * 0)%nat with 0%nat by lia. *)
+   (*   simpl. *)
+   (*   ring_simplify. *)
+   (*   apply le_0_1. *)
+   (*   rewrite <-!ntimes_embed. *)
+   (*   apply ntimes_monotone. *)
+   (*   apply Nat.log2_up_le_pow2; try lia. *)
+   (*   rewrite !ntimes_embed. *)
+   (*   setoid_replace (ntimes (A := (A 0)) (M F) 1) with ((ntimes (A := (A 0)) (M F) 1) * 1) at 1 by ring. *)
+   (*   rewrite ntimes_mult. *)
+   (*   ring. *)
+   (* Qed. *)
+   (* Definition analytic_solution_M F := # (S d) * F.(M). *)
+   Definition analytic_solution_M (Mf rf : (A 0)) : (A 0) := 1.
+   Definition analytic_solution_r (Mf rf : (A 0)) := (# (2*(S d))) * Mf * rf.
 
-   Definition analytic_solution_r F : {ry : nat | #2 * (ntimes (S d) #F.(M)) * #F.(r) <= #ry /\ 0 < ry   }.
-   Proof.
-     exists (Nat.max 1 (2*(S d) * F.(M) * F.(r)))%nat.
-     split;try lia.
-     pose proof (ntimes_int (S d ) (M F)).
-     apply calc1.
-   Defined.
-   Definition analytic_solution_logM (F : Analytic) : {logM : nat | ntimes (S d) #F.(M) <= npow (#2) logM }.
-    Proof.
-      exists (Nat.log2_up ((S d) * F.(M))).
-      apply calc2.
-    Defined.
+   (* Definition analytic_solution_r F : {ry : nat | #2 * (ntimes (S d) #F.(M)) * #F.(r) <= #ry /\ 0 < ry   }. *)
+   (* Proof. *)
+   (*   exists (Nat.max 1 (2*(S d) * F.(M) * F.(r)))%nat. *)
+   (*   split;try lia. *)
+   (*   pose proof (ntimes_int (S d ) (M F)). *)
+   (*   apply calc1. *)
+   (* Defined. *)
+   (* Definition analytic_solution_logM (F : Analytic) : {logM : nat | ntimes (S d) #F.(M) <= npow (#2) logM }. *)
+   (*  Proof. *)
+   (*    exists (Nat.log2_up ((S d) * F.(M))). *)
+   (*    apply calc2. *)
+   (*  Defined. *)
 
 
    Definition to_ps_remove0 (f : nat -> A 0) := to_ps (fun n => match n with 0 => 0 | _ => f n end).
@@ -339,7 +338,7 @@ Section Analytic.
    Proof.
    reflexivity.
    Qed.
-   Lemma f_mps_bound F :tuple_bound_strong (f_to_ps F) t( a_bound_series #F.(M) #F.(r))\_0.
+   Lemma f_mps_bound F :tuple_bound_strong (f_to_ps F) t( a_bound_series F.(M) F.(r))\_0.
    Proof.
       unfold tuple_bound_strong.
       intros;auto.
@@ -348,7 +347,8 @@ Section Analytic.
       apply H8;auto.
    Qed.
 
-   Definition bound_ps F := (a_bound_series (A := (A 0)) (npow #2 (proj1_sig (analytic_solution_logM F))) #(proj1_sig (analytic_solution_r F))).
+   (* Definition bound_ps F := (a_bound_series (A := (A 0)) (analytic_solution_M F)  (analytic_solution_r F)). *)
+   Definition bound_ps F := (a_bound_series (A := (A 0)) 1  (analytic_solution_r F.(M) F.(r))).
 
    Lemma bound_solution F : forall i, i < (S d) -> (mps_bound (to_ps_remove0 ( (analytic_solution_ps F i))) (bound_ps F) ).
    Proof.
@@ -362,24 +362,31 @@ Section Analytic.
        rewrite norm_zero_eq.
        rewrite order1d.
        simpl; unfold bound_ps.
-       destruct (analytic_solution_logM F).
-       destruct (analytic_solution_r F).
+       unfold analytic_solution_r.
+       (* destruct (analytic_solution_logM F). *)
+       (* destruct (analytic_solution_r F). *)
        unfold a_bound_series.
        unfold to_ps.
        simpl.
+
        ring_simplify.
        simpl.
-       apply npow_pos.
-       rewrite ntimes_embed.
-       apply le_0_n.
+       apply le_0_1.
+       (* apply mul_pos_pos. *)
+       (* rewrite ntimes_embed. *)
+       (* apply le_0_n. *)
+       (* apply F. *)
      }
      setoid_rewrite y_ps_same;try (simpl;lia).
-     assert (rpos : 0 <= #F.(r)).
-     rewrite ntimes_embed.
-     apply ntimes_nonneg;apply le_0_1.
-     assert (Mpos : 0 <= #F.(M)).
-     rewrite ntimes_embed.
-     apply ntimes_nonneg;apply le_0_1.
+     assert (rpos : 0 <= F.(r))
+      by (apply (le_trans _ _ _ (le_0_1)); apply F).
+     assert (Mpos : 0 <= F.(M))
+      by (apply (le_trans _ _ _ (le_0_1)); apply F).
+     (* rewrite ntimes_embed. *)
+     (* apply ntimes_nonneg;apply le_0_1. *)
+     (* assert (Mpos : 0 <= #F.(M)). *)
+     (* rewrite ntimes_embed. *)
+     (* apply ntimes_nonneg;apply le_0_1. *)
      (* destruct (destruct_tuple1 (S k0)) as [k0 ->]. *)
      pose proof (y_bound (f_bounded := (f_mps_bound F)) (rpos := rpos) (Mpos := Mpos)   i k0 H7).
      unfold powerseries_yi.
@@ -389,78 +396,101 @@ Section Analytic.
      rewrite order1d.
      unfold a_bound_series.
      rewrite to_ps_simpl.
-     destruct (analytic_solution_logM F).
-     destruct (analytic_solution_r F).
+     unfold analytic_solution_r.
+     (* Transparent ntimes. *)
+     ring_simplify.
+     Opaque Nat.mul.
      simpl.
-     Transparent ntimes.
-     destruct a.
-     apply mul_le_le_compat_pos;  try apply npow_pos; try apply mul_pos_pos;try rewrite !ntimes_embed;try apply ntimes_nonneg; try apply ntimes_nonneg;try apply mul_pos_pos;try rewrite !ntimes_embed; try apply ntimes_nonneg;try apply le_0_1;try apply le_0_n.
-     rewrite <-ntimes_embed.
-     apply l.
-     enough (#1 <= #x0).
-     simpl in H11.
-     ring_simplify in H11.
-     apply (le_trans _ (npow #x0 k0 * 1)).
-     ring_simplify;apply npow_monotone;auto.
-     apply mul_pos_pos; try apply mul_pos_pos;try apply mul_pos_pos; try rewrite !ntimes_embed; try apply npow_pos; try apply ntimes_nonneg;try apply ntimes_nonneg;try apply le_0_1.
+     Transparent Nat.mul.
 
-     rewrite (mulC #x0).
-     apply mul_le_compat_pos;try apply npow_pos;try rewrite !ntimes_embed;try apply le_0_n;auto.
-     rewrite !ntimes_embed in H11.
-     simpl in H11; ring_simplify in H11;auto.
-     destruct x0; try lia;auto.
+     apply mul_le_le_compat_pos;  try apply npow_pos; try apply mul_pos_pos;try rewrite !ntimes_embed;try apply ntimes_nonneg; try apply ntimes_nonneg;try apply mul_pos_pos;try rewrite !ntimes_embed; try apply ntimes_nonneg;try apply le_0_1;try apply le_0_n; try apply F;auto.
+     rewrite <-ntimes_embed.
+     rewrite ntimes_spec.
+     rewrite nat_mult_compat.
+     rewrite !mulA,(mulC #2),!mulA, <-mulA.
+     setoid_replace (# (S d) * M F) with ((  # (S d) * M F ) * 1) at 1 by ring.
+     apply mul_le_compat_pos.
+     apply mul_pos_pos; [rewrite ntimes_embed;apply ntimes_nonneg;apply le_0_1|apply Mpos].
+     setoid_replace (1 : A 0) with ((1 : A 0) * 1) by ring.
+     apply mul_le_le_compat_pos; try apply le_0_1; try apply F.
+     Transparent ntimes.
+     setoid_replace (1 : A 0) with (# 1) by rewrite ntimes_embed;simpl;try ring.
      apply ntimes_monotone;lia.
+     apply le_eq.
+     apply npow_proper.
+    rewrite !ntimes_spec, <-mulA, <-nat_mult_compat; reflexivity.
+     
+     (* apply l. *)
+     (* enough (#1 <= #x0). *)
+     (* simpl in H11. *)
+     (* ring_simplify in H11. *)
+     (* apply (le_trans _ (npow #x0 k0 * 1)). *)
+     (* ring_simplify;apply npow_monotone;auto. *)
+     (* apply mul_pos_pos; try apply mul_pos_pos;try apply mul_pos_pos; try rewrite !ntimes_embed; try apply npow_pos; try apply ntimes_nonneg;try apply ntimes_nonneg;try apply le_0_1. *)
+
+     (* rewrite (mulC #x0). *)
+     (* apply mul_le_compat_pos;try apply npow_pos;try rewrite !ntimes_embed;try apply le_0_n;auto. *)
+     (* rewrite !ntimes_embed in H11. *)
+     (* simpl in H11; ring_simplify in H11;auto. *)
+     (* destruct x0; try lia;auto. *)
+     (* apply ntimes_monotone;lia. *)
 
   Qed.
 
-  Lemma fast_cauchy_neighboring_r0 f x g : fast_cauchy_neighboring (fun n => partial_sum (to_ps_remove0 f) x (g  + n + 1)) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps f) x (g + n + 1)%nat).
+  Lemma fast_cauchy_neighboring_r0 f x  : fast_cauchy_neighboring (fun n => partial_sum (to_ps_remove0 f) x ( n + 1)) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps f) x (n + 1)%nat).
   Proof.
     intros C n.
     specialize (C (n)%nat).
     simpl.
-    replace (g + S n + 1)%nat with (S (g + n +1))%nat by lia.
+    replace ( S n + 1)%nat with (S ( n +1))%nat by lia.
     rewrite partial_sum_neighboring.
     simpl in C.
-    replace (g + S n + 1)%nat with (S (g + n +1))%nat in C by lia.
+    replace (S n + 1)%nat with (S ( n +1))%nat in C by lia.
     rewrite partial_sum_neighboring in C.
-    replace (g+n+1)%nat with (S (g+n)) by lia.
+    replace (n+1)%nat with (S (n)) by lia.
     rewrite <-to_ps_rzs.
-    replace (S (g+n))%nat with (g+n+1)%nat by lia.
+    replace (S n)%nat with (n+1)%nat by lia.
     apply C.
   Qed.
 
-   Definition analytic_modulus (F : Analytic) (t : (A 0)) i  : i<(S d) -> abs (t) <= inv2 * (inv_Sn (proj1_sig (analytic_solution_r F))) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps (analytic_solution_ps F i)) t ((proj1_sig (analytic_solution_logM F)) + n + 1)).
+  Definition solution_rinv (Mf Mr : A 0) := (inv_approx (analytic_solution_r Mf Mr)).
+  Lemma solution_rinv_spec (Mf Mr : A 0) : analytic_solution_r Mf Mr  * solution_rinv Mf Mr == 1.
+  Admitted.
+
+     Transparent npow.
+   Definition analytic_modulus (F : Analytic) (t : (A 0)) i  : i<(S d) -> abs (t) <= inv2 * (solution_rinv F.(M) F.(r)) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps (analytic_solution_ps F i)) t ( n + 1)).
    Proof.
      intros.
-     apply fast_cauchy_neighboring_r0.
      pose proof (bound_solution F i H7).
      unfold bound_ps in H9.
-     destruct (analytic_solution_logM F) as [logM PM].
-     destruct (analytic_solution_r F) as [r pr].
-       Opaque ntimes.
+     apply fast_cauchy_neighboring_r0.
+     (* destruct (analytic_solution_logM F) as [logM PM]. *)
+     (* destruct (analytic_solution_r F) as [r pr]. *)
+     Opaque ntimes.
      simpl in *.
-     assert (#(S r) * inv_Sn r == 1) by (rewrite ntimes_embed; apply inv_Sn_spec).
-      assert (mps_bound (to_ps_remove0 ( analytic_solution_ps F i)) (a_bound_series (npow #2 logM) # (S r))).
-     {
-       intros k.
-       apply (le_trans _ _ _ (H9 k)).
-       unfold a_bound_series.
+     (* (* assert (#(S r) * inv_Sn r == 1) by (rewrite ntimes_embed; apply inv_Sn_spec). *) *)
+     (*  assert (mps_bound (to_ps_remove0 ( analytic_solution_ps F i)) (a_bound_series (npow #2 logM) # (S r))). *)
+     (* { *)
+     (*   intros k. *)
+     (*   apply (le_trans _ _ _ (H9 k)). *)
+     (*   unfold a_bound_series. *)
        
-       rewrite !to_ps_simpl.
-       unfold bound_ps; simpl.
-       apply mul_le_compat_pos; try apply npow_pos;try rewrite !ntimes_embed; try apply le_0_n.
-       apply npow_monotone; try rewrite ntimes_embed;try apply le_0_n.
-       rewrite <-ntimes_embed.
-       apply ntimes_monotone;lia.
-     }
+     (*   rewrite !to_ps_simpl. *)
+     (*   unfold bound_ps; simpl. *)
+     (*   apply mul_le_compat_pos; try apply npow_pos;try rewrite !ntimes_embed; try apply le_0_n. *)
+     (*   apply npow_monotone; try rewrite ntimes_embed;try apply le_0_n. *)
+     (*   rewrite <-ntimes_embed. *)
+     (*   apply ntimes_monotone;lia. *)
+     (* } *)
 
      intros n.
-     pose proof (bounded_ps_modulus_spec  (to_ps_remove0  (analytic_solution_ps F i)) (npow #2 logM) #(S r) (inv_Sn r) logM t H10  (le_refl _ ) H8 H11 n).
-     simpl in H12.
-     unfold bps_modulus in H12.
-     replace (logM + S n + 1)%nat with (((S n) + 1 + logM))%nat by lia.
-     replace (logM + n +1)%nat with ((n+1 + logM))%nat  by lia.
-     apply H12.
+     pose proof (bounded_ps_modulus_spec  (to_ps_remove0  (analytic_solution_ps F i)) 1 (analytic_solution_r F.(M) F.(r))  (solution_rinv F.(M) F.(r)) 0 t (solution_rinv_spec F.(M) F.(r))  (le_refl _ ) H8 H9 n).
+     simpl in H10.
+     unfold bps_modulus in H10.
+     replace (S n + 1)%nat with (((S n) + 1 + 0))%nat by lia.
+     replace (n +1)%nat with ((n+1 + 0))%nat  by lia.
+     simpl.
+     apply H10.
  Qed.
 
   Definition taylor_poly (F : Analytic) (i : nat) (n : nat)  : @poly ((A 0)).
@@ -470,38 +500,33 @@ Section Analytic.
     apply (IHn ++ [analytic_solution_ps F i (S n)]).
   Defined.
 
-  Lemma inv_Sn_injective a b : inv_Sn a == inv_Sn b -> a = b.
-  Proof.
-    intros.
-  Admitted.
 
-  Definition taylor_error (F: Analytic) (k : nat) (n : nat) : (A 0).
-  Proof.
-     destruct (analytic_solution_r F) as [r [pr1 pr2]].
-     remember (ntimes (S d) #F.(M)) as M.
-     remember (inv_Sn (k*r+1)) as x.
-     remember (1 - x) as y.
-     assert (not (y == 0)).
-     {
-       intros Hy.
-       rewrite Heqy in Hy.
-       assert (x == 1) by (setoid_replace x with (x + (1 - x)) by rewrite Hy;ring).
-       rewrite Heqx in H7.
-       rewrite <-inv_Sn0 in H7.
-       apply inv_Sn_injective in H7.
-       lia.
-     }
-     apply (M * npow x (S n) * y).
-  Defined.
+  (* Definition taylor_error (F: Analytic) (k : nat) (n : nat) : (A 0). *)
+  (* Proof. *)
+  (*    remember (ntimes (S d) F.(M)) as M. *)
+  (*    remember (inv_Sn (k*r+1)) as x. *)
+  (*    remember (1 - x) as y. *)
+  (*    assert (not (y == 0)). *)
+  (*    { *)
+  (*      intros Hy. *)
+  (*      rewrite Heqy in Hy. *)
+  (*      assert (x == 1) by (setoid_replace x with (x + (1 - x)) by rewrite Hy;ring). *)
+  (*      rewrite Heqx in H7. *)
+  (*      rewrite <-inv_Sn0 in H7. *)
+  (*      apply inv_Sn_injective in H7. *)
+  (*      lia. *)
+  (*    } *)
+  (*    apply (M * npow x (S n) * y). *)
+  (* Defined. *)
 
-  From Coq Require Import QArith.
-  Definition tail_error (F: Analytic) (q : Q) (n : nat) : Q.
-  Proof.
-     destruct (analytic_solution_r F) as [r [pr1 pr2]].
-     remember ((S d) * F.(M))%nat as M.
-     remember (q / (inject_Z (Z.of_nat r)) ) as x.
-     remember (1 - x) as y.
-     apply (inject_Z (Z.of_nat M) * (x ^ (Z.of_nat (S n))) * y).
-  Defined.
+  (* From Coq Require Import QArith. *)
+  (* Definition tail_error (F: Analytic) (q : Q) (n : nat) : Q. *)
+  (* Proof. *)
+  (*    destruct (analytic_solution_r F) as [r [pr1 pr2]]. *)
+  (*    remember ((S d) * F.(M))%nat as M. *)
+  (*    remember (q / (inject_Z (Z.of_nat r)) ) as x. *)
+  (*    remember (1 - x) as y. *)
+  (*    apply (inject_Z (Z.of_nat M) * (x ^ (Z.of_nat (S n))) * y). *)
+  (* Defined. *)
 End Analytic.
 

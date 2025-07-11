@@ -35,34 +35,27 @@ Section Examples.
 
 Definition exp_example := convert_pivp (A:=RQ) exp_ivp.
 
-Definition exp_analytic  := analytic_poly exp_example.(pf) exp_example.(py0).
-Set Printing Implicit.
-Check @exp_analytic.
 
 (* First compute finite Taylor polynomial *)
 
 (* order 20 approximation *)
-Definition exp_taylor := taylor_poly exp_analytic 0 20.
+Definition exp_approx' := approx_pivp exp_example (inject_Q 0.5) 20.
 
 (*evaluate at 1/2 *)
-Definition exp_approx := (eval_poly exp_taylor (inject_Q 0.5)).
-Definition exp_approx' := approx_pivp exp_example (inject_Q 0.5) 20.
-Time Eval vm_compute in (seq (exp_approx) (-10)).
-Definition a := poly_vec_bound (A:=RQ) exp_example.(pf).
-Eval vm_compute in (proj1_sig (archimedean.upper  (poly_vec_bound (exp_analytic.(f))))).
-Time Eval vm_compute in (exp_analytic.(M)).
-(* Time Eval vm_compute in (@analytic_solution_r (@mpoly RQ) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ exp_analytic). *)
 Time Eval vm_compute in (seq_tuple (inject_Q (1#2) ,exp_approx') (-10)).
 (* now with guaranteed error bound  at max time *)
-Definition exp_exact := (ivp_solution_max exp_analytic).
+Definition exp_exact := (pivp_trajectory exp_example.(pf) (inject_Q 0) (exp_example.(py0)) 1).
 
 (* prints the time and the value as pair *)
+Eval vm_compute in (seq_trajectory (exp_exact) (-5)).
 
-Eval vm_compute in (seq_tuple (exp_exact) (-10)).
 
-Definition exp_approx'' := approx_pivp (Build_PIVP 1 (exp_example.(pf)) exp_approx') (inject_Q 0.5) 20.
 
-Time Eval vm_compute in (seq_tuple (inject_Q 1 ,exp_approx'') (-10)).
+(* Definition exp_approx'' := approx_pivp (Build_PIVP 1 (exp_example.(pf)) (snd exp_exact)) (inject_Q 0.5) 1. *)
+
+(* Time Eval vm_compute in . *)
+
+
 (** sine/cosine  (2d) **)
 
 Definition sin_cos_example := convert_pivp (A:=RQ) sin_cos_ivp.
@@ -169,3 +162,7 @@ Definition lorenz_exact := (ivp_solution_max lorenz_analytic).
 (* Compute (seq_tuple (lorenz_exact) 0).   *)
 
 End Examples.
+
+
+
+
