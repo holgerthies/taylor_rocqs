@@ -2274,27 +2274,135 @@ Qed.
         reflexivity.
     Qed.
 
+
+  Transparent mul.
+  Lemma ps_mul_index0 {m} (x y : ps m): (x * y) 0 == x 0 * y 0. 
+  Proof.
+    induction m.
+    simpl.
+    reflexivity.
+    rewrite vec0_cons.
+    setoid_rewrite cauchy_product.
+    rewrite index_sum.
+    rewrite sum_1.
+    rewrite IHm.
+    reflexivity.
+  Qed.
+  Opaque mul.
+
   Lemma ps_composition_mult :   forall (m n : nat) (x y : ps m) (z : ps (S n) ^ m),  ps_composition m n (x * y) z == ps_composition m n x z * ps_composition m n y z.
   Proof.
      intros.
      apply ps_eq_order.
      intros.
-     rewrite !ps_composition_simpl.
-     setoid_rewrite exchange_ps_factor_order; [| apply (ps_composition_simpl2 (order k)) | apply (ps_composition_simpl2 (order k)) ].
      assert (order k <= n0)%nat by lia.
      clear H1.
      generalize dependent k.
      revert x y.
      induction n0;intros.
-     assert (order k = 0)%nat by lia.
-     rewrite H1.
-     admit.
-     assert (order k <= n0 \/ order k = S n0)%nat by lia.
-     destruct H1;[apply IHn0;auto|].
-     
-     (* rewrite !ps_composition_ith_next;auto. *)
-     (* rewrite <-H1. *)
-  Admitted.
+     - assert (order k = 0)%nat by lia.
+       assert (k == 0) by (apply order_zero_eq_zero;auto).
+       rewrite !ps_composition_simpl.
+       setoid_rewrite exchange_ps_factor_order; [| apply (ps_composition_simpl2 (order k)) | apply (ps_composition_simpl2 (order k)) ].
+       rewrite !H1.
+       simpl.
+       rewrite !H1.
+       unfold ps_mult.
+       rewrite (idx_index (_ * _) k).
+       rewrite H3.
+       rewrite <-idx_index.
+       setoid_rewrite ps_mul_index0.
+       rewrite zero_order;reflexivity.
+     - assert (order k <= n0 \/ order k = S n0)%nat by lia.
+       destruct H1;[apply IHn0;auto|].
+       rewrite ps_composition_spec; try lia.
+       destruct (tuple_pred_spec' k); try (simpl;lia).
+       symmetry.
+       rewrite idx_index.
+       rewrite H4 at 1.
+       rewrite <-idx_index.
+       rewrite deriv_next_backward_full; try lia.
+       rewrite pred_index_pred; try (simpl;lia).
+       apply ring_eq_mult_eq; try reflexivity.
+       rewrite idx_index, pdiff_mult, <-idx_index.
+       symmetry.
+       rewrite idx_index,ps_composition_chain, <-idx_index.
+       setoid_rewrite index_sum; rewrite index_plus.
+       rewrite sum_ext.
+       2:{
+         intros.
+         apply exchange_ps_factor_order.
+         reflexivity.
+         intros.
+         apply ps_composition_proper.
+         apply pdiff_mult.
+         apply 
+         reflexivity.
+       }
+       rewrite sum_ext.
+       2:{
+         intros.
+         apply exchange_ps_factor_order.
+         reflexivity.
+         intros.
+         apply ps_composition_plus.
+       }
+       rewrite <-(index_sum (fun _ => (D[ _] _ * _))).
+       rewrite index_proper.
+       3: reflexivity.
+       2:{
+         apply sum_ext.
+         intros.
+         apply distrL.
+       }
+       rewrite index_proper.
+       3: reflexivity.
+       2: rewrite <-sum_plus;reflexivity.
+       rewrite index_plus.
+       rewrite !index_sum.
+       apply ring_eq_plus_eq.
+       +rewrite sum_ext.
+        2:{
+         intros.
+         apply exchange_ps_factor_order.
+         reflexivity.
+         intros.
+         apply IHn0.
+         rewrite tuple_pred_order in H6;lia.
+       }
+       symmetry.
+       rewrite idx_index.
+       setoid_rewrite ps_composition_chain.
+       rewrite sum_mult.
+       rewrite <-idx_index.
+       rewrite index_sum.
+       apply sum_ext.
+       intros.
+       apply index_proper; try reflexivity.
+       rewrite <-!mulA, (mulC _ (D[pred_index k] _)).
+       apply ring_eq_mult_eq;try reflexivity.
+       +rewrite sum_ext.
+        2:{
+         intros.
+         apply exchange_ps_factor_order.
+         reflexivity.
+         intros.
+         apply IHn0.
+         rewrite tuple_pred_order in H6;lia.
+       }
+       symmetry.
+       rewrite idx_index.
+       setoid_rewrite ps_composition_chain.
+       rewrite sum_mult.
+       rewrite <-idx_index.
+       rewrite index_sum.
+       apply sum_ext.
+       intros.
+       apply index_proper; try reflexivity.
+       rewrite <-!mulA, (mulC _ (D[pred_index k] _)).
+       apply ring_eq_mult_eq;try reflexivity.
+    Qed.
+
   Transparent order add tuple_pred  sum mul.
   Lemma  comp1_diff0 : forall d i j : nat, i <> j -> D[ i] (ps_comp1 d j) == 0.
   Proof.
