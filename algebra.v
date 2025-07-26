@@ -146,6 +146,63 @@ Section Sums.
      rewrite H1;try lia;reflexivity.
    Qed.
 
+   Lemma mult_sum_exchange_both f g f' g' m: (forall i, i < m -> f i == f' i) -> (forall i, i < m -> g i == g' i) ->   sum  (fun i=> f i * g i) m == sum (fun i => f' i * g' i) m.
+   Proof.
+     intros.
+     apply sum_ext.
+     intros.
+     rewrite H1, H2;auto.
+     reflexivity.
+   Qed.
+
+  Lemma ring_eq_plus_eq : forall x y x' y', x == x' -> y == y' -> x + y == x' + y'.
+  Proof.
+    intros x y _ _ <- <-;ring.
+  Qed.
+
+  Lemma double_sum_S_inner f f' g m k :  sum (fun i => (sum (fun j => f i * (f' j * g i j)) (S m))) k ==  sum (fun i => (sum (fun j => f i * (f' j * g i j)) m)) k + sum (fun i => f i * (f' m * g i m)) k.
+  Proof.
+    induction k.
+    unfold sum;simpl;ring.
+    rewrite !sum_S.
+    rewrite !IHk.
+    ring.
+  Qed.
+
+  (* Lemma double_sum_S_inner' f f' g m k :  sum (fun i => (sum (fun j => f j * f i * g i) (S m))) k ==  sum (fun i => (sum (fun j => f j * f i * g i) m)) k + sum (fun i => f m * f i * g i) k. *)
+  (* Proof. *)
+  (*   induction k. *)
+  (*   unfold sum;simpl;ring. *)
+  (*   rewrite !sum_S. *)
+  (*   rewrite !IHk. *)
+  (*   ring. *)
+  (* Qed. *)
+
+
+   Lemma sum_triple_reorder f f' g m :  sum (fun i => (sum (fun j => f i * (f' j * g i j)) m)) m == sum (fun i => (sum (fun j => f' i * (f j * g j i)) m)) m .
+   Proof.
+     induction m.
+     unfold sum;simpl;ring.
+     rewrite !sum_S.
+     rewrite <-!addA.
+     apply ring_eq_plus_eq; try ring.
+     rewrite !double_sum_S_inner.
+     rewrite !IHm.
+     rewrite !addA.
+     apply ring_eq_plus_eq; try ring.
+     rewrite addC.
+     apply ring_eq_plus_eq;apply sum_ext;intros;ring.
+   Qed.
+
+   Lemma sum_triple_reorder_sym f f' g m : (forall i j, g i j == g j i) ->  sum (fun i => (sum (fun j => f i * (f' j * g i j)) m)) m == sum (fun i => (sum (fun j => f' i * (f j * g i j)) m)) m .
+   Proof.
+     intros.
+     rewrite sum_triple_reorder.
+     apply sum_ext;intros.
+     apply sum_ext;intros.
+     rewrite H1.
+     ring.
+   Qed.
   Lemma sum_backwards f n : sum f n == sum (fun j => f (n-(S j))%nat) n.
   Proof.
     induction n.
@@ -529,10 +586,6 @@ Section RingTheory.
     apply addI.
   Qed.
 
-  Lemma ring_eq_plus_eq : forall x y x' y', x == x' -> y == y' -> x + y == x' + y'.
-  Proof.
-    intros x y _ _ <- <-;ring.
-  Qed.
   Lemma ring_eq_mult_eq : forall x y x' y', x == x' -> y == y' -> x * y == x' * y'. 
   Proof. intros x y _ _ <- <-;ring. Qed.
 
