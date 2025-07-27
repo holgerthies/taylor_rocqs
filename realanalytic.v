@@ -80,8 +80,7 @@ Section Analytic.
    Qed.
 
    Definition analytic_solution_ps  (F : Analytic) (i : nat) (n : nat)  : (A 0)  :=  ![n] * (Fi F.(f) n i){y0}.
-
-  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (Ropp) (H1 0) _ _ _ _ _  _ d  (f_to_ps F).
+  Definition powerseries_yi (F : Analytic) := @y_i (A 0) (H 0) (H0 0) (Ropp) (H1 0) _ _ _ _  d  (f_to_ps F).
 
 
   Lemma eval_sum_compat f N :  (sum f N){y0} == (sum (fun n => (f n){y0}) N).

@@ -874,7 +874,7 @@ Context {A : nat -> Type} `{forall (n : nat), (Setoid (A n)) }  `{forall (n : na
 Class CompositionalDiffAlgebra := {
     composition : forall {m n}, A m -> (A (S n))^m ->  (A (S n));
     comp1 {m} (n : nat) : A m;
-    composition_id {m n} i (x : (A (S n))^m) : composition (comp1 i) x == tuple_nth i x 0;
+    (* composition_id {m n} i (x : (A (S n))^m) : composition (comp1 i) x == tuple_nth i x 0; *)
     composition_plus_comp : forall {m n} x y (z :(A (S n))^m) , composition (x+y) z == (composition x z) + (composition y z);
     composition_mult_comp : forall {m n} x y (z :(A (S n))^m) , composition (x*y) z == (composition x z) * (composition y z);
     pdiff_chain : forall {m n d} (x : A m) (y : (A (S n))^m), D[d] (composition x y) == (sum (fun i => (pdiff d (tuple_nth i y zero)) * composition (pdiff i x) y) m);
@@ -971,15 +971,15 @@ Qed.
     rewrite e;auto;reflexivity.
   Qed.
 
-  Lemma id_spec {d} (f : (A 1)^d) : (multi_composition (id d) f) == f.
-  Proof.
-    apply (tuple_nth_ext' _ _ 0 0).
-    intros.
-    rewrite tuple_nth_multicomposition;auto.
-    rewrite id_nth;auto.
-    rewrite composition_id.
-    reflexivity.
-  Qed.
+  (* Lemma id_spec {d} (f : (A 1)^d) : (multi_composition (id d) f) == f. *)
+  (* Proof. *)
+  (*   apply (tuple_nth_ext' _ _ 0 0). *)
+  (*   intros. *)
+  (*   rewrite tuple_nth_multicomposition;auto. *)
+  (*   rewrite id_nth;auto. *)
+  (*   rewrite composition_id. *)
+  (*   reflexivity. *)
+  (* Qed. *)
 
 End PartialDiffAlgebraTheory.
 

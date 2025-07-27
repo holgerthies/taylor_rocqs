@@ -243,11 +243,6 @@ Section Bounds.
     reflexivity.
   Qed.
 
- Lemma le_eq x y : (x == y) -> (x <= y).
- Proof.
-   intros ->.
-   apply le_refl.
- Qed.
 
    Lemma destruct_tuple1 (k : nat^1) : {h | k = t(h)}.
    Proof.

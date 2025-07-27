@@ -20,6 +20,7 @@ Section IVP_Examples.
                                  ivp_y0 := t(1)
                                |}.
 
+
    Definition tan_ivp : APIVP := {|
        ivp_rhs := t(1+vx^2);
        ivp_y0 := t(0)

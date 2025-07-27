@@ -33,7 +33,7 @@ Section ODE_basic.
      | (S n') => (sum (fun j => (tuple_nth j f 0) * (D[j] (Fi f n' i))) d)
      end.
 
-  Definition F_spec {d} f :  forall n y, @ODE_solution d f y -> (nth_derivative 0 y n) == ((F f n) \o y).
+  Definition F_spec {d} f (id_spec : forall (y : (A 1)^d), (id d) \o y == y): forall n y,  @ODE_solution d f y -> (nth_derivative 0 y n) == ((F f n) \o y).
   Proof.
      intros.
      induction n;[rewrite id_spec;simpl nth_derivative;reflexivity|].
@@ -163,26 +163,26 @@ Section TaylorSequence.
     simpl;reflexivity.
   Qed.
 
-  Lemma ivp_solution_taylor_spec n y Hy (S :  is_IVP_solution y Hy) : ivp_solution_taylor n == ![n] ** ((nth_derivative 0 y n) @ (0;(is_IVP_solution_deriv_dom S n))).
-  Proof.
-    unfold ivp_solution_taylor.
-    setoid_replace (((F f n) @ (y0; dom_F n))) with ((nth_derivative 0 y n) @ (0; is_IVP_solution_deriv_dom S n));try reflexivity.
-    destruct S as [i e].
-    pose proof (F_spec _ n _ i).
-    assert ((0 : (A 0)^1) \in_dom (F f n) \o y).
-    {
-      apply (dom_composition _ y 0 Hy _ e).
-      apply dom_F.
-    }
-    rewrite (meval_proper _ _ _ _ (is_IVP_solution_deriv_dom (conj i e) n) H7 H6);try reflexivity.
-    assert ((y @ (0; Hy)) \in_dom (F f n)).
-    {
-      rewrite e.
-      apply dom_F.
-    }
-    rewrite (eval_composition_compat  _ _ _ Hy H8 H7).
-    apply meval_proper;try rewrite e;reflexivity.
-  Qed.
+  (* Lemma ivp_solution_taylor_spec n y Hy (S :  is_IVP_solution y Hy) : ivp_solution_taylor n == ![n] ** ((nth_derivative 0 y n) @ (0;(is_IVP_solution_deriv_dom S n))). *)
+  (* Proof. *)
+  (*   unfold ivp_solution_taylor. *)
+  (*   setoid_replace (((F f n) @ (y0; dom_F n))) with ((nth_derivative 0 y n) @ (0; is_IVP_solution_deriv_dom S n));try reflexivity. *)
+  (*   destruct S as [i e]. *)
+  (*   pose proof (F_spec _ n _ i). *)
+  (*   assert ((0 : (A 0)^1) \in_dom (F f n) \o y). *)
+  (*   { *)
+  (*     apply (dom_composition _ y 0 Hy _ e). *)
+  (*     apply dom_F. *)
+  (*   } *)
+  (*   rewrite (meval_proper _ _ _ _ (is_IVP_solution_deriv_dom (conj i e) n) H7 H6);try reflexivity. *)
+  (*   assert ((y @ (0; Hy)) \in_dom (F f n)). *)
+  (*   { *)
+  (*     rewrite e. *)
+  (*     apply dom_F. *)
+  (*   } *)
+  (*   rewrite (eval_composition_compat  _ _ _ Hy H8 H7). *)
+  (*   apply meval_proper;try rewrite e;reflexivity. *)
+  (* Qed. *)
 
   Definition ivp_taylor_poly (n : nat)  : @poly ((A 0)^d).
   Proof.
@@ -197,7 +197,7 @@ Section TaylorSequence.
     induction n.
     simpl;auto.
     simpl.
-    rewrite app_length.
+    rewrite length_app.
     rewrite IHn;simpl.
     lia.
   Qed.
@@ -355,50 +355,4 @@ Section PowerSeriesSolution.
     rewrite composition_proper; try apply H5; try reflexivity.
  Qed.
 
-  (* Lemma yi_is_unique z  i: i < (S d) -> z\_i 0 == yt\_i 0 -> ODE_solution f z -> forall (k : nat),  z\_i t(k) == yt\_i t(k).  *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   induction k. *)
-  (*   apply H7. *)
-  (*   rewrite !deriv_next_backwards. *)
-  (*   apply (ring_eq_mult_eq); try reflexivity. *)
-  (*   pose proof (Fi_spec _ i H6 1 _ H8 ). *)
-  (*   apply (tuple_nth_ext' _ _ 0 0). *)
-  (*   intros. *)
-    
-  (*   apply deriv_eq_ps_equal1. *)
-  (*   intros. *)
-  (*   induction k. *)
-    
-  (*   rewrite (Fi_spec _ i H8 k _ y_is_solution ). *)
-  (*   induction k. *)
-  (*   simpl. *)
-  (*   rewrite ps_comp0. *)
-  (*   pose proof (F_spec _ k _ y_is_solution ). *)
-  (*   induction k. *)
-
-  (*   simpl. *)
-  (*   Search nth_derivative  *)
-  (*   pose proof  *)
-  (*   intros k. *)
-  (*   rewrite <-yi_spec;auto. *)
-  (*   rewrite ps_property_backwards. *)
-  (*   rewrite (ps_property_backwards  yt\_i ). *)
-  (*   apply ring_eq_mult_eq; try reflexivity. *)
-  (*   destruct (destruct_tuple_cons k) as [k0 [N ->]]. *)
-  (*   enough (N = nil_tuple) as ->. *)
-  (*   setoid_rewrite (index_proper (Dx[ t( k0)] yt \_ i) (Dx[ t( k0)] yt \_ i) _ 0 t(0));try reflexivity. *)
-  (*   rewrite <-yi_spec;auto. *)
-  (*   rewrite index_proper; [ | apply deriv_rec_1 | reflexivity ]. *)
-    
-  (*   rewrite <-yi_spec. *)
-  (*   rewrite deriv_rec_1. *)
-  (*   setoid_rewrite <- yi_spec;auto. *)
-  (*   rewrite !ps_ *)
-  (*   rewrite yt_spec';auto. *)
-  (*   simpl. *)
-  (*   intros k. *)
-  (*   destruct (destruct_tuple_cons k). *)
-  (*   rewrite (yt_spec k i). *)
-  (*   specialize (F_spec _ 1 _ H6). *)
 End PowerSeriesSolution.

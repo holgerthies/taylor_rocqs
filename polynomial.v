@@ -2553,7 +2553,7 @@ Defined.
   #[global] Instance mpoly_comp_diff_algebra : CompositionalDiffAlgebra (A := (@mpoly A) ).
   Proof.
   exists @mpoly_comp' @poly_comp1;unfold mpoly_comp'.
-   - intros; apply poly_comp1_composition.
+   (* - intros; apply poly_comp1_composition. *)
    - intros;apply poly_composition_plus_comp.
    - intros;apply poly_composition_mult_comp.
    - intros;apply mpoly_pdiff_chain.

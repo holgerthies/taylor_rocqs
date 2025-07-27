@@ -1608,7 +1608,7 @@ Qed.
     destruct d; try lia.
     intros k.
     setoid_rewrite deriv_next_full;auto;try lia.
-    revert dependent d.
+    generalize dependent d.
     induction i;intros;destruct (destruct_tuple_cons k) as [k0 [kt ->]].
     - rewrite tuple_nth_cons_hd.
       destruct k0.
@@ -1856,7 +1856,6 @@ Qed.
    Lemma ps_composition_spec : forall (m n : nat) (x : ps m) (y : ps (S n) ^ m) k, order k > 0 -> (ps_composition m n x y) k == inv_Sn (pred k\_(pred_index k)) * (D[pred_index k] (ps_composition m n x y)) (tuple_pred k).
    Proof.
      intros.
-     Search "deriv_next".
      rewrite !ps_composition_simpl.
      assert (order k<> 0)%nat by lia.
      pose proof (tuple_pred_spec' k ) as P.
@@ -2030,8 +2029,8 @@ Qed.
      enough (pred_index k <= n /\ n <= pred_index k)%nat by lia.
      split.
      apply pred_index_spec2;auto.
-     revert dependent k.
-     revert dependent n.
+     generalize dependent k.
+     generalize dependent n.
      induction d.
      intros.
      contradict H1.
@@ -2154,7 +2153,7 @@ Qed.
      generalize dependent k.
      enough (forall k, (order k <= n0)%nat  ->forall x : ps m, D[ d] (ps_composition m n x y) k == sum (fun i : nat => D[ d] y \_ i * ps_composition m n D[ i] x y) m k ).
      intros;apply H2;lia.
-     revert dependent d.
+     generalize dependent d.
      induction n0;intros.
      - rewrite index_proper; try apply order_zero_eq_zero;auto; try reflexivity;try (simpl;lia).
        setoid_rewrite deriv_next_full;auto.
@@ -2425,16 +2424,188 @@ Qed.
   Qed.
   Opaque order.
 
-  Lemma comp1_spec : forall (m n i : nat) (x : ps (S n) ^ m), ps_composition m n (ps_comp1 m i) x == x \_ i.
+
+  Lemma ps_pdiff_zero d (i : nat) :  D[i] (0 : ps d) == 0.
   Proof.
-  Admitted.
+    assert (d <= i \/ i < d)%nat by lia.
+    destruct H1.
+    rewrite out_of_range_diff;auto;reflexivity.
+    intros k.
+    setoid_rewrite deriv_next_full;auto.
+    rewrite ps0.
+    simpl; rewrite ps0.
+    ring.
+  Qed.
+
+  Lemma is_zero_tuple_spec': forall {d : nat} (t : nat ^ d), is_zero_tuple t = false <-> order t > 0.
+  Proof.
+    intros.
+    split.
+    intros.
+    enough (not (order t = 0)) by (simpl in H2;lia).
+    intros Hz.
+    contradict H1.
+    apply Bool.not_false_iff_true.
+    apply is_zero_tuple_spec.
+    apply order_zero_eq_zero;auto.
+    intros.
+    apply Bool.not_true_is_false.
+    intros Hz.
+    apply is_zero_tuple_spec in Hz.
+    enough (order t = 0) by (simpl in H2;lia).
+    rewrite Hz.
+    apply zero_order.
+  Qed.
+  Lemma ps_pdiff_one d (i : nat) :  D[i] (1 : ps d) == 0.
+  Proof.
+    assert (d <= i \/ i < d)%nat by lia.
+    destruct H1.
+    rewrite out_of_range_diff;auto;reflexivity.
+    intros k.
+    setoid_rewrite deriv_next_full;auto.
+    rewrite ps0.
+    simpl.
+    unfold one_ps.
+    enough (is_zero_tuple (k + nth1 d i) = false) as -> by ring.
+    apply is_zero_tuple_spec'.
+    rewrite order_plus, order_nth1;auto;simpl;lia.
+  Qed.
+  Lemma ps_composition_0 m n (x : ps (S n)^m): ps_composition m n 0 x == 0.
+  Proof.
+    intros.
+    apply ps_eq_order.
+    intros.
+    assert (order k <= n0)%nat by lia.
+    clear H1.
+    generalize dependent k.
+    generalize dependent x.
+    induction n0;intros.
+    - assert (order k = 0)%nat by lia.
+       assert (k == 0) by (apply order_zero_eq_zero;auto).
+       rewrite !ps_composition_simpl.
+       rewrite H1.
+       simpl; rewrite H1;reflexivity.
+   - assert (order k <= n0 \/ order k = S n0)%nat by lia.
+     destruct H1;[apply IHn0;auto|].
+     rewrite ps_composition_next; try lia.
+     setoid_rewrite index_sum.
+     rewrite sum_zero.
+     simpl;rewrite ps0;ring.
+     intros.
+     setoid_rewrite exchange_ps_factor_order.
+     2 : reflexivity.
+     2 : {
+       intros.
+       rewrite idx_index.
+       setoid_rewrite ps_pdiff_zero.
+       rewrite <-idx_index.
+       rewrite tuple_pred_order in H4.
+       apply IHn0;auto;lia.
+     }
+     rewrite idx_index.
+     rewrite mul0.
+     rewrite <-idx_index.
+     rewrite ps0.
+     reflexivity.
+   Qed.
+
+  Lemma ps_composition_1 m n (x : ps (S n)^m): ps_composition m n 1 x == 1.
+  Proof.
+    intros.
+    apply ps_eq_order.
+    intros.
+    assert (order k <= n0)%nat by lia.
+    clear H1.
+    generalize dependent k.
+    generalize dependent x.
+    induction n0;intros.
+    - assert (order k = 0)%nat by lia.
+       assert (k == 0) by (apply order_zero_eq_zero;auto).
+       rewrite !ps_composition_simpl.
+       rewrite H1.
+       simpl; rewrite H1.
+       unfold one_ps.
+       assert (is_zero_tuple 0 = true) as -> by (apply is_zero_tuple_spec;reflexivity).
+       assert (is_zero_tuple k = true) as -> by (apply is_zero_tuple_spec;auto).
+       reflexivity.
+   - assert (order k <= n0 \/ order k = S n0)%nat by lia.
+     destruct H1;[apply IHn0;auto|].
+     assert (1 k == 0) as ->.
+     {
+       simpl.
+       unfold one_ps.
+       enough (is_zero_tuple k = false) as -> by reflexivity.
+       apply is_zero_tuple_spec';lia.
+     }
+     rewrite ps_composition_next; try lia.
+     setoid_rewrite index_sum.
+     rewrite sum_zero.
+     ring.
+     intros.
+     rewrite idx_index.
+     rewrite ps_pdiff_one.
+     rewrite ps_composition_0.
+     rewrite mul0.
+     rewrite <-idx_index.
+     rewrite ps0.
+     reflexivity.
+   Qed.
+
+  Lemma comp1_spec' : forall (m n i : nat) (x : ps (S n) ^ m), i < m -> (forall j, (x\_j 0 == 0)) -> ps_composition m n (ps_comp1 m i) x == x \_ i.
+  Proof.
+    intros.
+    apply ps_eq_order.
+    intros.
+    assert (order k <= n0)%nat by lia.
+    clear H3.
+    generalize dependent k.
+    induction n0;intros k H3.
+    - assert (order k = 0)%nat by lia.
+      assert (k == 0) by (apply order_zero_eq_zero;auto).
+     rewrite !ps_composition_simpl.
+     rewrite H4.
+     simpl ps_composition_ith.
+     rewrite H4.
+     unfold ps_comp1.
+     rewrite zero_order.
+     rewrite idx_index, H5, <-idx_index.
+     rewrite H2.
+     simpl;reflexivity.
+   - assert (order k <= n0 \/ order k = S n0)%nat by lia.
+     destruct H4;[apply IHn0;auto|].
+     rewrite ps_composition_next; try lia.
+     destruct (tuple_pred_spec' k); try (simpl;lia).
+     symmetry.
+     rewrite idx_index.
+     rewrite H6 at 1.
+     rewrite <-idx_index.
+     rewrite deriv_next_backward_full; try lia.
+     rewrite pred_index_pred; try (simpl;lia).
+     apply ring_eq_mult_eq; try reflexivity.
+
+     setoid_rewrite index_sum.
+     rewrite (sum_single _ i m);auto.
+     + symmetry.
+       rewrite idx_index.
+       setoid_rewrite comp1_diff1;auto.
+       rewrite ps_composition_1.
+       rewrite mul1.
+       rewrite <-idx_index.
+       reflexivity.
+     + intros.
+       rewrite idx_index.
+       setoid_rewrite comp1_diff0;auto.
+       rewrite ps_composition_0.
+       rewrite mul0.
+       rewrite <-idx_index, ps0;reflexivity.
+  Qed.
 
 
 
   #[global] Instance ps_diffAlgebra  :  CompositionalDiffAlgebra (A := ps).
   Proof.
      exists ps_composition ps_comp1.
-     apply comp1_spec.
+     (* apply comp1_spec. *)
      apply ps_composition_plus.
      apply ps_composition_mult.
      apply ps_composition_chain.
@@ -2634,7 +2805,189 @@ Qed.
    Qed.
 
 
+   Lemma double_sum_le f g n : (forall i j,  f i j <= g i j) ->  sum (fun i => (sum (fun j => f i j) (S i))) n <= sum (fun i => (sum (fun j => g i j) (S i))) n .
+   Proof.
+   intros.
+   apply sum_le.
+   intros.
+   apply sum_le.
+   intros.
+   apply H1;auto.
+  Qed.
 
+   Lemma sum_0 f : sum f 0 == 0.
+   Proof.
+     unfold sum;simpl;reflexivity.
+   Qed.
+   Lemma sum_mult_to_double_sum f g n1 n2 : (sum f n1) * (sum g n2) == sum (fun i => (sum (fun j => f i * g j) n2)) n1.
+   Proof.
+     induction n1.
+     rewrite !sum_0;ring.
+     rewrite !sum_S.
+     ring_simplify.
+     rewrite IHn1.
+     rewrite sum_mult.
+     reflexivity.
+   Qed.
+   Lemma double_sum_exchange f n1 n2 : sum (fun i => (sum (fun j => f i j) n2)) n1 == sum (fun j => (sum (fun i => f i j) n1)) n2.
+   Proof.
+     generalize dependent n2.
+     induction n1.
+     - intros.
+       symmetry.
+       rewrite sum_ext.
+       2 :{
+         intros.
+         apply sum_zero.
+         intros.
+         lia.
+       }
+       rewrite sum_zero;try reflexivity.
+    - intros.
+      rewrite sum_S.
+      symmetry.
+      rewrite sum_ext.
+      2: intros;apply sum_S.
+      rewrite <-sum_plus.
+      rewrite IHn1.
+      reflexivity.
+   Qed.
+
+   Lemma nested_sum_backwards f n : sum (fun i => (sum (fun j => f i j) (S (n-i)%nat))) (S n) == sum (fun i => (sum (fun j => f (n-i)%nat j) (S i))) (S n).
+   Proof.
+    rewrite sum_backwards.
+    simpl.
+    apply sum_ext.
+    intros.
+    replace (S (n-(n-n0)))%nat with (S n0) by lia.
+    reflexivity.
+  Qed.
+
+   Lemma inner_sum1 f m: sum (fun j => (sum (f j)  1)) m == sum (fun i => (f i 0)) m.
+   Proof.
+     apply sum_ext.
+     intros.
+     apply sum_1.
+  Qed.
+
+   Lemma triple_sum_inner_S f n3 n2 n1 : sum (fun i => (sum (fun j => (sum (fun k => f i j k) (S (n1  i j)))) (n2 i))) n3 == sum (fun i => (sum (fun j => (sum (fun k => f i j k) (n1 i j))) (n2 i))) n3 +   sum (fun n : nat => sum (fun n0 : nat => f n n0 (n1 n n0)) (n2 n)) n3 .
+   Proof.
+   rewrite sum_ext.
+   2:{
+       intros.
+       apply sum_ext.
+       intros.
+       apply sum_S.
+   }
+   assert (forall n, sum (fun n0 : nat => sum (f n n0) (n1 n n0) + f n n0 (n1 n n0)) (n2 n) == sum (fun n0 : nat => sum (f n n0) (n1 n n0)) (n2 n) + sum (fun n0  => f n n0 (n1 n n0)) (n2 n)).
+   {
+     intros.
+     rewrite sum_plus.
+     reflexivity.
+   }
+
+   rewrite sum_ext.
+   2:{
+       intros.
+       apply H1.
+   } 
+   rewrite <-sum_plus.
+   reflexivity.
+ Qed.
+  Lemma double_sum_reparam f m : sum (fun n : nat => sum (fun n0 : nat => f n n0) n) m == sum (fun n : nat => sum (fun n0 : nat => f (m - n + n0)%nat n0) n) m.
+  Proof.
+    induction m.
+    rewrite !sum_0.
+    reflexivity.
+    rewrite sum_S.
+    rewrite IHm.
+    rewrite sum_S_fun.
+    rewrite sum_0.
+    ring_simplify.
+    symmetry.
+    rewrite sum_ext.
+    2:{
+      intros.
+      apply sum_S.
+    }
+    simpl.
+    rewrite sum_plus.
+    apply sum_ext.
+    intros.
+    replace (m - n + n)%nat with m by lia.
+    ring.
+  Qed.
+  Lemma triple_sum_reparam f n :  sum (fun i => sum (fun j => sum (fun k => f i j k) (S (n-i))) (S i)) (S n) == sum (fun i => sum (fun j => sum (fun k => f (k+j) j (i-j)%nat) (S (n-i))) (S i)) (S n).
+  Proof.
+    intros.
+    induction n.
+    simpl.
+    rewrite !sum_1.
+    replace (0+0)%nat with 0%nat by lia.
+    replace (0-0)%nat with 0%nat by lia.
+    reflexivity.
+    remember (S n) as m.
+    rewrite !sum_S.
+    simpl.
+    replace (m-m)%nat with 0%nat by lia.
+    replace (0+m)%nat with m by lia.
+    rewrite !sum_0.
+    rewrite <-!addA.
+    apply ring_eq_plus_eq;try reflexivity.
+    rewrite !add0.
+    rewrite !inner_sum1.
+    simpl.
+    rewrite !triple_sum_inner_S.
+    simpl.
+    rewrite !addA.
+    apply ring_eq_plus_eq.
+    assert (  sum (fun i =>  sum (fun j : nat => sum (fun k : nat => f i j k) (m - i)) (S i)) m == sum (fun i => sum (fun j : nat => sum (fun k : nat => f i j k) (S( n - i))) (S i)) m).
+    {
+      apply sum_ext.
+      rewrite Heqm.
+      intros.
+      replace (S (n -n0)) with (S n - n0)%nat by lia.
+      reflexivity.
+    }
+    rewrite H1.
+    rewrite IHn.
+    apply sum_ext.
+    intros.
+    rewrite Heqm.
+    replace (S (n -n0)) with (S n - n0)%nat by lia.
+    reflexivity.
+    rewrite sum_ext.
+    2:intros;apply sum_S.
+    simpl.
+    rewrite <-!sum_plus.
+    rewrite addC, <-!addA.
+    apply ring_eq_plus_eq; try reflexivity.
+    symmetry.
+    rewrite sum_ext.
+    2:intros;apply sum_S.
+    simpl.
+    rewrite <-!sum_plus.
+    rewrite addC.
+    apply ring_eq_plus_eq.
+    apply sum_ext.
+    intros.
+    replace (n0 - n0)%nat with 0%nat by lia.
+    replace (m - n0 +n0)%nat with m by lia.
+    reflexivity.
+    symmetry.
+    rewrite double_sum_reparam.
+    apply sum_ext.
+    intros.
+    apply sum_ext.
+    intros.
+    replace  (m - (m - n0 + n1))%nat with (n0 - n1)%nat by lia.
+    reflexivity.
+ Qed.
+ Lemma le_eq x y : (x == y) -> (x <= y).
+ Proof.
+   intros ->.
+   apply le_refl.
+ Qed.
    Lemma sum_order_mult {d} (a b : nat^d -> A) n : sum_order (a * b) n <= sum (fun j => sum_order a j * sum_order b (n-j)) (S n).
    Proof.
      revert n.
@@ -2649,7 +3002,46 @@ Qed.
        intros.
        destruct i;simpl;ring.
      - rewrite sum_order_next.
-  Admitted.
+       assert (sum (fun i => sum_order (partial_index (a*b) i) (n-i)) (S n) == sum (fun i =>(sum_order (sum (fun j => partial_index a j * partial_index b (i-j)) (S i)) (n-i))) (S n)) as ->.
+       {
+         apply sum_ext.
+         intros.
+         rewrite partial_index_mul_sum.
+         reflexivity.
+       }
+       assert (forall i, i < (S n) -> sum_order (sum (fun j => partial_index a j * partial_index b (i - j)) (S i)) (n-i) <= sum (fun j => sum_order (partial_index a j * partial_index b (i - j)) (n-i)) (S i)).
+       {
+         intros.
+         apply sum_order_sum.
+       }
+       apply (le_trans _ _ _ (sum_le _ _ _ H1)).
+       assert ( (forall i j : nat,  sum_order (partial_index a j * partial_index b (i-j)) (n-i)  <= sum (fun k : nat => sum_order (partial_index a j) k  * sum_order (partial_index b (i - j)) (n-i-k)) (S (n-i)))).
+       {
+         intros.
+         apply IHd.
+       }
+
+       apply (le_trans _ _ _ (double_sum_le _ _ _ H2)).
+       rewrite (sum_ext (fun j => sum_order _ _ * _)).
+       2:{
+         intros.
+         rewrite !sum_order_next.
+         apply sum_mult_to_double_sum.
+       }
+       simpl.
+       rewrite triple_sum_reparam.
+       simpl.
+       apply le_eq.
+       apply sum_ext.
+       intros.
+       apply sum_ext.
+       intros.
+       apply sum_ext.
+       intros.
+       replace (n2+n1 - n1)%nat with n2 by lia.
+       replace (n - (n2 + n1) - (n0 - n1)) %nat with (n - n0 - n2)%nat by lia.
+       reflexivity.
+    Qed.
 
    Lemma smul_partial_index {d} (a :  nat^(S d) -> A) x n :partial_index (x [*] a) n == x [*] (partial_index a n).
    Proof.
@@ -2758,10 +3150,6 @@ Qed.
        apply ntimes_monotone;lia.
    Qed.
 
-  (*  Lemma sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0). *)
-  (*  Proof. *)
-  (*   intros. *)
-  (* Admitted. *)
 
     Lemma comp1_0 {d} i : (ps_comp1 d  i) 0 == 0.
     Proof.
@@ -2789,23 +3177,18 @@ Qed.
       lia.
    Qed.
 
+  Opaque order.
   Lemma ps_comp0  {d e} (a : (nat^d -> A)) (bs : (nat^(S e) -> A)^d): (a \o1 bs) 0 == (a 0). 
-  Admitted.
- (* Context `{CompositionalDiffAlgebra (A := ps) (H := _) (H0 := _) (H1 := _) (H2 := _)}. *)
-
-  (* coefficient norm is currently formalized abstractly *)
-  (* Class CoeffSum := { *)
-  (*     (* sum_order {d} (a : nat^d -> A ) (n : nat) : A; *) *)
-  (*     (* sum_order_proper d : Proper (SetoidClass.equiv ==> SetoidClass.equiv ==> SetoidClass.equiv) (sum_order (d := d)); *) *)
-  (*     (* sum_order_mult {d} (a b : nat^d -> A) n : sum_order (a * b) n == sum (fun j => sum_order a j * sum_order b (n-j)) (S n); *) *)
-  (*     (* sum_order_nonneg {d} (a : nat^d -> A) n : 0 <= sum_order a n; *) *)
-  (*     (* sum_order_sum {d} (a : nat -> nat^d -> A) m n :  sum_order (sum a m) n == sum (fun i => (sum_order (a i) n)) m; *) *)
-  (*     (* sum_order_diff_le {d} (a :  nat^d -> A) i n : i < d -> sum_order (D[i] a) n <= #(n+1)%nat * sum_order a (n+1)%nat; *) *)
-  (*     sum_order1 {d} i k : i < d -> ((k == 1)%nat -> sum_order (d:=d) (comp1  i) k == 1) /\ ((k <> 1)%nat -> sum_order (d:=d) (comp1  i) k == 0); *)
-  (*     (* sum_order1d  (a :  nat^1 -> A)  k :  sum_order (d:=1) a k == norm (a t(k)); *) *)
-  (*     (* sum_order0  {d} (a :  nat^d -> A):  sum_order  a 0 == norm (a 0); *) *)
-  (*   }. *)
-
+  Proof.
+    intros.
+    simpl.
+    rewrite ps_composition_simpl.
+    setoid_rewrite zero_order.
+    simpl.
+    setoid_rewrite zero_order.
+    reflexivity.
+  Qed.
+  Transparent order.
   
   Lemma ntimes_index {d} (a : nat^d -> A) k n : (ntimes n a k) == ntimes n (a k).
   Proof.
