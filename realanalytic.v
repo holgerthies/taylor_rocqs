@@ -104,6 +104,11 @@ Section Analytic.
    apply eval_mult_compat.
  Qed.
 
+  Lemma eval_plus_compat f g : (f + g){y0} == f{y0} + g{y0}.
+  Proof.
+   unfold eval0.
+   apply eval_plus_compat.
+ Qed.
   Instance eval0_proper : Proper (SetoidClass.equiv ==> SetoidClass.equiv) eval0.
   Proof.
     intros a b Heq.
@@ -176,30 +181,6 @@ Section Analytic.
     reflexivity.
   Qed.
 
-  Lemma fun_ps_mult  (f : (A (S d))) (g : (A (S d))) : (fun_ps (f*g)) == (fun_ps f) * (fun_ps g).
-  Proof.
-    unfold fun_ps.
-    intros k.
-
-    destruct (destruct_tuple_cons k) as [k0 [kt ->]].
-    rewrite cauchy_product.
-  Admitted.
-    
-  Lemma fun_ps_D0  (f : (A (S d))):  (fun_ps (D[0] f)) == D[0] (fun_ps f).
-  Proof.
-    unfold fun_ps.
-    intros k.
-    destruct (destruct_tuple_cons k) as [i [t ->]].
-    setoid_rewrite deriv_next.
-    rewrite <-!mulA.
-    replace (i+1)%nat with (S i) at 2 by lia.
-    rewrite inv_factt_S_reverse.
-    apply ring_eq_mult_eq; try reflexivity.
-    rewrite deriv_rec_next.
-    replace (S i) with (i+1)%nat by lia.
-    reflexivity.
-  Qed.
-
   Lemma   inv_factt_nth1 {m} (k : nat^m) j : j < m -> t![ k] == # (S k \_ j) * t![ k + nth1 m j].
   Proof.
     intros.
@@ -231,6 +212,89 @@ Section Analytic.
       apply ring_eq_mult_eq;try reflexivity.
       apply IHm;lia.
   Qed.
+
+  Lemma   inv_factt_nth1' {m} (k : nat^m) j : j < m -> inv_Sn k\_j * t![ k] == t![ k + nth1 m j].
+  Proof.
+    intros.
+    rewrite (inv_factt_nth1 k j);auto.
+    rewrite <-mulA, (mulC (inv_Sn _)).
+    rewrite ntimes_embed.
+    rewrite inv_Sn_spec.
+    ring.
+  Qed.
+  Lemma fun_ps_mult  (f : (A (S d))) (g : (A (S d))) : (fun_ps (f*g)) == (fun_ps f) * (fun_ps g).
+  Proof.
+    unfold fun_ps.
+    intros.
+    apply ps_eq_order.
+    intros.
+    generalize dependent f.
+    generalize dependent g.
+    generalize dependent k.
+    induction n;intros.
+    - apply order_zero_eq_zero in H7.
+      rewrite idx_index, (idx_index (_ * _)), !H7, <-!idx_index.
+      rewrite ps_mul0.
+      rewrite !derive_rec_0.
+      rewrite eval_mul_compat.
+      rewrite inv_factt0.
+      ring.
+    - destruct (tuple_pred_spec' k);try (rewrite H7;simpl;lia).
+      rewrite idx_index, (idx_index (_ * _)), !H9, <-!idx_index.
+      rewrite <-deriv_rec_next_pdiff;auto.
+      symmetry.
+      rewrite deriv_next_backward_full;auto.
+      symmetry.
+      rewrite <-inv_factt_nth1';auto.
+      rewrite !mulA.
+      apply ring_eq_mult_eq; try reflexivity.
+      rewrite pdiff_mult.
+      rewrite !derive_rec_plus.
+      rewrite eval_plus_compat.
+      ring_simplify.
+      rewrite !IHn;auto;try (rewrite tuple_pred_order;lia).
+      symmetry.
+      rewrite index_proper.
+      3:reflexivity.
+      2:{
+        apply pdiff_mult.
+      }
+      apply ring_eq_plus_eq.
+      apply index_proper;try reflexivity.
+      apply ring_eq_mult_eq; try reflexivity.
+      intros j.
+      rewrite deriv_next_full;auto.
+      rewrite <-mulA.
+      replace (j \_ (pred_index k) + 1)%nat with (S (j\_ (pred_index k))) by lia.
+      rewrite <-(inv_factt_nth1 _ (pred_index k));auto.
+      apply ring_eq_mult_eq; try reflexivity;auto.
+      rewrite <-deriv_rec_next_pdiff;try rewrite tuple_pred_order; try lia;reflexivity.
+      apply index_proper;try reflexivity.
+      apply ring_eq_mult_eq; try reflexivity.
+      intros j.
+      rewrite deriv_next_full;auto.
+      rewrite <-mulA.
+      replace (j \_ (pred_index k) + 1)%nat with (S (j\_ (pred_index k))) by lia.
+      rewrite <-(inv_factt_nth1 _ (pred_index k));auto.
+      apply ring_eq_mult_eq; try reflexivity.
+      rewrite <-deriv_rec_next_pdiff;try rewrite tuple_pred_order; try lia;reflexivity.
+  Qed.
+    
+  Lemma fun_ps_D0  (f : (A (S d))):  (fun_ps (D[0] f)) == D[0] (fun_ps f).
+  Proof.
+    unfold fun_ps.
+    intros k.
+    destruct (destruct_tuple_cons k) as [i [t ->]].
+    setoid_rewrite deriv_next.
+    rewrite <-!mulA.
+    replace (i+1)%nat with (S i) at 2 by lia.
+    rewrite inv_factt_S_reverse.
+    apply ring_eq_mult_eq; try reflexivity.
+    rewrite deriv_rec_next.
+    replace (S i) with (i+1)%nat by lia.
+    reflexivity.
+  Qed.
+
   Lemma fun_ps_D  (f : (A (S d)))  j: (j < (S d)) -> (fun_ps (D[j] f)) == D[j] (fun_ps f).
   Proof.
     unfold fun_ps.
