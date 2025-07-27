@@ -178,8 +178,13 @@ Section Analytic.
 
   Lemma fun_ps_mult  (f : (A (S d))) (g : (A (S d))) : (fun_ps (f*g)) == (fun_ps f) * (fun_ps g).
   Proof.
-  Admitted.
+    unfold fun_ps.
+    intros k.
 
+    destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+    rewrite cauchy_product.
+  Admitted.
+    
   Lemma fun_ps_D0  (f : (A (S d))):  (fun_ps (D[0] f)) == D[0] (fun_ps f).
   Proof.
     unfold fun_ps.
@@ -195,14 +200,50 @@ Section Analytic.
     reflexivity.
   Qed.
 
-  Lemma fun_ps_D  (f : (A (S d)))  j: (j < (S d)) -> (fun_ps (D[j] f)) == D[j] (fun_ps f).
+  Lemma   inv_factt_nth1 {m} (k : nat^m) j : j < m -> t![ k] == # (S k \_ j) * t![ k + nth1 m j].
   Proof.
     intros.
+    generalize dependent j.
+    induction m;intros.
+    lia.
+    destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+    rewrite !inv_factt_cons.
     destruct j.
-    apply fun_ps_D0.
-    intros k.
+    - rewrite !tuple_nth_cons_hd.
+      simpl nth1.
+      rewrite tuple_cons_plus.
+      rewrite !inv_factt_cons.
+      rewrite <-mulA.
+      rewrite add0.
+      replace (k0 + 1)%nat  with (S k0) by lia.
+      apply ring_eq_mult_eq;try reflexivity.
+      replace (![ S k0]) with (inv_Sn k0 * ![k0]) by reflexivity.
+      rewrite <-mulA.
+      rewrite ntimes_embed.
+      rewrite inv_Sn_spec.
+      ring.
+    - rewrite !tuple_nth_cons_tl.
+      simpl nth1.
+      rewrite tuple_cons_plus.
+      replace (k0 +0)%nat with k0 by lia.
+      rewrite !inv_factt_cons.
+      rewrite <-mulA, (mulC (# _)), mulA.
+      apply ring_eq_mult_eq;try reflexivity.
+      apply IHm;lia.
+  Qed.
+  Lemma fun_ps_D  (f : (A (S d)))  j: (j < (S d)) -> (fun_ps (D[j] f)) == D[j] (fun_ps f).
+  Proof.
     unfold fun_ps.
- Admitted.
+    intros.
+    intros k.
+    setoid_rewrite deriv_next_full;auto.
+    rewrite <-mulA.
+    replace (k\_j+1)%nat with (S k\_j) at 1 by lia.
+    apply ring_eq_mult_eq.
+    apply inv_factt_nth1;auto.
+    rewrite deriv_rec_next_pdiff;auto.
+    reflexivity.
+ Qed.
 
   Lemma F_ps_same (F : Analytic): forall n  i , (i < S d) ->  (fun_ps (Fi F.(f) (S n) i))  ==  (Fi (d:=(S d)) (A := ps) (f_to_ps F) (S n) i).
   Proof.
