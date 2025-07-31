@@ -19,8 +19,19 @@ Section ODE_basic.
   Context `{CompositionalDiffAlgebra} .
 
   Definition ODE_solution {d} f (y : (A 1)^d) := D[0]y ==  f \o y.
-
-
+  Lemma ODE_solution_ith {d} f (y : (A 1)^d) : ODE_solution f y <-> forall i, i < d -> D[0]y\_i == (f \o y)\_i.
+  Proof.
+    unfold ODE_solution.
+    split;intros.
+    - pose proof (tuple_nth_ext2 _ _ 0 0 H4).
+      specialize (H6 _ H5).
+      rewrite <-pdiff_tuple_nth;auto.
+    -  apply (tuple_nth_ext' _ _ 0 0).
+       intros.
+       simpl.
+       rewrite pdiff_tuple_nth;auto.
+  Qed.
+  
   Fixpoint F {d} (f : (A d)^d) (n: nat) : (A d)^d :=
      match n with
      | 0%nat => (id d)
@@ -355,4 +366,54 @@ Section PowerSeriesSolution.
     rewrite composition_proper; try apply H5; try reflexivity.
  Qed.
 
+ Lemma solution_is_unique y1 y2 : (forall i, i < (S d) -> y1\_i 0 == y2\_i 0) ->  ODE_solution f y1 -> ODE_solution f y2 -> y1 == y2.
+ Proof.
+  intros Hy0 H1 H2.
+  apply (tuple_nth_ext' _ _ 0 0).
+  intros.
+  apply ps_eq_order.
+  enough (forall n i k  , i<  S d ->  (order k <= n)%nat -> y1 \_i k == y2 \_i k).
+  intros;apply (H4 (order k));auto.
+  intros n.
+  induction n.
+  - intros.
+    assert (order k = 0)%nat by lia.
+    apply order_zero_eq_zero in H6.
+     rewrite idx_index, (idx_index y2\_i0), H6, <-!idx_index.
+     apply Hy0;auto. 
+  -  intros.
+     assert (order k <= n \/ order k = S n)%nat by lia.
+     destruct H6;[apply IHn;auto|].
+     destruct (tuple_pred_spec' k); [rewrite H6;simpl;lia|].
+     rewrite idx_index, (idx_index y2\_i0), H8, <-!idx_index.
+     rewrite !deriv_next_backward_full; try (apply order_pos_pred_index_lt;lia ).
+     apply ring_eq_mult_eq; [reflexivity | ].
+     assert (pred_index k = 0)%nat as ->.
+     {
+       enough (pred_index k <= 0)%nat by lia.
+       apply pred_index_spec2.
+       intros Hk.
+       destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+       rewrite tuple_nth_cons_hd in Hk.
+       rewrite Hk in H6.
+       rewrite order_cons in H6.
+       rewrite zero_tuple_zero in H6.
+       rewrite zero_order in H6.
+       simpl in H6.
+       lia.
+     }
+     rewrite idx_index, (idx_index (D[0] y2\_i0)).
+     setoid_rewrite (proj1 (ODE_solution_ith f y1) H1 _ H4).
+     setoid_rewrite (proj1 (ODE_solution_ith f y2) H2 _ H4).
+     pose proof (tuple_nth_multicomposition  i0 zero f y1).
+     setoid_rewrite H9;auto.
+     pose proof (tuple_nth_multicomposition  i0 zero f y2).
+     setoid_rewrite H10;auto.
+      rewrite <-!idx_index.
+      apply ps_composition_exchange.
+      intros.
+      rewrite tuple_pred_order in H11.
+      apply IHn;auto;lia.
+ Qed.
+   
 End PowerSeriesSolution.

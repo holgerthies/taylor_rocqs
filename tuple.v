@@ -167,6 +167,16 @@ Proof.
    apply H;lia.
  Qed.
 
+ Lemma tuple_nth_ext2 {n A} {A_setoid : Setoid A} (x y : @tuple n A) d1 d2 : x == y -> (forall i, (i < n) -> tuple_nth i x d1 == tuple_nth i y d2).
+ Proof.
+   destruct x, y.
+   simpl.
+   rewrite (eqlistA_nth_ext _ _ d1 d2).
+   intros [].
+   intros.
+   apply H0;lia.
+ Qed.
+
  #[global] Instance tuple_cons_proper {n A} {A_setoid : Setoid A} : Proper (equiv ==> equiv ==> equiv) (@tuple_cons A n).
  Proof.
    intros a b eq1 c d eq2.

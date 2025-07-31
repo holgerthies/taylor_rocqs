@@ -1357,15 +1357,6 @@ Qed.
   Qed.
 
 
-  (* Definition ps_composition_next n m (xn : ps (S m)) (bs : @tuple n (ps (S m))) (i : nat) v (k : nat^(S m))  : A. *)
-  (* Proof. *)
-  (*   apply ((inv_Sn i) * ((sum (fun j => D[v] bs\_j * (IHi (D[j] a))) n) (tuple_pred k))). *)
-  (*   destruct (order k =? S i) eqn:E; [|apply 0]. *)
-  (*   apply Nat.eqb_eq in E. *)
-  (*   destruct (tuple_pred_spec k); try (simpl in *;lia). *)
-  (*   apply ((inv_Sn i) * ((sum (fun j => D[x] bs\_j * xn ) n) (tuple_pred k))). *)
-  (* Defined. *)
-
 
   #[global] Instance tuple_pred_proper {d} : Proper (SetoidClass.equiv ==> SetoidClass.equiv) (tuple_pred (d:=d)).
   Proof.
@@ -2600,8 +2591,61 @@ Qed.
        rewrite <-idx_index, ps0;reflexivity.
   Qed.
 
+  Lemma ps_comp_0 {m n}  (x : ps m) (y : (ps (S n) ^ m)) : ps_composition m n x y 0 == x 0.
+  Proof.
+    rewrite ps_composition_simpl.
+    rewrite zero_order.
+    simpl.
+    setoid_rewrite zero_order.
+    reflexivity.
+  Qed.
 
+  Lemma order_pos_pred_index_lt {d} (k : nat^d) : order k > 0 -> pred_index k < d. 
+  Proof.
+    intros.
+    apply tuple_pred_spec';simpl;lia.
+  Qed.
 
+  Lemma ps_composition_exchange {m n}  (x : ps m) (y : (ps (S n) ^ m)) (z : (ps (S n)^m)) k  : (forall j, (order j <= order k)%nat -> (forall i, i < m -> y\_i j == z\_i j)) ->  ps_composition m n x y k == ps_composition m n x z k.
+  Proof.
+    rewrite !ps_composition_simpl.
+    intros.
+    enough (forall K, ((order K <= order k)%nat -> ps_composition_ith m n x y (order K) K == ps_composition_ith m n x z (order K) K )) by (apply H2;auto).
+    intros.
+    remember (order k) as k0.
+    clear Heqk0.
+    clear k.
+    revert H1.
+    revert x.
+    generalize dependent K.
+    induction k0.
+    intros;assert (order K = 0) by (simpl in * ;lia);rewrite H3;simpl;rewrite H3;reflexivity.
+    intros.
+    assert (order K <= k0 \/ order K = S k0 )%nat by lia.
+    destruct H3.
+    apply IHk0;auto.
+    rewrite H3.
+    clear H2.
+    rewrite !ps_composition_ith_next;auto.
+    apply ring_eq_mult_eq; [reflexivity|].
+    setoid_rewrite index_sum.
+    apply sum_ext.
+    intros.
+    apply exchange_ps_factor_order.
+    - intros.
+      rewrite tuple_pred_order in H4.
+      setoid_rewrite deriv_next_full; try (apply order_pos_pred_index_lt;lia).
+      apply ring_eq_mult_eq; [reflexivity|].
+      apply H1;auto.
+      rewrite !order_plus, order_nth1;[simpl;lia|].
+      apply order_pos_pred_index_lt;simpl;lia.
+   -  intros.
+      rewrite tuple_pred_order in H4.
+      setoid_rewrite ps_comp_ith_larger; try lia.
+      apply IHk0; try lia.
+      intros.
+      apply H1;auto.
+  Qed.
   #[global] Instance ps_diffAlgebra  :  CompositionalDiffAlgebra (A := ps).
   Proof.
      exists ps_composition ps_comp1.
