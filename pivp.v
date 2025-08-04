@@ -310,8 +310,37 @@ Section AnalyticPoly.
 
 
   Definition poly_vec_bound' {d e} := poly_vec_bound (A:=A)  (d:=d) (e:=e).
+  Lemma poly_vec_bound_cons {d e} p0 pt : poly_vec_bound (A:=A) (d:=d) (e:=(S e)) (tuple_cons p0 pt) == max (poly_norm p0) (poly_vec_bound pt).
+  Proof.
+    Opaque poly_norm.
+    simpl.
+    destruct (destruct_tuple_cons (tuple_cons p0 pt)) as [p0' [pt' P]] eqn:E.
+    setoid_rewrite E.
+    clear E.
+    apply tuple_cons_ext in P.
+    destruct P as [-> -> ].
+    reflexivity.
+  Qed.
+
    Lemma poly_vec_bound_spec {d} {e} (p : A{x^S d}^e) i n : i < S d -> sum_order  (poly_to_ps p\_i) n <= poly_vec_bound p.   
-   Admitted.
+   Proof.
+     intros.
+     apply (le_trans _ _ _ (poly_norm_spec _ _)).
+     
+     unfold poly_norm'.
+     generalize dependent i.
+     induction e;intros.
+     rewrite tuple_nth_nil;apply le_refl.
+     destruct (destruct_tuple_cons p) as [p0 [pt ->]].
+     rewrite poly_vec_bound_cons.
+     destruct i.
+     - rewrite tuple_nth_cons_hd.
+       apply max_le_left.
+    - rewrite tuple_nth_cons_tl.
+      assert (i < S d) by lia.
+      apply (le_trans _ _ _ (IHe _ _ H2)).
+      apply max_le_right.
+   Qed.
 
    Lemma poly_bound_spec {d} (p : A{x^S d}^S d) i : i < S d -> strong_bound (poly_to_ps p\_i) (to_ps (fun (n : nat) => max 1 (poly_vec_bound p)  * npow 1 n)).
    Proof.
@@ -330,8 +359,8 @@ Section AnalyticPoly.
 
    Lemma fun_ps_poly_ps {d} (p : A{x^S d}) : poly_to_ps p == fun_ps p (y0 := 0) (in_dom := poly_tot 0).
    Proof.
-   Admitted.
-
+     intros k.
+  Admitted.
   Definition analytic_poly {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d))  : Analytic (A := @mpoly A) (d := d) (y0 := 0) (in_dom := poly_tot 0).
   Proof.
     pose (p' := shift_mpoly p y0).
@@ -380,8 +409,8 @@ Section AnalyticPoly.
    Defined.
 
    Lemma solution_r_pos  {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly)) : 0 <= solution_rinv F.(M) F.(r) (d:=d).
+   Proof.
    Admitted.
-
    Definition ivp_solution_i_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat)  : A * A.
    Proof.
      assert (abs (ivp_r_max F) <= ivp_r_max F).
