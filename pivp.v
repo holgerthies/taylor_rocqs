@@ -356,11 +356,247 @@ Section AnalyticPoly.
 
 
 
+   Lemma poly_to_ps_eval {d} (q : A{x^d}) :  poly_to_ps q 0 == q.[0].
+   Proof.
+     induction d.
+     simpl;reflexivity.
+     rewrite vec0_cons.
+     rewrite poly_to_ps_cons.
+     rewrite IHd.
+     rewrite vec0_cons.
+     rewrite eval_tuple_cons_simpl.
+     unfold eval_mpoly.
+     rewrite const_to_mpoly_zero.
+     destruct q.
+     simpl.
+     reflexivity.
+     simpl.
+     rewrite mulC, mul0,add0.
+     reflexivity.
+   Qed.
+   #[global] Instance poly_to_ps_proper {d}: Proper (SetoidClass.equiv ==> SetoidClass.equiv )  (poly_to_ps (d:=d)).
+   Proof.
+     intros a b eq.
+     induction d.
+     simpl;auto.
+     simpl.
+     intros k.
+     destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+     apply IHd.
+     apply eq.
+   Defined.
+   Lemma tuple_cons_destruct {A0 d} k0 (k : A0^d) : destruct_tuple_cons (tuple_cons k0 k) = existT _ k0 (exist _ k eq_refl).
+   Proof.
 
+     destruct (destruct_tuple_cons (tuple_cons k0 k)) as [k0' [kt' P]].
+     destruct (tuple_cons_ext _ _  _ _ P) as [-> ->].
+     f_equal.
+     apply ProofIrrelevance.ProofIrrelevanceTheory.subset_eq_compat.
+     reflexivity.
+  Qed.
+
+   Lemma deriv_rec_0 {d e} (k : nat^e) : Dx[k] (0 : A{x^d}) == 0.
+   Proof.
+     enough (forall i, derive_rec_helper i (0 : A{x^d}) k == (0 : A{x^d})).
+     {
+        unfold derive_rec.
+        apply H1.
+     }
+     induction e;intros.
+     simpl;reflexivity.
+     destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+     rewrite derive_rec_helper_next.
+     rewrite nth_derivative_proper.
+     2: apply IHe.
+     induction k0.
+     simpl.
+     reflexivity.
+     rewrite nth_derivative_S.
+     simpl.
+     rewrite poly_pdiff0.
+     apply IHk0.
+   Qed.
+
+   Lemma deriv_rec_ntimes {d} (p : A{x^d}) (k : nat^d) n : (Dx[k] (ntimes n p)) == ntimes n (Dx[k] p).
+   Proof.
+     induction n.
+     simpl.
+     apply deriv_rec_0.
+     simpl ntimes.
+     rewrite derive_rec_plus.
+     rewrite IHn.
+     reflexivity.
+  Qed.
+   
+   Lemma ntimes_eval {d} (p : A{x^d}) n x : (ntimes n p).[x] == ntimes n (p.[x]).
+   Proof.
+     induction n.
+     simpl.
+     rewrite zero_poly_eval.
+     reflexivity.
+     simpl.
+     rewrite mpoly_add_spec.
+     rewrite IHn.
+     reflexivity.
+   Qed.
+
+   Lemma nth_derivative_0 {d} (p : A{x^d}) i : nth_derivative i p 0 == p.
+   Proof.
+     simpl;reflexivity.
+   Qed.
+
+   Lemma poly_eval_0 {d} (p : A{x^S d}) : p.{0} == nth 0 p 0.
+   Proof.
+     destruct p.
+     simpl.
+     setoid_rewrite nil_eval;reflexivity.
+     simpl.
+     unfold eval_mpoly.
+     simpl.
+     rewrite const_to_mpoly_zero.
+     rewrite mulC,mul0,add0.
+     reflexivity.
+   Qed.
+   Lemma pdiff_nth0 {d} (p : A{x^S d}) i :   D[i] (nth 0 p 0) == nth 0 (D[S i] p) 0. 
+   Proof.
+     destruct p.
+     simpl.
+     setoid_rewrite poly_pdiff0.
+     reflexivity.
+     simpl.
+     reflexivity.
+   Qed.
+   Lemma nth_derivative_nth0 {d} (p : A{x^S d}) i k :   nth_derivative i (nth 0 p 0) k == nth 0 (nth_derivative (S i) p k) 0. 
+   Proof.
+     induction k.
+     simpl;reflexivity.
+     rewrite nth_derivative_S.
+     rewrite nth_deriv_independent.
+     rewrite IHk.
+     rewrite pdiff_nth0.
+     apply nth_proper_list.
+     rewrite nth_derivative_S.
+     rewrite nth_deriv_independent.
+     reflexivity.
+   Qed.
+   Lemma derive_rec_helper_nth0 {d e} (p : A{x^S d}) (k : nat^e) i :   (derive_rec_helper i (nth 0 p 0) k) == nth 0 (derive_rec_helper (S i) p k) 0. 
+   Proof.
+     revert i.
+     induction e;intros.
+     simpl;reflexivity.
+     destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+     rewrite !derive_rec_helper_next.
+     rewrite nth_derivative_proper.
+     2: apply IHe.
+     apply nth_derivative_nth0.
+  Qed.    
+
+   Lemma nth_derivative_poly_spec (p : A{x^1}) k : nth 0 (nth_derivative 0 p k) 0 == [k]! *  (nth k p 0).
+   Proof.
+     revert p.
+     induction k;intros.
+     simpl;ring.
+     rewrite nth_proper_list.
+     2: apply nth_derivative_S.
+     rewrite IHk.
+     simpl (D[_]_).
+     rewrite derive_poly_nth.
+     rewrite ntimes_spec, <-mulA.
+     apply ring_eq_mult_eq;try reflexivity.
+     simpl.
+     rewrite mulC.
+     reflexivity.
+   Qed.
    Lemma fun_ps_poly_ps {d} (p : A{x^S d}) : poly_to_ps p == fun_ps p (y0 := 0) (in_dom := poly_tot 0).
    Proof.
-     intros k.
-  Admitted.
+      intros k.
+      enough (poly_to_ps p k == t![k] * (Dx[k] p).[0]).
+      {
+        rewrite H1.
+        unfold fun_ps.
+        reflexivity.
+      }
+
+      induction d.
+      simpl.
+      destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+      unfold derive_rec.
+      simpl.
+      rewrite tuple_cons_destruct.
+      rewrite poly_eval_0.
+      rewrite nth_derivative_poly_spec.
+      rewrite mul1, <-mulA,(mulC ![k0]), fact_invfact, mulC,mul1.
+      reflexivity.
+      destruct (destruct_tuple_cons k) as [k0 [kt ->]].
+      rewrite poly_to_ps_cons.
+      rewrite IHd.
+
+      enough ((Dx[ tuple_cons k0 kt] p) .[0] == [k0]! * ((Dx[kt] ((nth k0 p 0) : A{x^(S d)}))).[0]).
+      {
+        rewrite H1.
+        rewrite <-mulA.
+        apply ring_eq_mult_eq;try reflexivity.
+        rewrite inv_factt_cons.
+        rewrite mulC,<-mulA.
+        rewrite fact_invfact.
+        ring.
+      }
+      generalize dependent p.
+      induction k0;intros.
+      - unfold derive_rec.
+        rewrite derive_rec_helper_next.
+        simpl factorial.
+        ring_simplify.
+        rewrite nth_derivative_0.
+        rewrite vec0_cons.
+        rewrite eval_tuple_cons_simpl.
+        rewrite poly_eval_0.
+        rewrite derive_rec_helper_nth0.
+        reflexivity.
+      - rewrite <-deriv_rec_next.
+        rewrite IHk0.
+        setoid_rewrite derive_poly_nth.
+        rewrite deriv_rec_ntimes.
+        rewrite ntimes_eval.
+        rewrite ntimes_spec.
+        rewrite <-mulA.
+        apply ring_eq_mult_eq; try reflexivity.
+        simpl;ring.
+    Qed.
+        (*         Search nth_derivative (_ :: _). *)
+(*         simpl. *)
+(*         ring. *)
+(*         destruct p. *)
+(*         simpl. *)
+(*         ring. *)
+(*         rewrite idx_index, (idx_index (poly_to_ps _)).  *)
+(*         Search (Dx[_] _). *)
+(*          rewrite ps_derive_spec. *)
+(*          rewrite P. *)
+(*          simpl. *)
+(*          rewrite E. *)
+(*         ring_simplify. *)
+
+(*       induction n. *)
+(*       - intros. *)
+(*         apply order_zero_eq_zero in H1. *)
+(*         rewrite H1 at 2. *)
+(*         rewrite inv_factt0. *)
+(*         rewrite idx_index, (idx_index (poly_to_ps _)).  *)
+(*         rewrite H1. *)
+(*         rewrite derive_rec_0. *)
+(*         ring. *)
+(*      - intros. *)
+(*        destruct (tuple_pred_spec' k); try (simpl in *;lia). *)
+(*         rewrite idx_index, (idx_index (poly_to_ps _)).  *)
+(*         rewrite H3. *)
+(*         rewrite <-!idx_index. *)
+(*         rewrite deriv_next_backward_full. *)
+(*       rewrite ps_property_backwards. *)
+(*       apply ring_eq_mult_eq;try reflexivity. *)
+      
+(*       revert k. *)
+(* - *)
   Definition analytic_poly {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d))  : Analytic (A := @mpoly A) (d := d) (y0 := 0) (in_dom := poly_tot 0).
   Proof.
     pose (p' := shift_mpoly p y0).
