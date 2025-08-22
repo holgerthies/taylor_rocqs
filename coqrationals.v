@@ -120,6 +120,8 @@ Defined.
       apply q.
    -  apply Qminmax.Q.le_max_l.
    -  apply Qminmax.Q.le_max_r.
+   - apply Qmult_inv_r.
+     lra.
    Defined.
 
 

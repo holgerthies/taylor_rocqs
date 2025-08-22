@@ -39,10 +39,10 @@ Definition exp_example := convert_pivp (A:=RQ) exp_ivp.
 (* First compute finite Taylor polynomial *)
 
 (* order 20 approximation *)
-Definition exp_approx' := approx_pivp exp_example (inject_Q 0.5) 20.
+Definition exp_approx' := approx_pivp exp_example (inject_Q (1#8)) 10.
 
 (*evaluate at 1/2 *)
-Time Eval vm_compute in (seq_tuple (inject_Q (1#2) ,exp_approx') (-10)).
+Time Eval vm_compute in (seq_tuple (inject_Q (1#8) ,exp_approx') (-10)).
 (* now with guaranteed error bound  at max time *)
 Definition exp_exact := (pivp_trajectory exp_example.(pf) (inject_Q 0) (exp_example.(py0)) 1).
 

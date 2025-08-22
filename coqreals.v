@@ -173,6 +173,18 @@ Defined.
      apply CRmax_l.
    - intros.
      apply CRmax_r.
+  - intros.
+    unfold CR_inv_approx.
+    rewrite CRinv_morph.
+    2: (apply CRmax_right;auto).
+    apply CRinv_r.
+    Unshelve.
+    apply CRabs_appart_0.
+
+    apply (CRlt_le_trans _ x).
+    2: apply CRle_abs.
+    apply (CRlt_le_trans _ 1);auto.
+    apply CRzero_lt_one.
    Defined.
 
 
@@ -185,59 +197,291 @@ End ConstructiveReals.
 
 (** A few more things needed for working with the Cauchy reals **)
 (** As the modulus definitons in our reals and the Cauchy reals are different we need to relate them **)
-(** Most of the things are admitted for now **)
 
 Require Import odebounds.
 Require Import realanalytic.
 From Coq.Reals Require Import ConstructiveCauchyReals.
 From Coq.Reals.Cauchy Require Import ConstructiveRcomplete.
-Require Import ConstructiveCauchyAbs.
+Require Import ConstructiveCauchyAbs ConstructiveCauchyRealsMult.
 Require Import Qpower.
 Require Import Qabs.
 Require Import Qround.
 Require Import QArith.
+From Coq Require Import micromega.Lqa.
 Section CauchyReals.
 Print CRealLt.
 
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
-(* Need to relate our definition of fast Cauchy sequence to the modulus definition *)
-(* Admitted for now *)
 Definition RQ := CRcarrier CRealConstructive.
-Lemma cauchy_neighbor_helper (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  forall k (i j : nat),(Nat.log2 (Pos.to_nat (k + 1)) <= i)%nat -> (Nat.log2 (Pos.to_nat (k + 1)) <= j)%nat -> (CReal_abs (xn i - xn j) <= inject_Q (q 1 k))%CReal.
- Admitted.
+
+Lemma inv2_npow_spec n : (npow (inv2 :RQ) n == inject_Q (2^(-Z.of_nat n)))%CReal.
+Proof.
+  induction n.
+  simpl;reflexivity.
+  simpl npow.
+  rewrite IHn.
+  replace (inv2) with (inject_Q (q 1 2)) by auto.
+
+  rewrite <-inject_Q_mult.
+  apply inject_Q_morph.
+  rewrite !Qpower_opp.
+
+  rewrite Nat2Z.inj_succ.
+  unfold Z.succ.
+  rewrite Qpower_plus';try lia.
+  rewrite Qinv_mult_distr.
+  simpl.
+  setoid_replace (q 1 2) with (/ 2)%Q by reflexivity.
+  rewrite Qmult_comm.
+
+  apply Qmult_inj_l;try reflexivity.
+  rewrite <-Qinv_power.
+  enough ((/ 2) ^ (Z.of_nat n) > 0)%Q by lra.
+  apply Qpower_0_lt.
+  apply Qinv_lt_0_compat.
+  lra.
+Qed.
+
+Lemma inject_Q_pow2_split n : (inject_Q (2 ^ (- Z.of_nat n)) == inject_Q (2 ^ (- Z.of_nat (S n)))+inject_Q (2 ^ (- Z.of_nat (S n))))%CReal.
+Proof.
+  rewrite <-inject_Q_plus.
+  apply inject_Q_morph.
+  rewrite !Nat2Z.inj_succ.
+  unfold Z.succ.
+  rewrite !Z.opp_add_distr.
+  rewrite !Qpower_plus; try lra.
+  simpl.
+  field.
+Qed.
+
+Lemma fast_cauchy_neighboring_ij (xn : nat -> RQ) : fast_cauchy_neighboring xn -> forall i j, (CReal_abs (xn i - xn j) <= inject_Q (2^(- Z.of_nat (Nat.min i j))))%CReal.
+Proof.
+ unfold fast_cauchy_neighboring.
+ setoid_rewrite inv2_npow_spec.
+ intros H.
+ enough (forall k i, CReal_abs (xn i - xn (i + k)%nat) <= inject_Q (2^(- Z.of_nat i)))%CReal.
+ {
+     intros.
+     assert (i <= j \/ j <= i)%nat by lia.
+     destruct H1.
+     replace j with (i + (j - i))%nat by lia.
+     rewrite Nat.min_l;try lia.
+     apply H0.
+     replace i with (j + (i - j))%nat by lia.
+     rewrite CReal_abs_minus_sym.
+     rewrite Nat.min_r;try lia.
+     apply H0.
+ }
+ intros k. 
+ induction k;intros.
+ replace (i+0)%nat with i by lia.
+ setoid_replace (xn i - xn i)%CReal with (inject_Q 0) by ring.
+ rewrite <-Qabs_Rabs.
+ apply inject_Q_le.
+ simpl.
+ apply Qpower_0_le;lra.
+ setoid_replace (xn i - xn (i+S k)%nat)%CReal with ((xn i - xn (S i)) + (xn (S i) - xn (i + S k)%nat))%CReal by ring.
+ replace (i + S k)%nat with (S i + k)%nat by lia.
+ rewrite inject_Q_pow2_split.
+ apply (CReal_le_trans _ _ _ (CReal_abs_triang _ _ )).
+ apply CReal_plus_le_compat.
+ rewrite CReal_abs_minus_sym.
+ apply H.
+ apply IHk.
+Qed.
+
+Local Lemma Pos_of_nat_le n m: (n <= m)%nat -> (Pos.of_nat n <= Pos.of_nat m)%positive.
+Proof. lia. Qed.
+
+Lemma cauchy_neighbor_helper (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  forall k (i j : nat),(Nat.log2_up (Pos.to_nat k) <= i)%nat -> (Nat.log2_up (Pos.to_nat k) <= j)%nat -> (CReal_abs (xn i - xn j) <= inject_Q (q 1 k))%CReal.
+Proof.
+  intros.
+  apply (CReal_le_trans _ _ _ (fast_cauchy_neighboring_ij _ H _ _)).
+  apply inject_Q_le.
+  apply (Qle_trans _ (2^-(Z.of_nat (Nat.log2_up (Pos.to_nat k))))).
+  apply Qpower_le_compat_l; [lia|lra].
+  rewrite ClassicalDedekindReals.Qpower_2_neg_eq_natpow_inv.
+  unfold q,Qle.
+  simpl.
+  apply Pos2Z.pos_le_pos.
+  rewrite <-Pos2Nat.id at 1.
+  apply Pos_of_nat_le.
+  destruct (Pos.to_nat k).
+  lia.
+  destruct n.
+  simpl.
+  lia.
+  apply Nat.log2_up_spec.
+  lia.
+Qed.
+
+Lemma CReal_abs_eq0 (x y : RQ) : (CReal_abs (x-y) == inject_Q 0)%CReal -> x == y. 
+Proof.
+  intros.
+  destruct H.
+  apply CReal_abs_def2 in H0.
+  destruct H0.
+  rewrite CReal_opp_0 in H1.
+  split.
+  apply (CReal_plus_le_reg_r (-y)).
+  setoid_replace (y + (-y))%CReal with (inject_Q 0) by ring.
+  exact H1.
+  apply (CReal_plus_le_reg_r (-y)).
+  ring_simplify.
+  exact H0.
+Qed.
 
 Lemma cauchy_neighboring_to_mod   (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  (Un_cauchy_mod xn).
 Proof.
    intros H k.
-   exists (Nat.log2 ((Pos.to_nat (k+1)))).
+   exists (Nat.log2_up ((Pos.to_nat k))).
    intros.
    apply cauchy_neighbor_helper;auto.
  Defined.
 
- (* Archimedean for Q seems to be opaque, so we built our own for now (correctness admitted for now) *)
-  Local Lemma magic : False.
-  Admitted.
+  Local Lemma CReal_from_cauchy_seq (xn : nat -> RQ) H n:  (n > 0)%nat -> seq (CReal_from_cauchy xn (cauchy_neighboring_to_mod _ H)) (Z.neg (Pos.of_nat n)) = seq (xn (n+2)%nat) (Zneg (Pos.of_nat n+2)).
+  Proof.
+    intros.
+    unfold CReal_from_cauchy.
+    simpl.
+    unfold CReal_from_cauchy_seq.
+    simpl.
+    f_equal.
+    rewrite !Pos2Nat.inj_xO.
 
- (* #[global] Instance ArchimedeanFieldRQ : ArchimedeanField (A := RQ). *)
- (*  Proof. *)
- (*    unshelve eapply Build_ArchimedeanField. *)
- (*    contradict magic. *)
- (*    contradict magic. *)
- (*    contradict magic. *)
- (*   -  intros. *)
- (*      exists (Z.to_nat (Qceiling (seq x (-1))+1)). *)
- (*      contradict magic. *)
- (*  Defined. *)
+    rewrite Nat.log2_up_double;try lia.
+    rewrite Nat.log2_up_double;try lia.
+    rewrite Pos2Nat.inj_pow.
+    replace (Pos.to_nat 2) with 2%nat by lia.
+    rewrite Nat.log2_up_pow2;try lia.
+    f_equal.
+    lia.
+  Qed.
 
+  Lemma CReal_from_cauchy_lim (xn : nat -> RQ) (H : fast_cauchy_neighboring xn): forall n, (CReal_abs ((CReal_from_cauchy _ (cauchy_neighboring_to_mod _ H)) - xn (S n)) <=  inject_Q (2^(-Z.of_nat n)))%CReal.
+  Proof.
+     intros.
+     remember (CReal_from_cauchy xn (cauchy_neighboring_to_mod xn H)) as x.
+     remember (Z.neg (Pos.of_nat (n+3)%nat)) as p.
+     assert (CReal_abs (inject_Q (seq x p) - (inject_Q (seq (xn (S n)) p))) <= inject_Q (2^(p+1)) + inject_Q (2^(-Z.of_nat (S n))))%CReal.
+     {
+       rewrite Heqx, Heqp.
+       rewrite CReal_from_cauchy_seq; try lia.
+       rewrite <-Heqp.
+       replace (n+3+2)%nat with (n+5)%nat by lia.
+       replace (Pos.of_nat (n+3) + 2)%positive with (Pos.of_nat (n+5)) by lia.
+       remember (Z.neg (Pos.of_nat (n+5))) as p'.
+       remember (inject_Q (seq (xn (n+5)%nat) p')) as a.
+       remember (inject_Q (seq (xn (S n)) p)) as b.
+       setoid_replace (a - b)%CReal with ((a - (xn (n+5)%nat)) +  (xn (S n) - b ) + (xn (n+5)%nat - xn (S n)) )%CReal by ring.
+       apply (CReal_le_trans _ _ _ (CReal_abs_triang _  _)).
+       apply CReal_plus_le_compat.
+       - apply (CReal_le_trans _ _ _ (CReal_abs_triang _  _)).
+         rewrite Heqa, Heqb.
+         rewrite CReal_abs_minus_sym.
+         apply (CReal_le_trans _ _ _ (CReal_plus_le_compat _ _ _ _ (CReal_cv_self' _ _) (CReal_cv_self' _ _))).
+         rewrite <-inject_Q_plus.
+         apply inject_Q_le.
+         rewrite Qpower_plus;try lra.
+         setoid_replace (2^p * 2^1) with (2^p + 2^p) by (simpl;lra).
+         apply Qplus_le_l.
+         apply Qpower_le_compat_l;[lia|lra].
+       - apply (CReal_le_trans _ _ _ (fast_cauchy_neighboring_ij xn H _ _ )).
+         apply inject_Q_le;apply Qpower_le_compat_l;[lia|lra].
+     }
+     setoid_replace (x - xn (S n))%CReal with ((x - inject_Q (seq x p)) + ((inject_Q (seq x p)) - (inject_Q (seq (xn (S n)) p))+ ((inject_Q (seq (xn (S n)) p))- xn (S n))))%CReal by ring.
+     apply (CReal_le_trans _ _ _ (CReal_abs_triang _ _)).
+     apply (CReal_le_trans _ _ _ (CReal_plus_le_compat_l _ _ _ (CReal_abs_triang _ _))).
 
+     apply (CReal_le_trans _ _ _ (CReal_plus_le_compat _ _ _ _ (CReal_cv_self' _ _) (CRealLe_refl  _))).
+     rewrite CReal_plus_comm, CReal_plus_assoc.
+     apply (CReal_le_trans _ _ _ (CReal_plus_le_compat _ _ _ _ H0 (CRealLe_refl  _))).
+     rewrite CReal_plus_comm, CReal_plus_assoc.
+     rewrite CReal_abs_minus_sym.
+     apply (CReal_le_trans _ _ _ (CReal_plus_le_compat _ _ _ _ (CReal_cv_self' _ _) (CRealLe_refl  _))).
+     rewrite <-!inject_Q_plus.
+     apply inject_Q_le.
+     replace (-Z.of_nat (S n))%Z with (p+2)%Z by lia.
+     rewrite !Qpower_plus; try lra.
+     replace (2^2)%Q with 4%Q by reflexivity.
+     replace (2^1)%Q with 2%Q by reflexivity.
+     setoid_replace (2 ^ p + (2 ^ p + (2 ^ p*2 + 2 ^ p * 4))) with (8 * 2^p) by (simpl;lra).
+     rewrite  Heqp. 
+     replace 8 with (2^3) by reflexivity.
+     rewrite <-Qpower_plus; try lra.
+     apply Qpower_le_compat_l;[lia|lra].
+  Qed.
+
+  Lemma fast_cauchy_S (xn : nat -> RQ) : fast_cauchy_neighboring xn -> fast_cauchy_neighboring (fun n => (xn (S n))).
+  Proof.
+    intros.
+    intros n.
+    simpl.
+    apply (CReal_le_trans _ _ _ (H (S n))).
+    simpl.
+    unfold inv2.
+    simpl.
+    rewrite <-CReal_mult_assoc.
+    apply CReal_mult_le_compat_r.
+    pose proof (npow_pos (A:=RQ) (inject_Q (q 1 2)) n).
+    apply H0.
+    simpl.
+    unfold q.
+    apply inject_Q_le;lra.
+    rewrite <-inject_Q_mult.
+    apply inject_Q_le.
+    lra.
+  Qed.
+
+  
   #[global] Instance constrComplete : (ConstrComplete (A := RQ)).
   Proof.
     constructor.
     intros.
-    exists (CReal_from_cauchy  xn (cauchy_neighboring_to_mod _ H)).
+    exists (CReal_from_cauchy _ (cauchy_neighboring_to_mod _ H)).
     intros.
-    generalize dependent xn.
-    generalize dependent n.
-    contradict magic.
-   Defined.
+    rewrite inv2_npow_spec.
+    pose proof (CReal_from_cauchy_lim xn H).
+    simpl.
+    remember  (CReal_from_cauchy xn (cauchy_neighboring_to_mod xn H)) as x.
+    assert (forall p, CReal_abs (x - xn n) <=inject_Q (2 ^ (- Z.of_nat p)) + inject_Q (2 ^ (- Z.of_nat n)))%CReal.
+    {
+        intros.
+        remember (Nat.max p n) as p'.
+        setoid_replace (x - xn n)%CReal with ((x - xn (S p')) + (xn (S p') - xn n) )%CReal by ring.
+        apply (CReal_le_trans _ _ _ (CReal_abs_triang _ _)).
+        apply CReal_plus_le_compat.
+        apply (CReal_le_trans _ _ _ (H0 _)).
+        apply inject_Q_le.
+        apply Qpower_le_compat_l; [lia|lra].
+        apply (CReal_le_trans _ _ _ (fast_cauchy_neighboring_ij xn H  _ _)).
+        apply inject_Q_le.
+        apply Qpower_le_compat_l; [lia|lra].
+    }
+
+    assert (forall p, CReal_abs (x - xn n) <=inject_Q (2 ^ p) + inject_Q (2 ^ (- Z.of_nat n)))%CReal.
+    {
+       intros.
+       assert (p <= 0 \/ 0 < p)%Z by lia.
+       destruct H2.
+       replace p with (-Z.of_nat (Z.to_nat (-p)))%Z by lia.
+       apply H1.
+       apply (CReal_le_trans _ _ _ (H1 0%nat)).
+       apply CReal_plus_le_compat;apply inject_Q_le;try lra.
+       apply Qpower_le_compat_l;[lia|lra].
+    }
+    clear H1.
+    apply CRealLe_not_lt.
+    intros p.
+    specialize (H2 p).
+    rewrite <-inject_Q_plus in H2.
+    apply (CReal_abs_Qabs _ _ p) in H2.
+    simpl.
+    unfold CReal_abs_seq.
+    setoid_replace (2 * 2 ^ p) with (2^p + 2 ^ p) by (simpl;lra).
+    apply (Qplus_le_l _ _ (- 2^(-Z.of_nat n))) in H2.
+    apply (Qle_trans _ _ _ H2).
+    lra.
+ Defined.
 End CauchyReals.
+
