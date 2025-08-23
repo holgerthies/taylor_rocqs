@@ -558,8 +558,19 @@ Section Analytic.
   Qed.
 
   Definition solution_rinv (Mf Mr : A 0) := (inv_approx (analytic_solution_r Mf Mr)).
-  Lemma solution_rinv_spec (Mf Mr : A 0) : analytic_solution_r Mf Mr  * solution_rinv Mf Mr == 1.
-  Admitted.
+  Lemma solution_rinv_spec (Mf Mr : A 0) : (1 <= Mf) -> (1 <= Mr) -> analytic_solution_r Mf Mr  * solution_rinv Mf Mr == 1.
+  Proof.
+    intros.
+    unfold solution_rinv.
+    apply inv_approx_spec.
+    unfold analytic_solution_r.
+    setoid_replace (1 : (A 0)) with (1 * 1 * 1 : A 0) by ring.
+    apply mul_le_le_compat_pos; try (ring_simplify;apply le_0_1);auto.
+    apply mul_le_le_compat_pos; try (ring_simplify;apply le_0_1);auto.
+    setoid_replace (1 : (A 0)) with (# 1)  by (rewrite ntimes_embed; simpl;ring).
+    apply ntimes_monotone.
+    lia.
+ Qed.
 
      Transparent npow.
    Definition analytic_modulus (F : Analytic) (t : (A 0)) i  : i<(S d) -> abs (t) <= inv2 * (solution_rinv F.(M) F.(r)) -> fast_cauchy_neighboring (fun n => partial_sum (to_ps (analytic_solution_ps F i)) t ( n + 1)).
@@ -588,7 +599,7 @@ Section Analytic.
      (* } *)
 
      intros n.
-     pose proof (bounded_ps_modulus_spec  (to_ps_remove0  (analytic_solution_ps F i)) 1 (analytic_solution_r F.(M) F.(r))  (solution_rinv F.(M) F.(r)) 0 t (solution_rinv_spec F.(M) F.(r))  (le_refl _ ) H8 H9 n).
+     pose proof (bounded_ps_modulus_spec  (to_ps_remove0  (analytic_solution_ps F i)) 1 (analytic_solution_r F.(M) F.(r))  (solution_rinv F.(M) F.(r)) 0 t (solution_rinv_spec F.(M) F.(r) F.(M_pos) F.(r_pos))  (le_refl _ ) H8 H9 n).
      simpl in H10.
      unfold bps_modulus in H10.
      replace (S n + 1)%nat with (((S n) + 1 + 0))%nat by lia.
