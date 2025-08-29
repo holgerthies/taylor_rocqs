@@ -27,7 +27,6 @@ Require Import Coq.ZArith.ZArith.
 Require Import interval interval_string.
 From Coq Require Import List.
 
-
 Module Type IIVP_PARAMS.
   Parameter prec : positive.
   Parameter order : nat.
@@ -39,7 +38,6 @@ Module IIVP (params : IIVP_PARAMS).
 
 Module p  <: PRECISION_POS.  Definition precision := params.prec.  End p.
 Module FI := FloatInterval p.
-
 Definition interval_trajectory {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : F) (t_end : F)  : list (I^(S (S d))).
 Proof.
    pose (Fis := pivp_F p params.order).
@@ -57,6 +55,21 @@ Proof.
  Defined.
 
 Definition itrajectory {d} (p : (PolyExpr) ^(S d)) (y0 : Q^(S d)) (t0 : F) (t_end : F)  := interval_trajectory (vecp (A:=I) (S d) p) (tuple_map archimedean.inject_Q y0) t0 t_end.
+
+(*helper used for benchmarks only *)
+Definition interval_steps {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : F) (order :nat) (factor : F) (steps :nat)  :  I^(S (S d)).
+Proof.
+   pose (Fis := pivp_F p order).
+   pose (step_factor := singleton factor).
+   revert y0 t0.
+   induction steps;intros.
+   apply (tuple_cons (singleton t0) y0).
+   pose (y_err := approx_pivp_step' p y0 Fis step_factor order).
+   destruct (y_err) as [[t1 y1] err].
+   pose (y1' := FI.add_errort (FI.upper err) y1).
+   pose (t_next := (t0+(FI.lower t1))).
+   apply  (IHsteps y1' t_next).
+Defined.
 
 End IIVP.
 

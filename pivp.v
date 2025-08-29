@@ -69,9 +69,9 @@ Proof.
   Defined.
   Local Definition poly_taylor {d} (p : @mpoly A (S d)^(S d))  n i := Fi_to_taylor (Fi p n i).
 
-  Definition approx' {d} (p : @mpoly A (S d)^(S d))  (t : A)  ( n i : nat) : A :=  (eval_poly (poly_taylor p n i)  t) .
+  Definition approx' {d} (p : @mpoly A (S d)^(S d))  (t : A)  ( i n : nat) : A :=  (eval_poly (poly_taylor p n i)  t) .
 
-  Definition approx_pivp_raw {d} (p : PIVP (d:=(S d))) (t : A) (n : nat) : A^(S d) := let p' := shift_mpoly p.(pf) p.(py0)  in (proj1_sig (seq_to_tuple (def := 0) (fun i => approx' p'  t  n i) (S d)))+p.(py0).
+  Definition approx_pivp_raw {d} (p : PIVP (d:=(S d))) (t : A) (n : nat) : A^(S d) := let p' := shift_mpoly p.(pf) p.(py0)  in (proj1_sig (seq_to_tuple (def := 0) (fun i => approx' p'  t  i n) (S d)))+p.(py0).
 
   Definition poly_norm {d} (p : A{x^d}) : A.
   Proof.
@@ -616,18 +616,15 @@ Section AnalyticPoly.
 
 
    Definition approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) (t : A) i n :=  partial_sum (H := H) (R_rawRing := R_rawRing) (A := A)  (to_ps  (analytic_solution_ps  (A := mpoly) (H3 := mpoly_comp_diff_algebra) (F ) i)) t (n + 1).
+
    Lemma fast_cauchy_neighboring_approx {d} {y0 in_dom} (F : (Analytic (d:=d) (A := @mpoly A ) (y0 := y0) (in_dom := in_dom))) t i : abs t <=inv2 * (solution_rinv (d:=d)   F.(M) F.(r))-> i < S d -> fast_cauchy_neighboring (approx F t i).
    Proof.
      intros.
      apply (analytic_modulus (H3 := mpoly_comp_diff_algebra));auto.
    Qed.
 
+
    Definition ivp_r_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))   := ((inv2 * solution_rinv (d:=d) (A := @mpoly A)  F.(M) F.(r))).
-
-   (* Lemma neighboring_error   *)
-
-   (* Definition pivp_approx_with_error {d} (p : @mpoly A d) (t : A) (n : nat) : {yt : A^t * A | dist  }. *)
-
    Context `{ConstrComplete (A := A) (H := _) (R_rawRing := _) (R_semiRing := _) (R_Ring := _) (R_ordered := _)  (emb := _) (hasAbs := _) (Ropp := _) (hasOps := _) (H0 := H0) }.
    Definition ivp_solution_i {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat) t  :  abs t <= (ivp_r_max F)  -> A.
    Proof.
@@ -647,6 +644,7 @@ Section AnalyticPoly.
    Lemma solution_r_pos  {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly)) : 0 <= solution_rinv F.(M) F.(r) (d:=d).
    Proof.
    Admitted.
+
    Definition ivp_solution_i_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat)  : A * A.
    Proof.
      assert (abs (ivp_r_max F) <= ivp_r_max F).
@@ -667,12 +665,189 @@ Section AnalyticPoly.
 
    Definition pivp_solution_ith {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) (t : A) i := ivp_solution_i (analytic_poly p y0) i t.
 
-   Definition pivp_solution_ith_max {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) i := let s := ivp_solution_i_max (analytic_poly p y0) i in (fst s, snd s + y0\_i).
+
+   Lemma eval_poly_sum (p : poly) (x : A): eval_poly p x == sum (fun i => (nth i p 0) * npow x i ) (length p). 
+   Proof.
+     induction p.
+     simpl.
+     reflexivity.
+     unfold eval_poly2.
+     simpl.
+     rewrite sum_S_fun.
+     rewrite IHp.
+     apply ring_eq_plus_eq;try (simpl;ring).
+     rewrite sum_mult.
+     apply sum_ext.
+     intros.
+     simpl.
+     ring.
+   Qed.
+
+   Lemma poly_taylor_length {d}  (p : (mpoly (S d) (A := A))^(S d))  i n : (length (poly_taylor p n i)) = n+1.
+   Proof.
+   unfold poly_taylor.
+   induction n.
+   simpl;lia.
+   simpl.
+   rewrite length_app.
+   simpl.
+   rewrite IHn.
+   simpl;lia.
+   Qed.
+   Lemma Fi_to_taylor_length {d} (l : list (@mpoly A (S d))) : length (Fi_to_taylor l) == length l.
+   Proof.
+     induction l.
+     simpl;reflexivity.
+     simpl.
+     rewrite length_app.
+     rewrite IHl;simpl.
+     lia.
+   Qed.
+
+   Lemma Fi_to_taylor_cons {d} (a : @mpoly A (S d)) (l : list (@mpoly A (S d))) : (Fi_to_taylor (a :: l)) = Fi_to_taylor l ++ [inv_fact (length l) * poly_to_ps a 0].
+   Proof.
+    rewrite <-Fi_to_taylor_length.
+    simpl.
+    reflexivity.
+  Qed.
+
+   Lemma Fi_to_taylor_nth {d} (l : list (@mpoly A (S d))) i : i< length l -> nth i (Fi_to_taylor l) 0 ==  inv_fact i * (poly_to_ps (nth i (rev l) 0) 0).
+   Proof.
+     intros.
+     induction l.
+     simpl in H2.
+     lia.
+     rewrite Fi_to_taylor_cons.
+     simpl in H2.
+     assert (i < length l \/ i = length l)%nat by (simpl;lia).
+     destruct H3.
+     -  rewrite app_nth1;[|rewrite Fi_to_taylor_length;auto].
+        simpl rev.
+        rewrite app_nth1; [|rewrite length_rev;auto].
+        apply IHl;auto.
+     -  rewrite H3.
+        rewrite <-Fi_to_taylor_length, nth_middle, Fi_to_taylor_length.
+        simpl rev.
+        rewrite <-length_rev, nth_middle, length_rev;auto.
+        reflexivity.
+   Qed.
+
+   Lemma Fi_length {d} (p : @mpoly A (S d) ^ (S d)) n i : length (Fi p n i) = S n.
+   Proof.
+     induction n.
+     reflexivity.
+     simpl.
+     setoid_rewrite IHn.
+     lia.
+   Qed.
+
+  Lemma Fi_to_taylor_Fi_nth {d} (p : @mpoly A (S d) ^ (S d)) n i n0 : n0< S n -> nth n0 (Fi_to_taylor (Fi p n i)) 0 ==  inv_fact n0 * (poly_to_ps (nth (n-n0)%nat (Fi p n i) 0) 0).
+    Proof.
+      intros.
+      rewrite Fi_to_taylor_nth;[|rewrite Fi_length;auto].
+      rewrite rev_nth; [|rewrite Fi_length;auto].
+      rewrite Fi_length.
+      replace (S n - S n0)%nat with (n - n0)%nat by lia.
+      reflexivity.
+   Qed.
+   Local Lemma inv_fact_inv_factorial (n : nat) : inv_fact n == ![n].
+   Proof.
+    induction n.
+    reflexivity.
+    simpl.
+    rewrite IHn.
+    unfold inject_nat_inv.
+    rewrite Pos.of_nat_succ.
+    apply ring_eq_mult_eq;try reflexivity.
+   Qed.
+
+
+   Lemma Fi_nth {d} (p : @mpoly A (S d) ^ (S d)) n i n0 : n0 < S n -> nth (n - n0) (Fi p n i) 0 == ode.Fi p n0 i.
+  Proof.
+  generalize dependent n0.
+   induction n.
+   - intros.
+     replace (n0)%nat with 0%nat by lia.
+     simpl.
+     reflexivity.
+   - intros.
+     assert (n0 < S n \/ n0 = S n)%nat by lia.
+     simpl Fi.
+     destruct H3.
+     +  replace (S n - n0)%nat with (S (n - n0))%nat by lia.
+        rewrite nth_S.
+        apply IHn;auto.
+     +  rewrite H3.
+        replace (S n - S n)%nat with 0%nat by lia.
+        simpl nth.
+        simpl ode.Fi.
+        apply sum_ext.
+        intros.
+        apply mult_poly_proper; try reflexivity.
+        replace (hd [] (Fi p n i)) with (nth 0 (Fi p n i) 0) by (destruct (Fi p n i);reflexivity).
+        apply (mpoly_pdiff_proper (S d) n1).
+        replace 0%nat with (n-n)%nat by lia.
+        apply IHn;lia.
+  Qed.
+
+   Lemma approx_approx' {d}  (p : (mpoly (S d) (A := A))^(S d)) y0  t i n : approx' (shift_mpoly p y0) t i n == approx (analytic_poly p y0) t i n.
+   Proof.
+     unfold approx', approx, partial_sum.
+     rewrite eval_poly_sum.
+     rewrite poly_taylor_length.
+     apply sum_ext.
+     intros.
+     apply ring_eq_mult_eq; try reflexivity.
+     unfold to_ps, poly_taylor, analytic_solution_ps.
+     rewrite Fi_to_taylor_Fi_nth, inv_fact_inv_factorial;try lia.
+     apply ring_eq_mult_eq; try reflexivity.
+     rewrite poly_to_ps_eval.
+     simpl eval0.
+     replace (eval0 (ode.Fi (shift_mpoly p y0) n0 i)) with ((ode.Fi (shift_mpoly p y0) n0 i).[0]) by reflexivity.
+     rewrite Fi_nth;[reflexivity|lia].
+   Qed.    
+
+   Definition pivp_solution_ith_max_analytic {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) i := let s := ivp_solution_i_max (analytic_poly p y0) i in (fst s, snd s + y0\_i).
+   Definition pivp_r_max {d}  (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) := inv2 * (inv_approx (# (2*(S d)) * (poly_M (d:=d) p y0)  * (poly_r (d:=S d) p y0))).
+
+   Lemma pivp_r_max_spec {d} p y0 : pivp_r_max (d:=d) p y0 == ivp_r_max (analytic_poly p y0).
+   Proof.
+   unfold pivp_r_max, ivp_r_max, solution_rinv, analytic_solution_r.
+   apply ring_eq_mult_eq;try reflexivity.
+  Qed.
+
+   Lemma fast_cauchy_approx' {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d))   (i : nat) t : (i <= d)%nat -> abs t <= (pivp_r_max p y0)  -> fast_cauchy_neighboring (approx' (shift_mpoly p y0) t i).
+   Proof.
+     intros.
+     intros m.
+     rewrite !approx_approx'.
+     apply fast_cauchy_neighboring_approx;try lia.
+     apply (le_trans _ _ _ H3).
+     apply le_refl.
+   Qed.
+
+   Definition pivp_solution_i {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d))   (i : nat) t  :  abs t <= (pivp_r_max p y0)  -> A.
+   Proof.
+     intros.
+     destruct (le_lt_dec i d); [|apply 0].
+     apply (proj1_sig (has_limit (approx' (shift_mpoly p y0) t i) (fast_cauchy_approx' p y0 i t l H2))).
+   Defined.
+
+   Lemma abs_le_pivpr {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) :  (abs (pivp_r_max p y0) <= pivp_r_max p y0).
+     Proof.
+       rewrite !pivp_r_max_spec.
+       rewrite abs_pos;try apply le_refl.
+       apply mul_pos_pos.
+       apply inv2_pos.
+       apply solution_r_pos.
+    Qed.
+
+   Definition pivp_solution_i_max {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d))  (i : nat)  : A := (pivp_solution_i p y0 i (pivp_r_max p y0) (abs_le_pivpr p y0))+y0\_i.
 
    Definition pivp_solution_max {d} (p : (@mpoly A (S d))^(S d)) (y0 : A^(S d)) :  (A * ( A^(S d))).
    Proof.
-     destruct (seq_to_tuple ((fun i => snd (pivp_solution_ith_max p y0 i))) (S d) (def := 0)).
-     apply ((ivp_r_max (analytic_poly p y0)) , x).
+     destruct (seq_to_tuple ((fun i => pivp_solution_i_max p y0 i)) (S d) (def := 0)).
+     apply ((pivp_r_max p y0) , x).
    Defined.
 
    Definition pivp_trajectory {d} (p : (@mpoly A (S d))^(S d)) (t0 : A) (y0 : A^(S d)) (steps : nat) :  list (A * (A^(S d))).

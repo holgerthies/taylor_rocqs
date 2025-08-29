@@ -15,6 +15,7 @@ Require Import odebounds.
 Require Import realanalytic pivp.
 Require Import abstractpowerseries.
 From Coq Require Import ConstructiveCauchyAbs.
+From Coq Require Import Strings.String .
 Open Scope algebra_scope.
 Open Scope fun_scope.
 Open Scope Q_scope.
@@ -30,136 +31,90 @@ Section Examples.
  Defined.
  Definition  seq_trajectory {d} (p : list (RQ * tuple d RQ))  (z : Z) :=  map (fun p => seq_tuple p z) p.
 
+Open Scope string_scope.
 
-(** exponential function (1d) **)
+Definition  max_time {d} f :=  ivp_r_max (d:=d) (analytic_poly (A := RQ) f.(pf) f.(py0)).
 
+Definition approx_example {d} f t order precision := (seq_tuple (t , approx_pivp (d:=d) f t order) precision).
+
+Tactic Notation "bench_order_single" uconstr(name) uconstr(f) uconstr(t) constr(order) constr(prec) :=
+  let lbl   := eval cbv in name in
+  let nm := fresh "res" in
+  idtac "------------------------------------------------------------"; 
+  idtac "System    :" lbl;
+  idtac "Order    :" order;
+  idtac "Precision:" prec;
+  time (let r := eval vm_compute in (approx_example f t order prec) in pose (nm := r));
+  let  show := eval cbv in nm in idtac "Result:" show;
+  idtac "------------------------------------------------------------";
+  clear nm.
+
+Ltac bench_orders_rec name f t prec orders :=
+  let os := eval cbv in orders in
+  lazymatch os with
+  | nil => idtac
+  | ?o :: ?rest =>
+      bench_order_single name f t o prec;
+      bench_orders_rec name f t prec rest
+  end.
+
+Ltac bench_orders name f prec orders :=
+  let t := constr: (max_time f) in
+  bench_orders_rec name f t prec orders.
+
+Tactic Notation "bench_exact_single" uconstr(name) uconstr(f) constr(prec) :=
+  let lbl   := eval cbv in name in
+  let nm := fresh "res" in
+  idtac "------------------------------------------------------------";
+  idtac "System    :" lbl;
+  idtac "Precision:" prec;
+  time (let r := eval vm_compute in (seq_tuple (pivp_solution_max f.(pf) f.(py0)) prec) in pose (nm := r));
+  let  show := eval cbv in nm in idtac "Result:" show;
+  idtac "------------------------------------------------------------";
+  clear nm.
+
+Ltac bench_exact name f precs :=
+  let ps := eval cbv in precs in
+  lazymatch ps with
+  | nil => idtac
+  | ?o :: ?rest =>
+      bench_exact_single name f o;
+      bench_exact name f rest
+  end.
+
+(** Example Functions **)
 Definition exp_example := convert_pivp (A:=RQ) exp_ivp.
-
-
-(* First compute finite Taylor polynomial *)
-
-(* order 20 approximation *)
-Definition exp_approx' := approx_pivp exp_example (inject_Q (1#8)) 10.
-
-(*evaluate at 1/2 *)
-Time Eval vm_compute in (seq_tuple (inject_Q (1#8) ,exp_approx') (-10)).
-(* now with guaranteed error bound  at max time *)
-Definition exp_exact := (pivp_trajectory exp_example.(pf) (inject_Q 0) (exp_example.(py0)) 1).
-
-(* prints the time and the value as pair *)
-Eval vm_compute in (seq_trajectory (exp_exact) (-5)).
-
-
-
-(* Definition exp_approx'' := approx_pivp (Build_PIVP 1 (exp_example.(pf)) (snd exp_exact)) (inject_Q 0.5) 1. *)
-
-(* Time Eval vm_compute in . *)
-
-
-(** sine/cosine  (2d) **)
-
 Definition sin_cos_example := convert_pivp (A:=RQ) sin_cos_ivp.
-
-Definition sin_cos_analytic  := analytic_poly sin_cos_example.(pf) sin_cos_example.(py0).
-
-(* First compute finite Taylor polynomial *)
-
-(* order 10 approximation *)
-Definition sin_taylor := taylor_poly sin_cos_analytic 0 10.
-Definition cos_taylor := taylor_poly sin_cos_analytic 1 10.
-Definition sin_cos_approx := approx_pivp sin_cos_example (inject_Q 0.5) 10.
-(*evaluate at 1/2 *)
-Definition sin_approx := (eval_poly sin_taylor (inject_Q (1#2 ))).
-Definition cos_approx := (eval_poly cos_taylor (inject_Q (1#2 ))).
-Time Eval vm_compute in (seq (sin_approx) (-10)).
-Time Eval vm_compute in (seq (cos_approx) (-10)).
-Time Eval vm_compute in (seq_tuple (inject_Q (1#2) ,sin_cos_approx)).
-(* Time Eval vm_compute in (seq (approx_nb_error (inject_nat := algebra.embedNat) sin_cos_example (inject_Q (1#34)) 10) (-10)). *)
-(* now with guaranteed error bound  at max time *)
-Definition sin_cos_exact := (ivp_solution_max sin_cos_analytic).
-
-(* prints the time and the value as pair *)
-
-(*trajectory *)
-
-Definition sin_cos_trajectory := (pivp_trajectory sin_cos_example.(pf) (inject_Q 0) sin_cos_example.(py0) 1).
-
-Eval vm_compute in (seq_trajectory (sin_cos_trajectory) (-3)).
-(** tan function (1d) **)
-
 Definition tan_example := convert_pivp tan_ivp (A := RQ).
-
-Definition tan_analytic  := analytic_poly tan_example.(pf) tan_example.(py0).
-
-(* First compute finite Taylor polynomial *)
-
-(* order 5 approximation *)
-Definition tan_taylor := taylor_poly tan_analytic 0 5.
-
-(*evaluate at 1/2 *)
-Definition tan_approx := (eval_poly tan_taylor (inject_Q (1#2 ))).
-Time Eval vm_compute in (seq (tan_approx) (-10)).
-
-(* now with guaranteed error bound  at max time *)
-Definition tan_exact := (ivp_solution_max tan_analytic).
-
-(* prints the time and the value as pair *)
-
-Time Eval vm_compute in (seq_tuple (tan_exact) (-1)).
-
-
-(** van der pol oscillator (2d) **)
-
 Definition vdp_example := convert_pivp (A := RQ) (vdp_ivp 0.5).
-
-Definition vdp_analytic  := analytic_poly vdp_example.(pf) vdp_example.(py0).
-
-(* First compute finite Taylor polynomial *)
-
-(* order 5 approximation *)
-Definition vdp_taylor1 := taylor_poly vdp_analytic 0 5.
-Definition vdp_taylor2 := taylor_poly vdp_analytic 1 5.
-
-(*evaluate at 1/2 *)
-Definition vdp1_approx := (eval_poly vdp_taylor1 (inject_Q (1#2 ))).
-Definition vdp2_approx := (eval_poly vdp_taylor1 (inject_Q (1#2 ))).
-Time Eval vm_compute in (seq (vdp1_approx) (-10)).
-Time Eval vm_compute in  (seq (vdp2_approx) (-10)).
-
-(* now with guaranteed error bound  at max time *)
-Definition vdp_exact := (ivp_solution_max vdp_analytic).
-
-(* prints the time and the value as pair *)
-(* This takes a while and thus commented out *)
-
- (* Compute (seq_tuple (vdp_exact) 0). *)
-
-(** Lorenz system (3d) **)
-
+Definition atan_example := convert_pivp (A := RQ) arctan_ivp.
 Definition lorenz_example := convert_pivp (A:=RQ) (lorenz_ivp 10 28 (8#3)).
 
-Definition lorenz_analytic  := analytic_poly lorenz_example.(pf) lorenz_example.(py0).
+Goal True.
+  idtac "1) Finite Taylor approximations of fixed order for the local solution";   idtac "Here, precision is the guaranteed  precision for the arithmetic operations in the form 2^z.";  
+  idtac "The approximation error from the Taylor approximation is not taken into account.";
+  bench_orders "exp" exp_example (-100 : Z) ((5 :: 10 :: 50 :: 70 :: nil) % nat);
+  bench_orders "tan" tan_example (-100 : Z) ((5 :: 6 :: nil) % nat); 
+  bench_orders "sin/cos" sin_cos_example (-100 : Z) ((5 :: 10 :: 50 :: 10 :: nil) % nat); 
+  bench_orders "vdp" vdp_example (-100 : Z) ((5 :: 6  :: nil) % nat);
+  bench_orders "lorenz" lorenz_example (-100 : Z) ((5 :: 6  :: nil) % nat); 
+  bench_orders "atan" atan_example (-100 : Z) ((5 :: 6  :: nil) % nat); 
+  exact I.
+Qed.
 
-(* compute finite Taylor polynomial *)
+From Coq Require Import Psatz.
 
-(* order 5 approximation *)
-Definition lorenz_taylor1 := taylor_poly lorenz_analytic 0 5.
-Definition lorenz_taylor2 := taylor_poly lorenz_analytic 1 5.
-Definition lorenz_taylor3 := taylor_poly lorenz_analytic 2 5.
+Goal True.
+  idtac "2) Exact Computation of the local solution";
+  idtac "The error of the approximation is guaranteed to be less than 2^precision";
+bench_exact "exp" exp_example ((-5 :: -8 :: -10 ::  -20 :: -100 :: nil) % Z).
 
-(*evaluate at 1/2 *)
-Definition l1_approx := (eval_poly lorenz_taylor1 (inject_Q (1#4 ))).
-Definition l2_approx := (eval_poly lorenz_taylor2 (inject_Q (1#4 ))).
-Definition l3_approx := (eval_poly lorenz_taylor3 (inject_Q (1#4 ))).
-Time Eval vm_compute in (seq (l1_approx) (-10)).
-Time Eval vm_compute in (seq (l2_approx) (-10)).
-Time Eval vm_compute in (seq (l3_approx) (-10)).
-
-
-Definition lorenz_exact := (ivp_solution_max lorenz_analytic).
-(* prints the time and the value as pair *)
-
-(* Compute (seq_tuple (lorenz_exact) 0).   *)
+Definition vdp_example := convert_pivp (A := RQ) (vdp_ivp 0.5).bench_exact "sin/cos" sin_cos_example ((-5 ::- 8:: -10 ::  -20 :: -25:: nil) % Z).
+bench_exact "tan" tan_example ((-5 :: -8  :: nil) % Z).
+bench_exact "vdp" vdp_example ((-5 :: -8 :: nil) % Z).
+bench_exact "lorenz" lorenz_example ((-5 :: -8 :: nil) % Z).
+exact I.
+Qed.
 
 End Examples.
 

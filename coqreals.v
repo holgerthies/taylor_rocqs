@@ -194,9 +194,12 @@ Defined.
 End ConstructiveReals.
 
 
+(** Some of the operations in ConstructiveReals appear to be declared
+opaque and thus block computation. In particular, this is true for
+the completeness result CR_complete.
+We therefore need to instantiate completeness explicitly for the Cauchy reals to enable compuation
+ **)
 
-(** A few more things needed for working with the Cauchy reals **)
-(** As the modulus definitons in our reals and the Cauchy reals are different we need to relate them **)
 
 Require Import odebounds.
 Require Import realanalytic.
@@ -315,6 +318,24 @@ Proof.
   lia.
 Qed.
 
+Lemma cauchy_neighbor_helper2 (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  forall k (i j : nat),(Pos.to_nat (Pos.size k) <= i)%nat -> (Pos.to_nat (Pos.size k) <= j)%nat -> (CReal_abs (xn i - xn j) <= inject_Q (q 1 k))%CReal.
+Proof.
+  intros.
+  apply (CReal_le_trans _ _ _ (fast_cauchy_neighboring_ij _ H _ _)).
+  apply inject_Q_le.
+  apply (Qle_trans _ (2^-(Z.of_nat (Pos.to_nat (Pos.size k))))).
+  apply Qpower_le_compat_l; [lia|lra].
+  rewrite ClassicalDedekindReals.Qpower_2_neg_eq_natpow_inv.
+  unfold q,Qle.
+  simpl.
+  apply Pos2Z.pos_le_pos.
+  replace (2)%nat with (Pos.to_nat 2) by auto.
+  rewrite <-Pos2Nat.inj_pow.
+  rewrite Pos2Nat.id.
+  pose proof (Pos.size_gt k).
+  lia.
+Qed.
+
 Lemma CReal_abs_eq0 (x y : RQ) : (CReal_abs (x-y) == inject_Q 0)%CReal -> x == y. 
 Proof.
   intros.
@@ -334,12 +355,37 @@ Qed.
 Lemma cauchy_neighboring_to_mod   (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  (Un_cauchy_mod xn).
 Proof.
    intros H k.
-   exists (Nat.log2_up ((Pos.to_nat k))).
+   exists (Pos.to_nat (Pos.size k)).
    intros.
-   apply cauchy_neighbor_helper;auto.
+   apply cauchy_neighbor_helper2;auto.
  Defined.
 
-  Local Lemma CReal_from_cauchy_seq (xn : nat -> RQ) H n:  (n > 0)%nat -> seq (CReal_from_cauchy xn (cauchy_neighboring_to_mod _ H)) (Z.neg (Pos.of_nat n)) = seq (xn (n+2)%nat) (Zneg (Pos.of_nat n+2)).
+(* Lemma cauchy_neighboring_to_mod   (xn : nat -> RQ) : fast_cauchy_neighboring xn ->  (Un_cauchy_mod xn). *)
+(* Proof. *)
+(*    intros H k. *)
+(*    exists (Nat.log2_up ((Pos.to_nat k))). *)
+(*    intros. *)
+(*    apply cauchy_neighbor_helper;auto. *)
+(*  Defined. *)
+
+  Lemma pos_size_pow2 n :  (n > 0)%nat -> Pos.size (2 ^ Pos.of_nat n) = Pos.succ (Pos.of_nat n).
+  Proof.
+    induction n.
+    lia.
+    intros.
+    destruct n.
+    simpl.
+    reflexivity.
+    rewrite Nat2Pos.inj_succ;try lia.
+    rewrite Pos.pow_succ_r.
+
+    simpl Pos.size.
+    destruct n.
+    simpl;reflexivity.
+    rewrite <-Nat2Pos.inj_succ; try lia.
+  Qed.
+
+  Local Lemma CReal_from_cauchy_seq (xn : nat -> RQ) H n:  (n > 0)%nat -> seq (CReal_from_cauchy xn (cauchy_neighboring_to_mod _ H)) (Z.neg (Pos.of_nat n)) = seq (xn (n+3)%nat) (Zneg (Pos.of_nat n+2)).
   Proof.
     intros.
     unfold CReal_from_cauchy.
@@ -347,13 +393,7 @@ Proof.
     unfold CReal_from_cauchy_seq.
     simpl.
     f_equal.
-    rewrite !Pos2Nat.inj_xO.
-
-    rewrite Nat.log2_up_double;try lia.
-    rewrite Nat.log2_up_double;try lia.
-    rewrite Pos2Nat.inj_pow.
-    replace (Pos.to_nat 2) with 2%nat by lia.
-    rewrite Nat.log2_up_pow2;try lia.
+    rewrite pos_size_pow2;auto.
     f_equal.
     lia.
   Qed.
@@ -368,12 +408,12 @@ Proof.
        rewrite Heqx, Heqp.
        rewrite CReal_from_cauchy_seq; try lia.
        rewrite <-Heqp.
-       replace (n+3+2)%nat with (n+5)%nat by lia.
+       replace (n+3+3)%nat with (n+6)%nat by lia.
        replace (Pos.of_nat (n+3) + 2)%positive with (Pos.of_nat (n+5)) by lia.
        remember (Z.neg (Pos.of_nat (n+5))) as p'.
-       remember (inject_Q (seq (xn (n+5)%nat) p')) as a.
+       remember (inject_Q (seq (xn (n+6)%nat) p')) as a.
        remember (inject_Q (seq (xn (S n)) p)) as b.
-       setoid_replace (a - b)%CReal with ((a - (xn (n+5)%nat)) +  (xn (S n) - b ) + (xn (n+5)%nat - xn (S n)) )%CReal by ring.
+       setoid_replace (a - b)%CReal with ((a - (xn (n+6)%nat)) +  (xn (S n) - b ) + (xn (n+6)%nat - xn (S n)) )%CReal by ring.
        apply (CReal_le_trans _ _ _ (CReal_abs_triang _  _)).
        apply CReal_plus_le_compat.
        - apply (CReal_le_trans _ _ _ (CReal_abs_triang _  _)).
