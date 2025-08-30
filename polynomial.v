@@ -97,6 +97,31 @@ Import ListNotations.
    apply X0;auto.
  Defined.
 
+  Fixpoint derive_fast_helper (p: poly) (n : A) : poly :=
+    match p with
+    | nil => nil
+    | a :: l =>  (n * a) ::  (derive_fast_helper l (n +1))
+   end.
+
+  Definition derive_fast  (p : poly) : poly := derive_fast_helper (tl p) 1.
+
+  Lemma derive_fast_helper_length (p : poly) x : length (derive_fast_helper p x) = (length p )%nat.
+  Proof.
+    revert x.
+    induction p;intros;simpl.
+    reflexivity.
+    rewrite IHp.
+    reflexivity.
+  Qed.
+
+  Lemma derive_fast_length (p : poly) : length (derive_fast p) = (length p - 1)%nat.
+  Proof.
+    unfold derive_fast.
+    rewrite derive_fast_helper_length.
+    destruct p; simpl;try reflexivity;lia.
+ Qed.
+
+
  Lemma poly_deriv_exists (p : poly) : {p' : poly | length p' = (length p - 1)%nat /\ forall n, n < length p' -> nth n p' 0 == ntimes (S n) (nth (S n) p 0) }.
  Proof.
  induction p using poly_rev_ind;[exists [];split;auto; simpl;lia|].
@@ -709,7 +734,8 @@ Qed.
 
   
 
- Definition derive_poly p := (proj1_sig  (poly_deriv_exists p)).
+ (* Definition derive_poly p := (proj1_sig  (poly_deriv_exists p)). *)
+ Definition derive_poly p := derive_fast p.
 
    Lemma mult_coefficients0 a b : nth 0 (mult_coefficients a b) 0 == nth 0 a 0 * nth 0 b 0.
    Proof.
@@ -1565,29 +1591,59 @@ Section DifferentialRing.
 
   Lemma derive_poly_length (a : (@poly A)) : length (derive_poly a) = (length a - 1)%nat.
   Proof.
-    unfold derive_poly; simpl.
-    destruct (poly_deriv_exists a);simpl.
-    lia.
+    apply derive_fast_length.
   Qed.
+
+  Lemma derive_fast_helper_nth p x :forall n,  nth n (derive_fast_helper p x) 0 == (x+ntimes n 1)*nth n p 0.
+ Proof.
+   intros n.
+   assert (n < length p \/ length p <= n) by lia.
+   destruct H0.
+   2: {
+      rewrite !nth_overflow;auto.
+      ring.
+      rewrite derive_fast_helper_length;auto.
+   }
+   revert x.
+   generalize dependent n.
+   induction p;intros;simpl in H0; try lia.
+   simpl derive_fast_helper.
+   destruct n.
+   simpl.
+   ring.
+   assert (n < length p ) by lia.
+   simpl.
+   rewrite IHp;try lia.
+   ring.
+  Qed.    
+
   Lemma derive_poly_nth (a : @poly A) (n : nat) : nth n (derive_poly a) 0  == ntimes (S n) (nth (S n) a 0).
   Proof.
-    unfold derive_poly; simpl.
-    destruct (poly_deriv_exists a);simpl.
-    assert (n < length x \/ length x <= n)%nat by lia.
-    destruct H0.
-    apply a0;auto.
-    rewrite !nth_overflow;auto;try lia.
-    rewrite ntimes_zero;ring.
+    unfold derive_poly,derive_fast.
+    rewrite derive_fast_helper_nth.
+    simpl.
+    destruct a.
+    simpl.
+    destruct n;rewrite ntimes_zero;ring.
+    simpl.
+    ring_simplify.
+    rewrite mulC.
+    rewrite <-ntimes_mult.
+    rewrite mul1.
+    ring.
   Qed.
 
   Lemma derive_poly_cons a0 a1 a : derive_poly (a0 :: a1 :: a) == sum_polyf (a1 :: a) (0 :: (derive_poly (a1 :: a))).
   Proof.
     apply (nth_ext_A _ _ 0 0).
-    rewrite length_sum_coefficients;simpl; rewrite !derive_poly_length;simpl;lia.
+    Opaque derive_poly.
+    rewrite length_sum_coefficients;simpl;rewrite !derive_poly_length;simpl;try lia.
     intros.
     rewrite sum_coefficient_nth.
     destruct n;simpl; rewrite !derive_poly_nth;simpl;ring.
+    Transparent derive_poly.
   Qed.
+
   Lemma derive_poly_cons1 a0 a : derive_poly (a0 :: a) == sum_polyf a (0 :: (derive_poly a)).
   Proof.
     intros n0.
@@ -1761,9 +1817,10 @@ Section DifferentialRing.
     induction a as [|a0 a].
     - intros;simpl.
       unfold derive_poly.
+      unfold derive_fast.
       simpl.
-      rewrite mult_polyf_nil1;auto.
-      intros n;reflexivity.
+       rewrite mult_polyf_nil1;auto.
+      intros n;reflexivity. 
     - intros;destruct a as [| r a].
       rewrite poly_scalar_mult_deriv, derive_const, mult_polyf_nil1,sum_poly0;auto;reflexivity.
       destruct b as [|r0 b].
@@ -2337,13 +2394,13 @@ Defined.
     - intros.
       destruct m; try lia.
       simpl.
-      unfold derive_poly.
+      unfold derive_poly,derive_fast.
       simpl.
       intros n.
       destruct n;simpl.
-      rewrite add0.
+      rewrite mul1.
       reflexivity.
-      destruct n; reflexivity.
+      destruct n;simpl;reflexivity.
    - intros.
       destruct m; try lia.
       simpl.

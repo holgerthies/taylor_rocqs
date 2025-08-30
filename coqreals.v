@@ -14,6 +14,7 @@ From Coq Require Import List.
 From Coq Require Import ConstructiveRcomplete.
 From Coq Require Import ConstructiveLimits.
 From Coq Require Import Reals.Abstract.ConstructiveMinMax.
+  Require Import ConstructiveLUB.
 (* From Coq Require Import Classical. *)
 
 (* Require Import examples. *)
@@ -23,7 +24,6 @@ Section ConstructiveReals.
   Context {R : ConstructiveReals}.
   Open Scope ConstructiveReals.
   Close Scope algebra_scope.
-  Require Import ConstructiveLUB.
   #[global] Instance R_setoid : @Setoid (CRcarrier R).
   Proof.
     exists (CReq R).
@@ -212,7 +212,6 @@ Require Import Qround.
 Require Import QArith.
 From Coq Require Import micromega.Lqa.
 Section CauchyReals.
-Print CRealLt.
 
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 Definition RQ := CRcarrier CRealConstructive.
