@@ -643,8 +643,17 @@ Section AnalyticPoly.
 
    Lemma solution_r_pos  {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly)) : 0 <= solution_rinv F.(M) F.(r) (d:=d).
    Proof.
-   Admitted.
-
+     unfold solution_rinv.
+     apply inv_approx_pos.
+     unfold analytic_solution_r.
+     rewrite mulA.
+     setoid_replace 1 with (1 * (1 *1)) by ring.
+     apply mul_le_le_compat_pos;[|rewrite mul1| |apply mul_le_le_compat_pos];try apply le_0_1.
+     - setoid_replace 1 with (# 1) by (setoid_rewrite ntimes_embed;simpl;ring).
+       apply ntimes_monotone;lia.
+    - apply (M_pos (in_dom := poly_tot y0)).
+    - apply (r_pos (in_dom := poly_tot y0)).
+   Qed.
    Definition ivp_solution_i_max {d} {y0} (F : Analytic (d:=d) (y0 :=y0) (in_dom := poly_tot y0) (A := mpoly))  (i : nat)  : A * A.
    Proof.
      assert (abs (ivp_r_max F) <= ivp_r_max F).

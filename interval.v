@@ -46,7 +46,6 @@ Module FloatInterval (p : PRECISION_POS).
 Definition prec := (FI.F.PtoP p.precision).
 
 
-
 Definition Q2I (q : Q) := (FI.div prec (Z2I (Qnum q)) (Z2I (Z.pos (Qden q)))).
 
 Lemma Z2I_spec z : Interval.contains (FI.convert (Z2I z)) (Xreal (IZR z)).

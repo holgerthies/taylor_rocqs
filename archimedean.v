@@ -62,8 +62,9 @@ Class ArchimedeanField `{emb : QEmbedding} `{hasAbs : @HasAbs A _ _ _ _ _ _ _ } 
        mul_pos_pos : forall x y, le zero x -> le zero y -> le zero (mul x y); 
        upper_spec : forall (x : A),  x <= ntimes (upper x) 1;
        max_le_left : forall (x y: A),  x <= max x y;
-    max_le_right : forall (x y: A),  y <= max x y;
-    inv_approx_spec : forall x, (1 <= x) -> x * inv_approx x == 1
+       max_le_right : forall (x y: A),  y <= max x y;
+       inv_approx_spec : forall x, (1 <= x) -> x * inv_approx x == 1;
+       inv_approx_pos : forall x, (1 <= x) -> 0 <= inv_approx x
      }.
 
 

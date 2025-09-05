@@ -185,6 +185,20 @@ Defined.
     2: apply CRle_abs.
     apply (CRlt_le_trans _ 1);auto.
     apply CRzero_lt_one.
+  - intros.
+    unfold CR_inv_approx.
+    rewrite CRinv_morph.
+    2: (apply CRmax_right;auto).
+    apply CRlt_asym.
+    apply CRinv_0_lt_compat.
+    apply (CRlt_le_trans _ 1);auto.
+    apply CRzero_lt_one.
+    Unshelve.
+    apply CRabs_appart_0.
+    apply (CRlt_le_trans _ x).
+    2: apply CRle_abs.
+    apply (CRlt_le_trans _ 1);auto.
+    apply CRzero_lt_one.
    Defined.
 
 
