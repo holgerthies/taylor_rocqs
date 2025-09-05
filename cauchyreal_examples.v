@@ -22,7 +22,6 @@ Open Scope Q_scope.
 Definition q (x : Z) (y : positive) := ({| Qnum := x; Qden := y |}).
 Definition RQ := CRcarrier CRealConstructive.
 Section Examples.
- 
  Definition  seq_tuple {d} (p : (RQ * tuple d RQ))  (z : Z): Q * list Q.
  Proof.
    destruct p.
@@ -83,37 +82,37 @@ Ltac bench_exact name f precs :=
   end.
 
 (** Example Functions **)
-Definition exp_example := convert_pivp (A:=RQ) exp_ivp.
-Definition sin_cos_example := convert_pivp (A:=RQ) sin_cos_ivp.
-Definition tan_example := convert_pivp tan_ivp (A := RQ).
-Definition vdp_example := convert_pivp (A := RQ) (vdp_ivp 0.5).
-Definition atan_example := convert_pivp (A := RQ) arctan_ivp.
-Definition lorenz_example := convert_pivp (A:=RQ) (lorenz_ivp 10 28 (8#3)).
+Definition exp_example := exp_ivp (A:=RQ).
+Definition sin_cos_example := sin_cos_ivp (A:=RQ).
+Definition tan_example := tan_ivp (A := RQ).
+Definition vdp_example :=  (vdp_ivp (A := RQ) (inject_Q 0.5)).
+Definition atan_example := arctan_ivp (A:=RQ).
+Definition lorenz_example := (lorenz_ivp (A:=RQ) (inject_Q 10) (inject_Q 28) (inject_Q (8#3))).
 
+(* Eval vm_compute in (seq_trajectory (pivp_trajectory exp_example.(pf) (inject_Q 0) exp_example.(py0) 2) 1%Z). *)
 Goal True.
   idtac "1) Finite Taylor approximations of fixed order for the local solution";   idtac "Here, precision is the guaranteed  precision for the arithmetic operations in the form 2^z.";  
-  idtac "The approximation error from the Taylor approximation is not taken into account.";
-  bench_orders "exp" exp_example (-100 : Z) ((5 :: 10 :: 50 :: 70 :: nil) % nat);
-  bench_orders "tan" tan_example (-100 : Z) ((5 :: 6 :: nil) % nat); 
-  bench_orders "sin/cos" sin_cos_example (-100 : Z) ((5 :: 10 :: 50 :: 10 :: nil) % nat); 
-  bench_orders "vdp" vdp_example (-100 : Z) ((5 :: 6  :: nil) % nat);
+  idtac "The approximation error from the Taylor approximation is not taken into account.".
+  bench_orders "exp" exp_example (-100 : Z) ((5 :: 10 :: 50 :: 70 :: nil) % nat).
+  bench_orders "tan" tan_example (-100 : Z) ((5 :: 10 :: nil) % nat).
+  bench_orders "sin/cos" sin_cos_example (-100 : Z) ((5 :: 10 :: 50 :: 10 :: nil) % nat).
+  bench_orders "vdp" vdp_example (-100 : Z) ((5 :: 6  :: 7:: nil) % nat);
   bench_orders "lorenz" lorenz_example (-100 : Z) ((5 :: 6  :: nil) % nat); 
   bench_orders "atan" atan_example (-100 : Z) ((5 :: 6  :: nil) % nat); 
   exact I.
 Qed.
 
-From Coq Require Import Psatz.
-
+Definition test_precs := ( -5 :: -10 ::  -50 :: -100 :: nil)%Z.
 Goal True.
   idtac "2) Exact Computation of the local solution";
-  idtac "The error of the approximation is guaranteed to be less than 2^precision";
-bench_exact "exp" exp_example ((-5 :: -8 :: -10 ::  -20 :: -100 :: nil) % Z).
-
-Definition vdp_example := convert_pivp (A := RQ) (vdp_ivp 0.5).bench_exact "sin/cos" sin_cos_example ((-5 ::- 8:: -10 ::  -20 :: -25:: nil) % Z).
-bench_exact "tan" tan_example ((-5 :: -8  :: nil) % Z).
-bench_exact "vdp" vdp_example ((-5 :: -8 :: nil) % Z).
-bench_exact "lorenz" lorenz_example ((-5 :: -8 :: nil) % Z).
-exact I.
+  idtac "The error of the approximation is guaranteed to be less than 2^precision".
+  bench_exact "exp" exp_example test_precs.
+  bench_exact "tan" tan_example (-5 :: -10 :: nil)%Z.
+  bench_exact "sin/cos" sin_cos_example test_precs.
+  bench_exact "vdp" vdp_example ((-5 ::  nil) % Z).
+  bench_exact "atan" atan_example ((-5 :: -6:: nil) % Z).
+  bench_exact "lorenz" lorenz_example ((-5 :: -6 ::  nil) % Z).
+  exact I.
 Qed.
 
 End Examples.

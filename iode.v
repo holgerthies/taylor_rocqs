@@ -70,7 +70,53 @@ Proof.
    pose (t_next := (t0+(FI.lower t1))).
    apply  (IHsteps y1' t_next).
 Defined.
+Definition interval_step {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : I) (order :nat) (factor : F)  :  I * I^((S d)).
+Proof.
+   pose (Fis := pivp_F p order).
+   pose (step_factor := singleton factor).
+   pose (y_err := approx_pivp_step' p y0 Fis step_factor order).
+   destruct (y_err) as [[t1 y1] err].
+   pose (y1' := FI.add_errort (FI.upper err) y1).
+   apply  (t0+t1, y1').
+Defined.
 
+(* interval trajectory tactic *)
+
+Tactic Notation "itraj"
+  uconstr(p) uconstr(y0) uconstr(t0) constr(steps) :=
+
+  let order := eval vm_compute in params.order in
+  let step_factor := eval vm_compute in params.step_factor in
+  let Fis   := eval vm_compute in (pivp_F p order) in
+  let stepf := eval vm_compute in (singleton step_factor) in
+  let n := eval cbv in steps in
+
+  idtac "------------------------------------------------------------";
+  idtac "order     :" order;
+  idtac "step_fact :" step_factor;
+
+  (* Main loop *)
+  let rec loop steps y t :=
+    lazymatch steps with
+    | O =>
+        idtac "done."
+    | S ?steps' =>
+        idtac "------------------------------------------------------------";
+        let ys := eval vm_compute in (intervalt_to_cr_string y) in 
+        let ts := eval vm_compute in (interval_to_cr_string t) in 
+        idtac "t      =" ts;
+        idtac "y(t)   =" ys;
+
+          let ty :=
+            eval vm_compute in
+              (interval_step p y t order step_factor)
+          in
+          lazymatch ty with
+          | (?t1, ?y1) =>
+              loop steps' y1 t1
+          end
+    end in
+  loop n y0 t0.
 End IIVP.
 
 
