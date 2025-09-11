@@ -5,7 +5,7 @@ This artifact provides a Rocq/Coq formalization of a constructive Taylor-series 
 
 ## Tested environment
 The development has been tested with **Coq 8.20.1**.  
-The [**coq-interval**](https://github.com/coq-community/coq-interval) library is required for the interval backend.
+The [**coq-interval**](https://coqinterval.gitlabpages.inria.fr/) library is required for the interval backend.
 All other files depend only on the Coq standard library.
 
 ## Building the project
