@@ -18,6 +18,8 @@ make -j
 
 The following example files illustrate the solver and reproduce the benchmark runs.
 They can be compiled directly with `coqc` or opened interactively in your preferred Coq IDE.
+**Caution:** Some examples need long running-times. 
+You might wish to adjust the parameter settings in the files to reduce runtime if needed.
 
 - **Minimal demo:**
 
