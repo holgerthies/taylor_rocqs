@@ -16,4 +16,8 @@ examples.v
 interval.v
 interval_string.v
 iode.v
-cauchyreal_examples.v
+
+# example (benchmarks) can take a long time
+# so its better to run/compile them separately
+# cauchyreal_examples.v
+# interval_examples.v

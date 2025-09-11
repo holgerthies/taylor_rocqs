@@ -89,11 +89,12 @@ Tactic Notation "itraj"
   let step_factor := eval vm_compute in params.step_factor in
   let Fis   := eval vm_compute in (pivp_F p order) in
   let stepf := eval vm_compute in (singleton step_factor) in
+  let stepfs := eval vm_compute in (interval_to_cr_string stepf) in
   let n := eval cbv in steps in
 
   idtac "------------------------------------------------------------";
   idtac "order     :" order;
-  idtac "step_fact :" step_factor;
+  idtac "step_fact :" stepfs;
 
   (* Main loop *)
   let rec loop steps y t :=

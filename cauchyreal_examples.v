@@ -110,8 +110,8 @@ Goal True.
   bench_exact "tan" tan_example (-5 :: -10 :: nil)%Z.
   bench_exact "sin/cos" sin_cos_example test_precs.
   bench_exact "vdp" vdp_example ((-5 ::  nil) % Z).
-  bench_exact "atan" atan_example ((-5 :: -6:: nil) % Z).
-  bench_exact "lorenz" lorenz_example ((-5 :: -6 ::  nil) % Z).
+  bench_exact "atan" atan_example ((-3 :: -5:: nil) % Z).
+  bench_exact "lorenz" lorenz_example ((-3 :: -5 ::  nil) % Z).
   exact I.
 Qed.
 
