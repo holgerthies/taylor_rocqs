@@ -1,4 +1,8 @@
+-I .
 -R . TR
+plot_plugin.mlpack
+g_plot_plugin.mlg
+plot.v
 tuple.v
 algebra.v
 archimedean.v

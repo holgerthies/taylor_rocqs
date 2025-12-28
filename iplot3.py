@@ -8,6 +8,11 @@ from typing import List, Tuple, Optional, Dict
 import numpy as np
 import matplotlib.pyplot as plt
 
+# NEW (only for stdin streaming, does not affect parsing/plotting)
+import threading
+import queue
+
+
 # --- parsing helpers ----------------------------------------------------------
 
 PM_RE = re.compile(
@@ -39,6 +44,7 @@ def print_mode_help():
         "  h or ? = this help\n"
     )
     # print(msg, file=sys.stderr, flush=True)
+
 def iter_input_lines_from_stdin():
     for line in sys.stdin:
         yield line
@@ -234,23 +240,19 @@ def try_read_stdin_line() -> Optional[str]:
     except Exception:
         return None
 
-# --- main loop ---------------------------------------------------------------
 
-def monitor_and_plot(filepath: str, mode: str, title: str, names: List[str],
-                     poll_interval: float, no_focus: bool):
-    last_mtime = None
+# --- stdin-only main loop -----------------------------------------------------
+
+def monitor_and_plot(mode: str, title: str, names: List[str], no_focus: bool):
     last_mode = None
-
     fig = plt.figure()
     if not no_focus:
-        # default interactive behavior
         plt.ion()
         plt.show(block=False)
-    # else: no interactive forcing; window won’t jump to front
 
     axes = ()
 
-    # -------------------- NEW: window-focused key controls + in-figure help ---
+    # window-focused key controls + in-figure help (same behavior as you had)
     requested_mode: Optional[str] = None
     window_closed = False
     help_visible = True
@@ -267,7 +269,7 @@ def monitor_and_plot(filepath: str, mode: str, title: str, names: List[str],
         "  q or Esc = quit\n"
     )
 
-    help_artist = None  # fig.clf() will delete artists, so we re-create it when needed
+    help_artist = None
 
     def ensure_help_overlay():
         nonlocal help_artist
@@ -306,105 +308,115 @@ def monitor_and_plot(filepath: str, mode: str, title: str, names: List[str],
 
     ensure_help_overlay()
     fig.canvas.draw_idle()
-    # -------------------------------------------------------------------------
-    stdin_iter = iter_input_lines_from_stdin()
-    stdin_buffer = []
+
+    # stdin reader thread: blocks on stdin; pushes lines to a queue
+    q_lines: "queue.Queue[Optional[str]]" = queue.Queue()
+
+    def _reader():
+        try:
+            for line in sys.stdin:
+                q_lines.put(line)
+                print(line)
+        finally:
+            # EOF or broken pipe
+            q_lines.put(None)
+    t = threading.Thread(target=_reader, daemon=True)
+    t.start()
+
+    stdin_buffer: List[str] = []
+
+    # Main thread: only updates when a new stdin line arrives.
     while True:
-        # (1) interactive mode switch (from plot window)
         if window_closed:
             break
 
+        # Process GUI events (without doing any parsing/plotting)
+        # This does NOT trigger updates; it just keeps the window alive.
+        plt.pause(0.01)
+
+        # Apply mode change if requested
         if requested_mode is not None:
             new_mode = requested_mode
             requested_mode = None
             if new_mode != mode:
                 mode = new_mode
-                # print(f"[mode] -> {mode}", file=sys.stderr, flush=True)
-                last_mode = None
+                last_mode = None  # force axes rebuild on next update
 
-        # (2) file updates
+        # Drain all currently available stdin lines (update once per batch)
+        got_any = False
+        while True:
+            try:
+                item = q_lines.get_nowait()
+            except queue.Empty:
+                break
+
+            if item is None:
+                # stdin closed -> exit
+                return
+            stdin_buffer.append(item)
+            got_any = True
+
+        if not got_any:
+            continue  # no new input -> no update
+
+        # Update (parse+plot) EXACTLY like the original pipeline, but from stdin_buffer
+        content = "".join(stdin_buffer)
+
         try:
-            mtime = os.path.getmtime(filepath)
-        except OSError:
-            plt.pause(poll_interval); continue
+            blocks = extract_blocks(content)
+            if not blocks:
+                continue
+            t_lo, t_hi, lowers, uppers = accumulate_series(blocks)
+        except Exception as e:
+            print(f"[Error] {e}", file=sys.stderr)
+            continue
 
-        if last_mtime is None or mtime > last_mtime or last_mode is None:
-            last_mtime = mtime
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    content = f.read()
-            except Exception as e:
-                print(f"[Error] Failed to read file: {e}", file=sys.stderr)
-                plt.pause(poll_interval); continue
+        M = len(lowers)
+        if len(names) < M:
+            names = names + [f"Component {i+1}" for i in range(len(names), M)]
+        else:
+            names = names[:M]
 
-            try:
-                blocks = extract_blocks(content)
-                if not blocks:
-                    plt.pause(poll_interval); continue
-                t_lo, t_hi, lowers, uppers = accumulate_series(blocks)
-            except Exception as e:
-                print(f"[Error] {e}", file=sys.stderr)
-                plt.pause(poll_interval); continue
+        if mode != last_mode:
+            fig.clf()
+            axes, last_mode = rebuild_axes(fig, mode, M)
+            ensure_help_overlay()
 
-            M = len(lowers)
-            if len(names) < M:
-                names = names + [f"Component {i+1}" for i in range(len(names), M)]
-            else:
-                names = names[:M]
+        # draw (unchanged plotting calls)
+        if mode == "time_series":
+            plot_time_series(axes[0], t_lo, t_hi, lowers, uppers, names, title)
+        elif mode == "phase_space":
+            plot_phase_space(axes[0], lowers, uppers, names, title)
+        elif mode == "scatter":
+            plot_scatter(axes[0], t_lo, t_hi, lowers, uppers, names, title)
+        elif mode == "step_size":
+            plot_step_size(axes[0], t_lo, t_hi, title)
+        elif mode == "width":
+            plot_width(axes[0], t_lo, t_hi, lowers, uppers, names, title)
+        else:  # both
+            fig.suptitle(title)
+            ax_time, ax_phase = axes
+            plot_time_series(ax_time, t_lo, t_hi, lowers, uppers, names, "Time Series")
+            plot_phase_space(ax_phase, lowers, uppers, names, "Phase Space")
 
-            if mode != last_mode:
-                fig.clf()
-                axes, last_mode = rebuild_axes(fig, mode, M)
-                # fig.clf() deletes the overlay; restore it
-                ensure_help_overlay()
+        fig.canvas.draw()
 
-            # draw
-            if mode == "time_series":
-                plot_time_series(axes[0], t_lo, t_hi, lowers, uppers, names, title)
-            elif mode == "phase_space":
-                plot_phase_space(axes[0], lowers, uppers, names, title)
-            elif mode == "scatter":
-                plot_scatter(axes[0], t_lo, t_hi, lowers, uppers, names, title)
-            elif mode == "step_size":
-                plot_step_size(axes[0], t_lo, t_hi, title)
-            elif mode == "width":
-                plot_width(axes[0], t_lo, t_hi, lowers, uppers, names, title)
-            else:  # both
-                fig.suptitle(title)
-                ax_time, ax_phase = axes
-                plot_time_series(ax_time, t_lo, t_hi, lowers, uppers, names, "Time Series")
-                # phase-space subplot reuses helper which handles 1D/2D/3D gracefully
-                plot_phase_space(ax_phase, lowers, uppers, names, "Phase Space")
-
-            fig.canvas.draw()
-
-        plt.pause(poll_interval)  # keeps GUI responsive without stealing focus
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Live-plot intervals from Coq tactic output (center±radius format). Press 1..6 to change modes."
+        description="Stdin-only live plotter for Coq tactic output (center±radius format)."
     )
-    parser.add_argument("--file", "-f", required=False, help="Path to the Coq output file to watch")
     parser.add_argument("--mode", "-m", default="time_series",
                         choices=["time_series", "phase_space", "both", "scatter", "step_size", "width"],
-                        help="Initial plot mode (you can change it interactively: 1..6)")
+                        help="Initial plot mode (change with 1..6 in the plot window).")
     parser.add_argument("--title", "-t", default="Trajectory", help="Plot title")
     parser.add_argument("--names", "-n", default="", help="Comma-separated component names (e.g., 'x,y,z')")
-    parser.add_argument("--poll", "-p", type=float, default=0.5, help="Polling interval in seconds")
     parser.add_argument("--no-focus", action="store_true",
-                        help="Do not enable interactive mode or raise the window; keep it in the background")
-    parser.add_argument(
-    "--stdin",
-    action="store_true",
-    help="Read plot data from stdin instead of a file"
-    )
+                        help="Do not raise the window; keep it in the background")
     args = parser.parse_args()
 
     names = [s.strip() for s in args.names.split(",")] if args.names.strip() else []
-    # print(f"Watching '{args.file}' (mode={args.mode}) — Ctrl-C to quit.", file=sys.stderr)
-    # if args.no_focus:
-    #     print("[no-focus] Window will not be raised; it will update quietly.", file=sys.stderr)
-    monitor_and_plot(args.file, args.mode, args.title, names, args.poll, args.no_focus)
+    monitor_and_plot(args.mode, args.title, names, args.no_focus)
 
 if __name__ == "__main__":
     main()

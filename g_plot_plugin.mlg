@@ -1,0 +1,144 @@
+(** g_plot_plugin.mlg *)
+
+DECLARE PLUGIN "plot_plugin.plugin"
+{
+open Ltac_plugin 
+  open CErrors
+  open Stdarg
+
+  open Constr
+
+  (* ---------------- Config ---------------- *)
+
+  let python_path : string ref = ref "python3"
+  let script_path : string ref = ref "iplot3.py"
+
+  (* ---------------- Process state ---------------- *)
+
+  type proc = { ic : in_channel; oc : out_channel; ec : in_channel }
+  let running : proc option ref = ref None
+
+  let start_python () =
+    match !running with
+    | Some _ -> ()
+    | None ->
+      let cmd = Printf.sprintf "%s %s" !python_path !script_path in
+      let (ic, oc, ec) = Unix.open_process_full cmd (Unix.environment ()) in
+      running := Some { ic; oc; ec }
+
+  let send_line (s : string) =
+    start_python ();
+    Feedback.msg_notice (Pp.str ("[plot_send] " ^ s));
+    match !running with
+    | None -> ()
+    | Some p ->
+      output_string p.oc s;
+      output_char p.oc '\n';
+      flush p.oc
+
+  let stop_python () =
+    match !running with
+    | None -> ()
+    | Some p ->
+      ignore (Unix.close_process_full (p.ic, p.oc, p.ec));
+      running := None
+
+  (* ---------------- Coq string decoding ---------------- *)
+(* ---------------- Coq string decoding (NO lib_ref) ---------------- *)
+
+let err msg = user_err (Pp.str ("[plot] " ^ msg))
+
+let bool_bit (t : Constr.t) : int =
+  match Constr.kind t with
+  | Construct ((_, idx), _) ->
+      (* bool has 2 ctors; accept either order: treat ctor#1 as true, ctor#2 as false *)
+      if idx = 1 then 1
+      else if idx = 2 then 0
+      else err "expected bool constructor"
+  | _ -> err "expected bool constructor"
+
+let ascii_to_int (t : Constr.t) : int =
+  match Constr.kind t with
+  | App (hd, args) ->
+      begin match Constr.kind hd with
+      | Construct (_, _) when Array.length args = 8 ->
+          let v = ref 0 in
+          for i = 0 to 7 do
+            v := !v lor ((bool_bit args.(i)) lsl i)
+          done;
+          !v
+      | _ -> err "expected ascii (reduced)"
+      end
+  | _ -> err "expected ascii (reduced)"
+
+let rec coq_string_to_ocaml (t : Constr.t) : string =
+  match Constr.kind t with
+  | Construct (_, _) ->
+      (* assume this is EmptyString (0-arg constructor) *)
+      ""
+  | App (hd, args) ->
+      begin match Constr.kind hd with
+      | Construct (_, _) when Array.length args = 2 ->
+          (* assume this is String : ascii -> string -> string *)
+          let code = ascii_to_int args.(0) in
+          let rest = coq_string_to_ocaml args.(1) in
+          String.make 1 (Char.chr code) ^ rest
+      | _ ->
+          err "term is not a reduced Coq string (did you vm_compute?)"
+      end
+  | _ ->
+      err "term is not a reduced Coq string (did you vm_compute?)"
+
+  (* ---------------- Tactic core ---------------- *)
+
+  let plot_send_tac (c : EConstr.t) : unit Proofview.tactic =
+    Proofview.Goal.enter (fun gl ->
+      let env = Proofview.Goal.env gl in
+      let sigma = Proofview.Goal.sigma gl in
+      (* reduce the argument to a constructor form (covers ++ / String.append etc.) *)
+      let c_red = Tacred.compute env sigma c in
+      let ck = EConstr.to_constr sigma c_red in
+      let s = coq_string_to_ocaml ck in
+      send_line s;
+      Proofview.tclUNIT ()
+    )
+}
+
+(* --------- Simple commands to configure python/script paths --------- *)
+
+VERNAC COMMAND EXTEND SetPythonPath CLASSIFIED AS QUERY
+| [ "SetPythonPath" string(p) ] ->
+  { python_path := p;
+    Feedback.msg_notice (Pp.str ("[plot] PythonPath = " ^ p)) }
+END
+
+VERNAC COMMAND EXTEND SetPlotScript CLASSIFIED AS QUERY
+| [ "SetPlotScript" string(p) ] ->
+  { script_path := p;
+    Feedback.msg_notice (Pp.str ("[plot] PlotScript = " ^ p)) }
+END
+
+(* ----------------- Tactics ----------------- *)
+
+TACTIC EXTEND plot_start_tactic
+| [ "plot_start" ] ->
+  { let () = start_python () in
+    Tacticals.tclIDTAC }
+END
+
+TACTIC EXTEND plot_send_tactic
+| [ "plot_send" constr(s) ] ->
+  { plot_send_tac s }
+END
+
+TACTIC EXTEND plot_stop_tactic
+| [ "plot_stop" ] ->
+  { let () = stop_python () in
+    Tacticals.tclIDTAC }
+END
+
+TACTIC EXTEND plot_new_tactic
+| [ "plot_new" ] ->
+  { let () = stop_python();start_python () in
+    Tacticals.tclIDTAC }
+END

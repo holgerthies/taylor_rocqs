@@ -13,21 +13,6 @@ Import ListNotations.
 From Coq Require Import QArith.
 Open Scope poly_scope.
 
-Definition tan_ivp_abstr : APIVP := {|
-     ivp_rhs := t(1+vx^2);
-     ivp_y0 := t(0)
- |}.
-
-
-(* Definition atan_ivp_abstr : APIVP := {| *)
-(*   ivp_rhs := t(vy^2; - vy^2 * vz; vy^3 ); *)
-(*   ivp_y0 := t(0;1;0)                                   *)
-(*  |}. *)
-
-Definition atan_ivp_abstr : APIVP := {|
-  ivp_rhs := t(PConst 1; vz;  -2 * vx * vz^2 );
-  ivp_y0 := t(0;0;1)                                  
- |}.
 
 
 (** Part 1: Solutions over Cauchy Reals **)
@@ -38,7 +23,7 @@ Require Import coqreals.
 
 Definition RQ := CRcarrier CRealConstructive.
 
-(*helper function *)
+(*helper function for printing *)
  Definition  seq_tuple {d} (p : (RQ * tuple d RQ))  (z : Z): Q * list Q.
  Proof.
    destruct p.
@@ -46,7 +31,19 @@ Definition RQ := CRcarrier CRealConstructive.
    apply ((seq r z) , (map (fun x => (seq x z)) x)).
  Defined.
 
+Definition tan_ivp_abstr : APIVP := {|
+     ivp_rhs := t(1+vx^2);
+     ivp_y0 := t(0)
+ |}.
+
+(* y' = 1/(1+y^2) reformulated as PIVP *)
+Definition atan_ivp_abstr : APIVP := {|
+  ivp_rhs := t(PConst 1; vz;  -2 * vx * vz^2 );
+  ivp_y0 := t(0;0;1)                                  
+ |}.
+
 Definition tan_ivp_rq := convert_pivp (A:=RQ) tan_ivp_abstr.
+(* Definition atan_ivp_rq := convert_pivp (A:=RQ) atan_ivp_abstr. *)
 
 (* same IVP but without overhead for conversion *)
 Close Scope Q_scope.
@@ -60,7 +57,7 @@ Definition atan_ivp_rq' : PIVP (A:=RQ) := {|
      pf := t([[1]];[[[0;1]]];[0;[[0;0;neg2]]]);
      py0 := t(0;0;1)
   |}.
-Definition atan_ivp_rq := convert_pivp (A:=RQ) atan_ivp_abstr.
+
 
 (* Definition tan_exact := (pivp_solution_max tan_ivp_rq.(pf) tan_ivp_rq.(py0)). *)
 (* faster versions *)
@@ -70,7 +67,8 @@ Definition atan_exact := (pivp_solution_max atan_ivp_rq'.(pf) atan_ivp_rq'.(py0)
 Eval vm_compute in (seq_tuple (tan_exact) (-5)).
 Eval vm_compute in (seq_tuple (atan_exact) (-2)).
 
-(** Part 1: Solutions using coq interval **)
+(** Part 2: Solutions using coq interval **)
+
 Require Import interval interval_string iode.
 
 Require Import Coq.Strings.String.
@@ -89,7 +87,16 @@ Definition tan_ivp_i : PIVP (A:=I) := {|
      pf := t([1;0;1]);
      py0 := t(0)
 |}.
+Definition atan_ivp_i : PIVP (A:=I) := {|
+     pf := t([[1]];[[[0;1]]];[0;[[0;0;Z2I (-2)]]]);
+     py0 := t(0;0;1)
+  |}.
+
+SetPythonPath "/Users/holgerthies/miniconda3/bin/python3".
 Goal True.
+  plot_start.
+  plot_traj tan_ivp_i.(pf) tan_ivp_i.(py0) 0 10.
   itraj tan_ivp_i.(pf) tan_ivp_i.(py0) 0 10.
+  (* itraj atan_ivp_i.(pf) atan_ivp_i.(py0) 0 5. *)
   exact Logic.I.
 Qed.

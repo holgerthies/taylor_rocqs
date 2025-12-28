@@ -1,3 +1,5 @@
+
+Declare ML Module "plot_plugin.plugin".
 From Coq Require Import QArith.
 Require Import Qreals.
 Require Import combinatorics.
@@ -118,6 +120,44 @@ Tactic Notation "itraj"
           end
     end in
   loop n y0 t0.
+Open Scope string_scope.
+Fixpoint show_list_string (l : list string) : string :=
+  match l with
+  | nil => "nil"
+  | s :: nil => """" ++ s ++ """"
+  | s :: l' => s ++ "; " ++ show_list_string l'
+  end.
+Tactic Notation "plot_traj"
+  uconstr(p) uconstr(y0) uconstr(t0) constr(steps) :=
+
+  let order := eval vm_compute in params.order in
+  let step_factor := eval vm_compute in params.step_factor in
+  let Fis   := eval vm_compute in (pivp_F p order) in
+  let stepf := eval vm_compute in (singleton step_factor) in
+  let stepfs := eval vm_compute in (interval_to_cr_string stepf) in
+  let n := eval cbv in steps in
+
+  (* Main loop *)
+  let rec loop steps y t :=
+    lazymatch steps with
+    | O =>
+        idtac "done."
+    | S ?steps' =>
+        let ys := eval vm_compute in (intervalt_to_cr_string y) in 
+        let ts := eval vm_compute in (interval_to_cr_string t) in 
+        plot_send ("t      = """  ++ts ++ """");
+        plot_send ("y(t)   = [" ++  (show_list_string ys) ++ "]");
+
+          let ty :=
+            eval vm_compute in
+              (interval_step p y t order step_factor)
+          in
+          lazymatch ty with
+          | (?t1, ?y1) =>
+              loop steps' y1 t1
+          end
+    end in
+  plot_new;loop n y0 t0.
 End IIVP.
 
 
