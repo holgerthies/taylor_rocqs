@@ -933,3 +933,7 @@ py0 := tuple_map inject_Q ivp.(ivp_y0);
  |}.
 
 End MakeIVP.
+Section PIVP_step.
+Context `{ConstrComplete}.
+Definition pivp_max_step {d}  (p : (PolyExpr )^(S d)) (y0 : QArith_base.Q^(S d)) := pivp_solution_max  (vecp (S d) p) (tuple_map inject_Q y0).
+End PIVP_step.

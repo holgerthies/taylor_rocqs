@@ -82,6 +82,16 @@ Proof.
    apply  (t0+t1, y1').
 Defined.
 
+(* does not add error, only for testing *)
+Definition interval_step_unsafe {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : I) (order :nat) (factor : F)  :  I * I^((S d)).
+Proof.
+   pose (Fis := pivp_F p order).
+   pose (step_factor := singleton factor).
+   pose (y_err := approx_pivp_step' p y0 Fis step_factor order).
+   destruct (y_err) as [[t1 y1] err].
+   apply  (t0+t1, y1).
+Defined.
+
 (* interval trajectory tactic *)
 
 Tactic Notation "itraj"
@@ -125,7 +135,7 @@ Fixpoint show_list_string (l : list string) : string :=
   match l with
   | nil => "nil"
   | s :: nil => """" ++ s ++ """"
-  | s :: l' => s ++ "; " ++ show_list_string l'
+  | s :: l' =>  """" ++ s ++ """; " ++ show_list_string l'
   end.
 Tactic Notation "plot_traj"
   uconstr(p) uconstr(y0) uconstr(t0) constr(steps) :=
@@ -158,6 +168,49 @@ Tactic Notation "plot_traj"
           end
     end in
   plot_new;loop n y0 t0.
+
+Tactic Notation "plot_traj_unsafe"
+  uconstr(p) uconstr(y0) uconstr(t0) constr(steps) :=
+
+  let order := eval vm_compute in params.order in
+  let step_factor := eval vm_compute in params.step_factor in
+  let Fis   := eval vm_compute in (pivp_F p order) in
+  let stepf := eval vm_compute in (singleton step_factor) in
+  let stepfs := eval vm_compute in (interval_to_cr_string stepf) in
+  let n := eval cbv in steps in
+
+  (* Main loop *)
+  let rec loop steps y t :=
+    lazymatch steps with
+    | O =>
+        idtac "done."
+    | S ?steps' =>
+        let ys := eval vm_compute in (intervalt_to_cr_string y) in 
+        let ts := eval vm_compute in (interval_to_cr_string t) in 
+        plot_send ("t      = """  ++ts ++ """");
+        plot_send ("y(t)   = [" ++  (show_list_string ys) ++ "]");
+
+          let ty :=
+            eval vm_compute in
+              (interval_step_unsafe p y t order step_factor)
+          in
+          lazymatch ty with
+          | (?t1, ?y1) =>
+              loop steps' y1 t1
+          end
+    end in
+  plot_new;loop n y0 t0.
+Definition tuple_length {A} {d} (t : tuple d A) := d.
+Tactic Notation "plot_trajectory"
+  uconstr(p) uconstr(y0)  constr(steps) :=
+    let y0' := (eval vm_compute in (tuple_map (archimedean.inject_Q (A:=I)) y0)) in  let p'  := (eval vm_compute in (vecp (A:=I) (tuple_length p) p)) in plot_traj p' y0' 0 steps.
+
+Tactic Notation "plot_trajectory_unsafe"
+  uconstr(p) uconstr(y0)  constr(steps) :=
+    let y0' := (eval vm_compute in (tuple_map (archimedean.inject_Q (A:=I)) y0)) in  let p'  := (eval vm_compute in (vecp (A:=I) (tuple_length p) p)) in plot_traj_unsafe p' y0' 0 steps.
+
+Tactic Notation "trajectory"
+  uconstr(p) uconstr(y0)  constr(steps) :=
+    let y0' := (eval vm_compute in (tuple_map (archimedean.inject_Q (A:=I)) y0)) in  let p'  := (eval vm_compute in (vecp (A:=I) (tuple_length p) p)) in itraj p' y0' 0 steps.
+
 End IIVP.
-
-

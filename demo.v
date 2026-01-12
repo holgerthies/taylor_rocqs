@@ -75,10 +75,12 @@ Require Import Coq.Strings.String.
 Open Scope string_scope.
 Module IIVP_params  <: IIVP_PARAMS.
   Definition prec := 30%positive. (* interval precision *)
-  Definition order := 10%nat. (* taylor expansion order *)
+  Definition order := 20%nat. (* taylor expansion order *)
   Definition max_steps := 1000%nat. (* max number of iterations *)
   Definition step_factor := (Q2Fa 0.25) (* factor of max step size for each step *).
 End IIVP_params.  
+
+
 
 Module IIVP  := IIVP IIVP_params.
 Import IIVP.
@@ -92,11 +94,56 @@ Definition atan_ivp_i : PIVP (A:=I) := {|
      py0 := t(0;0;1)
   |}.
 
+Definition duffing_ivp_abstr : APIVP := {|
+  ivp_rhs := t(
+    vy;
+    vx - vx^3
+  );
+  ivp_y0 := t(1; 0)
+|}.
+Definition spiral_ivp_abstr : APIVP := {|
+  ivp_rhs := t(
+    10%Q*vy - vx*(vx^2 + vy^2);
+    (-10)%Q*vx - vy*(vx^2 + vy^2)
+  );
+  ivp_y0 := t(1; 0)
+|}.
+
+Definition bend_ivp : APIVP := {|
+  ivp_rhs := t(
+    vy;
+    -vx + 2%Q*vx^2
+  );
+  ivp_y0 := t(0.1%Q; 1)
+|}.
+
+Definition spiral_ivp_fast : PIVP (A:=I) := {|
+     pf := t([[0;(Z2I 25)]; [0;0;Z2I (-1)]; []; [Z2I (-1)]]; [[0;0;0;Z2I (-1)]; [Z2I (-25)]; [0;Z2I(-1)]]);
+     py0 := t(archimedean.inject_Q (A:=I) 0.2;1)
+  |}.
+Definition double_well_ivp : APIVP := {|
+  ivp_rhs := t(
+    vy;
+    -vx*(vx^2 - 1%Q) - vy
+  );
+  ivp_y0 := t(0.2%Q; 1)
+|}.
+Section IVP_def.
+  Local Open Scope Q_scope.
+  Local Open Scope poly_scope.
+  Local Notation x := (PVar 0).
+  Local Notation y := (PVar 1).
+  Local Notation z := (PVar 2).
+  Definition p1 := 25*y - x * (x^2 + y^2).
+  Definition p2 := -25*x - y * (x^2 + y^2).
+  Definition spiral_ivp_f := t(p1;p2).
+  Definition spiral_ivp_y0 := t(0.2;1).
+End IVP_def.
+Definition tan_ivp_i' := convert_pivp (A:=I) galaxy_spiral_ivp.
 SetPythonPath "/Users/holgerthies/miniconda3/bin/python3".
 Goal True.
-  plot_start.
-  plot_traj tan_ivp_i.(pf) tan_ivp_i.(py0) 0 10.
-  itraj tan_ivp_i.(pf) tan_ivp_i.(py0) 0 10.
+  Time plot_trajectory spiral_ivp_f spiral_ivp_y0 100.
+  itraj tan_ivp_i'.(pf) tan_ivp_i'.(py0) 0 10.
   (* itraj atan_ivp_i.(pf) atan_ivp_i.(py0) 0 5. *)
   exact Logic.I.
 Qed.
