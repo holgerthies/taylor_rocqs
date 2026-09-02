@@ -40,6 +40,8 @@
      i.e. a statement about the exact algorithm, and that the steps stay inside
      the interval on which the solution exists; nothing about intervals is
      assumed.
+   - [interval_trajectory_correct_of_remainder] : the same theorem with the
+     more concrete Lagrange-remainder hypothesis [remainder_bounded].
    - [pcont_Q2Ipoly], [tcont_inject_Q], [cont_singleton] discharge the input
      hypotheses for rational IVPs, so the theorems are not vacuous.
 
@@ -671,6 +673,22 @@ Module IntervalSolverCorrect (params : IIVP_PARAMS).
                                             params.max_steps Y (singleton T) Tend t Ht HY HT).
   Qed.
 
+  Theorem interval_trajectory_correct_of_remainder {d}
+    (PI : (@mpoly I (S d))^(S d)) (pR : (@mpoly R (S d))^(S d)) (sf : R) (y : R -> R^(S d)) (a b : R) :
+    ptcont PI pR ->
+    is_pivp_solution_on a b pR y ->
+    remainder_bounded a b pR params.order sf ->
+    cont (singleton params.step_factor) sf -> (0 <= sf)%R ->
+    (forall t h, (a < t < b)%R -> (0 <= h)%R -> (h <= approx_pivp_step_size pR (y t) sf)%R -> (a < t + h < b)%R) ->
+    forall Y T Tend t, (a < t < b)%R -> tcont Y (y t) -> cont (singleton T) t ->
+      Forall (encloses_at y) (Solver.interval_trajectory PI Y T Tend).
+  Proof.
+    intros Hp Hsol Hrem Hsf Hsf0 Hdom Y T Tend t Ht HY HT.
+    exact (interval_trajectory_correct PI pR sf y a b
+             Hp Hsol (taylor_step_accurate_of_remainder a b pR params.order sf Hrem)
+             Hsf Hsf0 Hdom Y T Tend t Ht HY HT).
+  Qed.
+
   (** This is the same theorem in the form used by the demo tactics: the vector
       field is a tuple of [PolyExpr]s with rational constants, and the initial
       state is a rational tuple.  The coefficient and initial-state enclosure
@@ -701,6 +719,26 @@ Module IntervalSolverCorrect (params : IIVP_PARAMS).
              (tuple_map (inject_Q (A:=I)) YQ) T Tend t Ht HY HT).
   Qed.
 
+  Theorem itrajectory_correct_of_remainder {d}
+    (P : PolyExpr^(S d)) (YQ : Q^(S d)) (sf : R) (y : R -> R^(S d)) (a b : R) :
+    is_pivp_solution_on a b (vecp (A:=R) (S d) P) y ->
+    remainder_bounded a b (vecp (A:=R) (S d) P) params.order sf ->
+    cont (singleton params.step_factor) sf -> (0 <= sf)%R ->
+    (forall t h, (a < t < b)%R -> (0 <= h)%R ->
+                 (h <= approx_pivp_step_size (vecp (A:=R) (S d) P) (y t) sf)%R ->
+                 (a < t + h < b)%R) ->
+    forall T Tend t,
+      (a < t < b)%R ->
+      tuple_map (inject_Q (A:=R)) YQ = y t ->
+      cont (singleton T) t ->
+      Forall (encloses_at y) (Solver.itrajectory P YQ T Tend).
+  Proof.
+    intros Hsol Hrem Hsf Hsf0 Hdom T Tend t Ht Hinit HT.
+    exact (itrajectory_correct P YQ sf y a b Hsol
+             (taylor_step_accurate_of_remainder a b (vecp (A:=R) (S d) P) params.order sf Hrem)
+             Hsf Hsf0 Hdom T Tend t Ht Hinit HT).
+  Qed.
+
   Theorem apivp_trajectory_correct {d}
     (ivp : APIVP (d:=S d)) (sf : R) (y : R -> R^(S d)) (a b : R) :
     is_pivp_solution_on a b (vecp (A:=R) (S d) ivp.(ivp_rhs)) y ->
@@ -718,6 +756,25 @@ Module IntervalSolverCorrect (params : IIVP_PARAMS).
     intros Hsol Hacc Hsf Hsf0 Hdom T Tend t Ht Hinit HT.
     exact (itrajectory_correct ivp.(ivp_rhs) ivp.(ivp_y0) sf y a b
              Hsol Hacc Hsf Hsf0 Hdom T Tend t Ht Hinit HT).
+  Qed.
+
+  Theorem apivp_trajectory_correct_of_remainder {d}
+    (ivp : APIVP (d:=S d)) (sf : R) (y : R -> R^(S d)) (a b : R) :
+    is_pivp_solution_on a b (vecp (A:=R) (S d) ivp.(ivp_rhs)) y ->
+    remainder_bounded a b (vecp (A:=R) (S d) ivp.(ivp_rhs)) params.order sf ->
+    cont (singleton params.step_factor) sf -> (0 <= sf)%R ->
+    (forall t h, (a < t < b)%R -> (0 <= h)%R ->
+                 (h <= approx_pivp_step_size (vecp (A:=R) (S d) ivp.(ivp_rhs)) (y t) sf)%R ->
+                 (a < t + h < b)%R) ->
+    forall T Tend t,
+      (a < t < b)%R ->
+      tuple_map (inject_Q (A:=R)) ivp.(ivp_y0) = y t ->
+      cont (singleton T) t ->
+      Forall (encloses_at y) (Solver.itrajectory ivp.(ivp_rhs) ivp.(ivp_y0) T Tend).
+  Proof.
+    intros Hsol Hrem Hsf Hsf0 Hdom T Tend t Ht Hinit HT.
+    exact (itrajectory_correct_of_remainder ivp.(ivp_rhs) ivp.(ivp_y0) sf y a b
+             Hsol Hrem Hsf Hsf0 Hdom T Tend t Ht Hinit HT).
   Qed.
 
 End IntervalSolverCorrect.

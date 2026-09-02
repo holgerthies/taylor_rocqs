@@ -40,21 +40,32 @@ Module IIVP (params : IIVP_PARAMS).
 
 Module p  <: PRECISION_POS.  Definition precision := params.prec.  End p.
 Module FI := FloatInterval p.
-Definition interval_trajectory {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : F) (t_end : F)  : list (I^(S (S d))).
+
+Definition interval_step {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : I) (order :nat) (factor : F)  :  I * I^((S d)).
 Proof.
-   pose (Fis := pivp_F p params.order).
-   pose (step_factor := singleton params.step_factor).
-   revert y0 t0.
-   induction params.max_steps;intros.
-   apply ((tuple_cons (singleton t0) y0) :: nil).
-   destruct (FI.F'.le (t_end - t0) SFBI2.zero).
-   - apply ((tuple_cons (singleton t0) y0) :: nil).
-   - pose (y_err := approx_pivp_step' p y0 Fis step_factor params.order).
-     destruct (y_err) as [[t1 y1] err].
-     pose (y1' := FI.add_errort (FI.upper err) y1).
-     pose (t_next := (t0+(FI.lower t1))).
-     apply ((tuple_cons (singleton t0) y0) :: IHn y1' t_next).
- Defined.
+   pose (Fis := pivp_F p order).
+   pose (step_factor := singleton factor).
+   pose (y_err := approx_pivp_step' p y0 Fis step_factor order).
+   destruct (y_err) as [[t1 y1] err].
+   pose (y1' := FI.add_errort (FI.upper err) y1).
+   apply  (t0+t1, y1').
+Defined.
+
+Fixpoint interval_trajectory_steps {d} (steps : nat) (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : I) (t_end : F) : list (I^(S (S d))) :=
+  match steps with
+  | O => (tuple_cons t0 y0) :: nil
+  | S n =>
+      if FI.F'.le (t_end - FI.lower t0) SFBI2.zero
+      then (tuple_cons t0 y0) :: nil
+      else
+        (tuple_cons t0 y0) ::
+        match interval_step p y0 t0 params.order params.step_factor with
+        | (t1, y1) => interval_trajectory_steps n p y1 t1 t_end
+        end
+  end.
+
+Definition interval_trajectory {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : F) (t_end : F)  : list (I^(S (S d))) :=
+  interval_trajectory_steps params.max_steps p y0 (singleton t0) t_end.
 
 Definition itrajectory {d} (p : (PolyExpr) ^(S d)) (y0 : Q^(S d)) (t0 : F) (t_end : F)  := interval_trajectory (vecp (A:=I) (S d) p) (tuple_map archimedean.inject_Q y0) t0 t_end.
 
@@ -72,15 +83,7 @@ Proof.
    pose (t_next := (t0+(FI.lower t1))).
    apply  (IHsteps y1' t_next).
 Defined.
-Definition interval_step {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : I) (order :nat) (factor : F)  :  I * I^((S d)).
-Proof.
-   pose (Fis := pivp_F p order).
-   pose (step_factor := singleton factor).
-   pose (y_err := approx_pivp_step' p y0 Fis step_factor order).
-   destruct (y_err) as [[t1 y1] err].
-   pose (y1' := FI.add_errort (FI.upper err) y1).
-   apply  (t0+t1, y1').
-Defined.
+
 
 (* does not add error, only for testing *)
 Definition interval_step_unsafe {d} (p : (@mpoly I (S d)) ^(S d)) (y0 : I^(S d)) (t0 : I) (order :nat) (factor : F)  :  I * I^((S d)).
